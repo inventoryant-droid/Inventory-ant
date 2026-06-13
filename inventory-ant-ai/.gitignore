@@ -1,0 +1,79 @@
+# ===========================
+# Python / FastAPI AI Service
+# ===========================
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# Environment & secrets — NEVER commit these
+.env
+.env.*
+!.env.example
+
+# Python cache & compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+site-packages/
+
+# Pytest / testing
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.cover
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# PyInstaller
+*.spec
+
+# Firebase service account keys
+*serviceAccount*.json
+firebase-adminsdk*.json
+*-firebase-adminsdk-*.json
+
+# Model files & large binaries
+*.pkl
+*.joblib
+*.h5
+*.model
+*.bin
+*.traineddata
+
+# Local database dumps
+database.json
+*.sqlite
+*.db
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.sw?
