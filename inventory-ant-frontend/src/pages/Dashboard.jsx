@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import '../App.css';
 import { getExpiryInfo, getExpKey } from '../utils/expiryHelpers';
+import { Box, AlertTriangle, Layers, BarChart2, TrendingUp } from 'lucide-react';
 
 function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner, onGoToSettings }) {
   const dynamicColumns = useMemo(() => {
@@ -19,132 +20,143 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
     return !isNaN(q) && q < 20;
   }).length;
 
-  const { expiredCount, expiringSoonCount } = useMemo(() => {
-    if (!expKey) return { expiredCount: 0, expiringSoonCount: 0 };
-    let expired = 0;
-    let soon = 0;
- 
-    products.forEach(p => {
-      const info = getExpiryInfo(p[expKey]);
-      if (info.status === 'EXPIRED') expired++;
-      else if (info.status === 'EXPIRING SOON') soon++;
-    });
-
-    return { expiredCount: expired, expiringSoonCount: soon };
-  }, [products, expKey]);
-
   const totalStock = products.reduce((acc, p) => acc + (parseInt(p.quantity || '0', 10) || 0), 0);
 
+  // Chart Logic
+  const maxStock = useMemo(() => {
+     if (products.length === 0) return 200;
+     const max = Math.max(...products.map(p => parseInt(p.quantity || '0', 10) || 0));
+     return max < 50 ? 50 : max;
+  }, [products]);
+
   return (
-    <div className="p-6 md:p-10 flex-1 overflow-y-auto">
-      <h1 className="mt-0 text-3xl md:text-5xl font-black tracking-tight mb-8">
-        System <span className="glow-text">Overview</span>
-      </h1>
+    <div className="p-6 md:p-8 flex-1 overflow-y-auto bg-[#F8FAFC]">
+      <div className="flex flex-col mb-8">
+        <h1 className="m-0 text-3xl font-extrabold tracking-tight text-indigo-600">
+          System Overview
+        </h1>
+        <p className="text-slate-500 mt-1 text-sm font-medium">Warehouse status updates and real-time analytical graphs.</p>
+      </div>
       
       {products.length === 0 && (
-        <div className="glass-panel bg-[var(--primary-bg)] border-[var(--primary)] p-8 md:p-12 mt-8 flex flex-col items-center text-center max-w-4xl mx-auto">
-           <div className="text-6xl mb-4 animate-bounce">👋</div>
-           <h2 className="margin-0 text-[var(--primary)] text-2xl md:text-3xl font-bold">Welcome to Inventory Ant!</h2>
-           <p className="text-[var(--text-main)] max-w-[600px] leading-relaxed text-base md:text-lg mt-4">
+        <div className="bg-white border border-slate-200 rounded-2xl p-8 md:p-12 mt-8 flex flex-col items-center text-center max-w-4xl mx-auto shadow-sm">
+           <div className="text-6xl mb-4 animate-bounce drop-shadow-sm">👋</div>
+           <h2 className="m-0 text-indigo-600 text-2xl font-bold">Welcome to Inventory Ant!</h2>
+           <p className="text-slate-500 max-w-[600px] leading-relaxed text-sm mt-3">
              Aapka warehouse abhi khali hai. System ko start karne aur AI ko data dene ke liye, sabse pehle apni Master CSV (Inventory List) file upload karein.
            </p>
            <button 
              onClick={onGoToSettings} 
-             className="btn-primary mt-8 py-4 px-8 text-base font-bold"
+             className="mt-6 py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition-all shadow-sm border-none cursor-pointer"
            >
              Go to Account Settings ➔
            </button>
         </div>
       )}
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mt-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+        {/* Total SKU Card */}
         <div 
-          className="card cursor-pointer border border-[var(--primary)] bg-[var(--primary-bg)] p-6 flex flex-col justify-between" 
+          className="bg-white border border-slate-100 rounded-2xl p-6 flex items-start justify-between cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow" 
           onClick={onTotalClick}
         >
-           <div>
-             <h3 className="text-[var(--text-muted)] m-0 uppercase text-[10px] tracking-[2px] font-bold">Total Inventory</h3>
-             <p className="text-4xl md:text-5xl my-2 font-black text-[var(--primary)]">{products.length}</p>
+           <div className="flex flex-col">
+             <h3 className="text-slate-400 m-0 uppercase text-[10px] tracking-wider font-bold">Total SKU Inventory</h3>
+             <p className="text-4xl my-3 font-extrabold text-slate-800">{products.length}</p>
+             <span className="text-xs text-indigo-600 font-semibold flex items-center gap-1 hover:underline">
+               View all items ➔
+             </span>
            </div>
-           <span className="text-[9px] text-[var(--primary)] font-mono tracking-wider font-bold">[ VIEW ALL ITEMS ]</span>
+           <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500">
+              <Box size={24} strokeWidth={2} />
+           </div>
         </div>
         
+        {/* Low Stock Card */}
         <div 
-          className={`card cursor-pointer p-6 flex flex-col justify-between ${
-            lowStockCount > 0 
-              ? 'border-[var(--danger)] bg-[var(--danger-bg)]' 
-              : 'border-[var(--glass-border)]'
-          }`} 
+          className={`bg-white border ${lowStockCount > 0 ? 'border-amber-200' : 'border-slate-100'} rounded-2xl p-6 flex items-start justify-between cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow`} 
           onClick={() => onAlertClick('lowStock')}
         >
-           <div>
-             <h3 className="text-[var(--text-muted)] m-0 uppercase text-[10px] tracking-[2px] font-bold">Low Stock Filter</h3>
-             <p className={`text-4xl md:text-5xl my-2 font-black ${lowStockCount > 0 ? 'text-[var(--danger)]' : 'text-[var(--text-main)]'}`}>{lowStockCount}</p>
+           <div className="flex flex-col">
+             <div className="flex items-center gap-3">
+               <h3 className="text-slate-400 m-0 uppercase text-[10px] tracking-wider font-bold">Low Stock Filter</h3>
+             </div>
+             <div className="flex items-center gap-3 my-3">
+                <p className="text-4xl m-0 font-extrabold text-slate-800">{lowStockCount}</p>
+                {lowStockCount > 0 && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded uppercase font-bold tracking-wider">Attention</span>}
+             </div>
+             <span className="text-xs text-slate-500 font-medium">
+               Stocks requiring immediate replenishment.
+             </span>
            </div>
-           <span className={`text-[9px] font-mono tracking-wider font-bold ${lowStockCount > 0 ? 'text-[var(--danger)]' : 'text-[var(--text-muted)]'}`}>
-             {lowStockCount > 0 ? '[ ALERT ACTIVE ]' : '[ STABLE ]'}
-           </span>
+           <div className={`w-12 h-12 rounded-2xl ${lowStockCount > 0 ? 'bg-amber-50 text-amber-500' : 'bg-slate-50 text-slate-400'} flex items-center justify-center`}>
+              <AlertTriangle size={24} strokeWidth={2} />
+           </div>
         </div>
-        
-        {expKey && (
-          <>
-            <div 
-              className={`card cursor-pointer p-6 flex flex-col justify-between ${
-                expiredCount > 0 
-                  ? 'border-[var(--danger)] bg-[var(--danger-bg)]' 
-                  : 'border-[var(--glass-border)]'
-              }`} 
-              onClick={() => onAlertClick('expired')}
-            >
-               <div>
-                 <h3 className="text-[var(--text-muted)] m-0 uppercase text-[10px] tracking-[2px] font-bold">Expired Items</h3>
-                 <p className="text-4xl md:text-5xl my-2 font-black text-[var(--danger)]">{expiredCount}</p>
-               </div>
-               <span className="text-[9px] text-[var(--danger)] font-mono tracking-wider font-bold">[ CRITICAL FILTER ]</span>
-            </div>
-            <div 
-              className={`card cursor-pointer p-6 flex flex-col justify-between ${
-                expiringSoonCount > 0 
-                  ? 'border-[var(--warning)] bg-[var(--warning-bg)]' 
-                  : 'border-[var(--glass-border)]'
-              }`} 
-              onClick={() => onAlertClick('expiringSoon')}
-            >
-               <div>
-                 <h3 className="text-[var(--text-muted)] m-0 uppercase text-[10px] tracking-[2px] font-bold">Expiring Soon</h3>
-                 <p className="text-4xl md:text-5xl my-2 font-black text-[var(--warning)]">{expiringSoonCount}</p>
-               </div>
-               <span className="text-[9px] text-[var(--warning)] font-mono tracking-wider font-bold">[ WARNING FILTER ]</span>
-            </div>
-          </>
-        )}
 
-        <div className="card p-6 flex flex-col justify-between">
-          <div>
-            <h3 className="text-[var(--text-muted)] m-0 uppercase text-[10px] tracking-[2px] font-bold">Total Stock</h3>
-            <p className="text-4xl md:text-5xl my-2 font-black text-[var(--primary)]">{totalStock}</p>
+        {/* Total Stock Sum Card */}
+        <div className="bg-white border border-slate-100 rounded-2xl p-6 flex items-start justify-between shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow">
+          <div className="flex flex-col">
+            <h3 className="text-slate-400 m-0 uppercase text-[10px] tracking-wider font-bold">Total Stock Sum</h3>
+            <p className="text-4xl my-3 font-extrabold text-slate-800">{totalStock}</p>
+            <span className="text-xs text-slate-500 font-medium">
+              Total aggregated physical items.
+            </span>
           </div>
-          <span className="text-[9px] text-[var(--text-muted)] font-mono tracking-wider font-bold">[ SUM UNITS ]</span>
+          <div className="w-12 h-12 rounded-2xl bg-fuchsia-50 flex items-center justify-center text-fuchsia-500">
+              <Layers size={24} strokeWidth={2} />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
-          <div className="ai-card text-center p-8 rounded-2xl relative overflow-hidden flex flex-col items-center">
-            <div className="scan-line"></div>
-            <div className="text-5xl mb-4">⚡</div>
-            <h2 className="text-2xl font-bold text-[var(--primary)] mb-2">Inbound</h2>
-            <p className="text-[var(--text-muted)] text-sm mb-6 max-w-xs">Add products to stock via bill scanning.</p>
-            <button className="btn-primary w-full py-4 text-base font-semibold" onClick={() => onOpenScanner('IN')}>Scan Purchase Bill</button>
-         </div>
+      {/* Bar Chart Section */}
+      {products.length > 0 && (
+        <div className="mt-6 bg-white border border-slate-100 rounded-2xl p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+           <div className="flex justify-between items-center mb-8">
+              <div className="flex items-center gap-2">
+                 <BarChart2 size={18} className="text-indigo-400" />
+                 <h3 className="m-0 text-slate-700 font-bold text-sm">Stock Availability levels per SKU</h3>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
+                 <TrendingUp size={12} /> Updated Live
+              </div>
+           </div>
 
-         <div className="ai-card text-center p-8 rounded-2xl relative overflow-hidden flex flex-col items-center">
-            <div className="scan-line bg-[var(--danger)] shadow-[0_0_15px_var(--danger)] [animation-delay:1.5s]"></div>
-            <div className="text-5xl mb-4">🔥</div>
-            <h2 className="text-2xl font-bold text-[var(--danger)] mb-2">Outbound</h2>
-            <p className="text-[var(--text-muted)] text-sm mb-6 max-w-xs">Sell products via receipt deduction.</p>
-            <button className="btn-danger w-full py-4 text-base font-semibold" onClick={() => onOpenScanner('OUT')}>Scan Sales Receipt</button>
-          </div>
-      </div>
+           {/* Chart Container */}
+           <div className="w-full overflow-x-auto pb-8">
+             <div className="h-64 min-w-[600px] flex items-end gap-1.5 border-l border-b border-slate-200 pb-2 pl-2 relative ml-8 mt-4">
+                {/* Y Axis labels */}
+                <div className="absolute -left-8 bottom-0 flex flex-col justify-between h-full text-[10px] text-slate-400 font-mono py-2">
+                   <span>{maxStock}</span>
+                   <span>{Math.round(maxStock/2)}</span>
+                   <span>0</span>
+                </div>
+                
+                {/* Bars */}
+                {products.slice(0, 50).map((p, i) => {
+                   const qty = parseInt(p.quantity || '0', 10) || 0;
+                   const heightPct = Math.min(100, (qty / maxStock) * 100);
+                   return (
+                     <div key={p.id || i} className="flex-1 flex flex-col items-center group relative h-full justify-end min-w-[8px]">
+                        {/* Tooltip */}
+                        <div className="absolute -top-10 opacity-0 group-hover:opacity-100 bg-slate-800 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-10 transition-opacity">
+                           {p.name || p.productId}: {qty}
+                        </div>
+                        <div 
+                           className="w-full bg-indigo-500 rounded-t-sm hover:bg-indigo-400 transition-colors"
+                           style={{ height: `${heightPct}%`, minHeight: qty > 0 ? '4px' : '0' }}
+                        ></div>
+                        {/* X Axis label (truncated) */}
+                        <div className="absolute -bottom-6 w-16 text-center -ml-6 text-[8px] text-slate-400 truncate hidden md:block" style={{ left: '50%' }}>
+                           {p.name || p.productId}
+                        </div>
+                     </div>
+                   );
+                })}
+             </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 }

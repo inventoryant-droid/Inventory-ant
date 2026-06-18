@@ -109,7 +109,7 @@ export default function App() {
       {!userId ? (
         <AuthScreen onLogin={handleLogin} />
       ) : (
-        <div className={(theme === 'light' ? 'light-theme ' : '') + "flex flex-col md:flex-row w-full min-h-screen"} style={{ background: 'var(--bg-dark)' }}>
+        <div className={(theme === 'light' ? 'light-theme ' : '') + "flex flex-col md:flex-row w-full min-h-screen bg-[#F8FAFC]"}>
           <Sidebar setView={setView} view={view} userId={userId} onLogout={handleLogout} onSwitchAccount={handleSwitchAccount} setInventoryFilter={setInventoryFilter} theme={theme} onToggleTheme={toggleTheme} />
           
           {view === 'dashboard' && <Dashboard 

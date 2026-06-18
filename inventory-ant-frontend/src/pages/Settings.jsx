@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import '../App.css';
 import Papa from 'papaparse';
+import { UploadCloud, Trash2 } from 'lucide-react';
 
 function Settings({ userId, onScanResult }) {
   const fileInputRef = useRef(null);
@@ -115,20 +116,40 @@ function Settings({ userId, onScanResult }) {
   };
 
   return (
-    <div className="p-6 md:p-10 flex-1 overflow-y-auto">
-      <h1 className="mt-0 text-3xl md:text-5xl font-black mb-8">Account <span className="glow-text">Settings</span></h1>
-      <div className="flex flex-col gap-8 max-w-4xl mt-10">
-          <div className="ai-card p-6 md:p-8 rounded-2xl">
-            <h3 className="m-0 text-xl font-bold text-[var(--primary)] mb-2">Upload CSV File</h3>
-            <p className="text-[var(--text-muted)] text-sm md:text-base leading-relaxed">Apni inventory (stock) list ko bulk me add karne ke liye CSV file select karein. Headers automatically map ho jayenge.</p>
+    <div className="p-4 md:p-8 flex-1 overflow-y-auto bg-[#F8FAFC]">
+      <h1 className="m-0 text-3xl font-extrabold tracking-tight text-indigo-600 mb-8">
+        Account Settings
+      </h1>
+      <div className="flex flex-col gap-6 max-w-3xl">
+          <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+            <h3 className="m-0 text-[15px] font-bold text-slate-800 flex items-center gap-2 mb-2">
+               <UploadCloud size={18} className="text-indigo-500" /> Upload CSV File
+            </h3>
+            <p className="text-slate-500 text-sm leading-relaxed mb-6">
+               Apni inventory (stock) list ko bulk me add karne ke liye CSV file select karein. Headers automatically map ho jayenge.
+            </p>
             <input type="file" accept=".csv" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
-            <button className="btn-primary mt-6 py-3 px-6 text-sm" onClick={() => fileInputRef.current.click()}>Select File</button>
+            <button 
+              className="py-2.5 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold border-none shadow-sm transition-colors cursor-pointer w-full md:w-auto" 
+              onClick={() => fileInputRef.current.click()}
+            >
+              Select File
+            </button>
          </div>
  
-          <div className="ai-card p-6 md:p-8 rounded-2xl border-l-4 border-l-[var(--danger)] border-y border-r border-[var(--glass-border)]">
-            <h3 className="m-0 text-xl font-bold text-[var(--danger)] mb-2">Clear All Data</h3>
-            <p className="text-[var(--text-muted)] text-sm md:text-base leading-relaxed">Apne account ka saara inventory stock aur data hamesha ke liye delete karein.</p>
-            <button className="btn-danger mt-6 py-3 px-6 text-sm" onClick={handleWipeCatalog}>Clear Data</button>
+          <div className="bg-white border-l-4 border-l-red-500 border-y border-r border-slate-200 p-6 md:p-8 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+            <h3 className="m-0 text-[15px] font-bold text-red-600 flex items-center gap-2 mb-2">
+               <Trash2 size={18} /> Clear All Data
+            </h3>
+            <p className="text-slate-500 text-sm leading-relaxed mb-6">
+               Apne account ka saara inventory stock aur data hamesha ke liye delete karein. Ye action undo nahi ho sakta.
+            </p>
+            <button 
+              className="py-2.5 px-6 bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 rounded-lg text-sm font-bold transition-colors cursor-pointer w-full md:w-auto" 
+              onClick={handleWipeCatalog}
+            >
+              Clear Data
+            </button>
          </div>
       </div>
     </div>

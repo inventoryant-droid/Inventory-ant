@@ -1,72 +1,109 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState } from 'react';
 import '../../App.css';
+import { LayoutDashboard, TerminalSquare, Receipt, Package, Scan, Settings, BookOpen, Info, ArrowLeftRight, Sun, Moon, LogOut, Menu, X } from 'lucide-react';
 
 function Sidebar({ setView, view, userId, onLogout, onSwitchAccount, setInventoryFilter, theme, onToggleTheme }) {
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
   const navItems = [
-    { id: 'dashboard', label: 'Overview', icon: '📊' },
-    { id: 'ant_x', label: 'Ant X Terminal', icon: '🐜' },
-    { id: 'billing', label: 'Billing', icon: '🛒' },
-    { id: 'inventory', label: 'Inventory', icon: '📦' },
-    { id: 'ai_lab', label: 'Smart Scanner', icon: '🤖' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' },
-    { id: 'guide', label: 'User Guide', icon: '📖' },
-    { id: 'about', label: 'About Us', icon: 'ℹ️' },
+    { id: 'dashboard', label: 'Overview', icon: <LayoutDashboard size={18} /> },
+    { id: 'ant_x', label: 'Ant X Terminal', icon: <TerminalSquare size={18} /> },
+    { id: 'billing', label: 'Billing', icon: <Receipt size={18} /> },
+    { id: 'inventory', label: 'Master Inventory', icon: <Package size={18} /> },
+    { id: 'ai_lab', label: 'Smart Scanner', icon: <Scan size={18} /> },
+    { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
+    { id: 'guide', label: 'User Guide', icon: <BookOpen size={18} /> },
+    { id: 'about', label: 'About Us', icon: <Info size={18} /> },
   ];
 
+  const handleNavClick = (id) => {
+    if (id === 'inventory') {
+      setInventoryFilter('all');
+    }
+    setView(id);
+    setIsMobileOpen(false); // Close menu on mobile after click
+  };
+
   return (
-    <div className="glass-panel w-full md:w-[280px] h-auto md:h-[calc(100vh-2rem)] m-0 md:m-4 p-4 md:p-7 flex flex-row md:flex-col gap-4 md:gap-7 sticky top-0 md:top-4 overflow-x-auto md:overflow-y-auto transition-all duration-300 bg-[var(--sidebar-bg)] border border-[var(--glass-border)] z-40 items-center md:items-stretch">
-      <h2 className="m-0 text-xl md:text-2xl flex items-center gap-2 md:gap-3 shrink-0">
-        <span className="text-2xl md:text-3xl">🐜</span> 
-        <span className="tracking-widest font-black gradient-text hidden md:inline">INVENTORY ANT</span>
-      </h2>
-      
-      <div className="bg-[var(--bg-card)] p-3 rounded-2xl border border-[var(--glass-border)] shrink-0 hidden md:block shadow-sm">
-         <div className="text-[0.6rem] text-[var(--text-muted)] uppercase tracking-[1.5px] mb-1">User ID</div>
-         <div className="text-[var(--primary)] font-bold text-lg overflow-hidden text-ellipsis">{userId}</div>
+    <>
+      {/* Mobile Top Header (Visible only on small screens) */}
+      <div className="md:hidden w-full sticky top-0 bg-white border-b border-slate-200 z-50 p-4 flex justify-between items-center shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="text-2xl grayscale brightness-150 drop-shadow-sm">🐜</div> 
+          <span className="tracking-widest font-black text-indigo-900 text-lg leading-none">INVENTORY ANT</span>
+        </div>
+        <button 
+          onClick={() => setIsMobileOpen(!isMobileOpen)} 
+          className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg border-none cursor-pointer transition-colors"
+        >
+          {isMobileOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
       </div>
 
-      <nav className="flex flex-row md:flex-col gap-2 shrink-0">
-        {navItems.map(item => (
-          <button 
-            key={item.id}
-            onClick={() => {
-              if (item.id === 'inventory') {
-                setInventoryFilter('all');
-              }
-              setView(item.id);
-            }} 
-            className={`text-left border-none p-3 md:px-5 md:py-3.5 flex items-center gap-2 md:gap-4 rounded-xl text-sm transition-all duration-200 cursor-pointer whitespace-nowrap
-              ${view === item.id ? 'font-bold bg-[var(--primary)] text-white shadow-md' : 'font-medium text-[var(--text-main)] hover:bg-[var(--primary-bg)]'}
-            `}
-            style={{ 
-              background: view === item.id ? 'var(--primary)' : 'transparent', 
-              color: view === item.id ? '#ffffff' : 'var(--text-main)',
-              opacity: view === item.id ? 1 : 0.8,
-            }}
-          >
-            <span className="text-xl">{item.icon}</span>
-            <span className="hidden md:inline">{item.label}</span>
+      {/* Main Sidebar (Off-canvas on mobile, fixed/sticky on desktop) */}
+      <div className={`
+        fixed md:sticky top-[73px] md:top-0 left-0 w-full md:w-[260px] h-[calc(100vh-73px)] md:h-screen 
+        bg-white md:border-r border-slate-200 z-40 
+        flex flex-col p-5 overflow-y-auto transition-transform duration-300 ease-in-out shadow-2xl md:shadow-sm
+        ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        {/* Desktop Logo (Hidden on mobile) */}
+        <div className="hidden md:flex items-center gap-3 shrink-0 mb-6">
+          <div className="text-3xl grayscale brightness-150 drop-shadow-sm">🐜</div> 
+          <div className="flex flex-col">
+            <span className="tracking-widest font-black text-indigo-900 text-base leading-none">INVENTORY ANT</span>
+            <span className="text-[8px] tracking-widest text-slate-400 font-bold uppercase mt-1">B2B Warehouse Intelligence</span>
+          </div>
+        </div>
+        
+        {/* User Profile Badge */}
+        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 shrink-0 flex items-center gap-3 shadow-sm relative mb-6">
+           <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-sm border border-indigo-200 shrink-0">
+             {userId ? userId.substring(0,2).toUpperCase() : 'U'}
+           </div>
+           <div className="flex flex-col overflow-hidden">
+              <div className="text-sm font-bold text-slate-800 overflow-hidden text-ellipsis whitespace-nowrap">{userId}</div>
+              <div className="text-[9px] text-slate-400 font-mono mt-0.5 whitespace-nowrap">ID: U-178166/896886</div>
+           </div>
+           <div className="absolute bottom-3 right-4 w-2 h-2 rounded-full bg-emerald-500 border border-white"></div>
+        </div>
+
+        {/* Navigation Links */}
+        <nav className="flex flex-col gap-1.5 shrink-0 flex-1">
+          {navItems.map(item => {
+            const isActive = view === item.id;
+            return (
+            <button 
+              key={item.id}
+              onClick={() => handleNavClick(item.id)} 
+              className={`text-left border-none py-3 px-4 flex items-center gap-3 rounded-r-full text-sm font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap
+                ${isActive ? 'bg-indigo-50 text-indigo-700 border-l-4 border-indigo-600 pl-3' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700 border-l-4 border-transparent pl-3 bg-transparent'}
+              `}
+            >
+              <span className={isActive ? "text-indigo-600" : "text-slate-400"}>{item.icon}</span>
+              <span className="inline">{item.label}</span>
+            </button>
+          )})}
+        </nav>
+
+        {/* Bottom Action Buttons */}
+        <div className="mt-8 md:mt-auto flex flex-col gap-2 shrink-0 pb-4 md:pb-0">
+          <button onClick={onSwitchAccount} className="flex items-center justify-center gap-2 w-full py-3 bg-white border border-slate-200 hover:bg-slate-50 text-indigo-600 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-sm cursor-pointer">
+            <ArrowLeftRight size={14} />
+            <span className="inline">Switch Workspace</span>
           </button>
-        ))}
-      </nav>
-
-      <div className="mt-0 md:mt-auto flex flex-row md:flex-col gap-2 md:gap-3 pb-0 md:pb-4 shrink-0">
-        <button onClick={onSwitchAccount} className="btn-primary text-[0.7rem] whitespace-nowrap py-2.5">
-          <span className="hidden md:inline">🔄 Switch Workspace</span>
-          <span className="md:hidden">🔄</span>
-        </button>
-        <button onClick={onToggleTheme} className="btn-outline text-[0.7rem] whitespace-nowrap py-2.5">
-           <span className="hidden md:inline">{theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}</span>
-           <span className="md:hidden">{theme === 'dark' ? '☀️' : '🌙'}</span>
-        </button>
-        <button onClick={onLogout} className="btn-danger text-[0.7rem] whitespace-nowrap py-2.5">
-          <span className="hidden md:inline">Logout</span>
-          <span className="md:hidden">🚪</span>
-        </button>
+          <button onClick={onToggleTheme} className="flex items-center justify-center gap-2 w-full py-2.5 bg-transparent border-none hover:bg-slate-50 text-slate-500 rounded-lg font-semibold text-xs transition-all cursor-pointer">
+             {theme === 'dark' ? <Sun size={14}/> : <Moon size={14}/>}
+             <span className="inline">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+          </button>
+          <button onClick={onLogout} className="flex items-center justify-center gap-2 w-full py-2.5 bg-transparent border-none hover:bg-red-50 text-red-500 rounded-lg font-semibold text-xs transition-all cursor-pointer">
+            <LogOut size={14} />
+            <span className="inline">Logout</span>
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
-
 
 export default Sidebar;

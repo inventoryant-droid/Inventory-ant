@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import '../App.css';
-import AntSupplyChain from '../components/ui/AntSupplyChain';
 
 function AuthScreen({ onLogin }) {
   const [shopName, setShopName] = useState('');
+  const [password, setPassword] = useState(''); // Just for UI, does not affect functionality
   const savedId = localStorage.getItem('ant_user');
 
   const submit = (e) => {
@@ -12,67 +12,94 @@ function AuthScreen({ onLogin }) {
   }
 
   return (
-    <div className="w-screen h-screen flex flex-col md:flex-row bg-[var(--bg-dark)] overflow-hidden m-0 p-0">
-      {/* Left Side: AI Animation Engine (Hidden on mobile) */}
-      <div className="hidden md:flex flex-1 bg-[radial-gradient(circle_at_center,var(--sidebar-bg)_0%,var(--bg-dark)_100%)] relative items-center justify-center border-r border-[var(--glass-border)]">
-        <div className="absolute top-10 left-10 z-10">
-           <h2 className="text-blue-500/50 text-[10px] tracking-[4px] uppercase m-0 font-bold">Neural Core v4.0</h2>
-           <div className="text-[var(--text-main)] text-lg font-bold mt-2">AI_SUPPLY_CHAIN_ACTIVE</div>
-        </div>
-        
-        <div className="w-[90%] h-[80%]">
-           <AntSupplyChain />
+    <div className="w-screen h-screen flex flex-col md:flex-row bg-white overflow-hidden m-0 p-0">
+      {/* Left Side: Gradient Hero */}
+      <div className="hidden md:flex flex-1 bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-700 relative items-center justify-center flex-col text-white">
+        <div className="flex flex-col items-center justify-center -mt-20">
+           <div className="text-8xl mb-6 drop-shadow-2xl grayscale brightness-150">🐜</div>
+           <h1 className="m-0 text-5xl font-extrabold tracking-tight mb-3">
+             Inventory Ant
+           </h1>
+           <p className="text-white/90 text-lg font-medium tracking-wide">
+              B2B Warehouse Intelligence
+           </p>
         </div>
 
         {/* Decorative Elements */}
-        <div className="absolute bottom-10 left-10 text-[var(--text-muted)] text-[10px] font-mono leading-relaxed">
+        <div className="absolute bottom-10 text-white/50 text-[10px] font-mono leading-relaxed text-center uppercase tracking-widest">
            SYSTEM_SYNC: OK <br/>
-           MEMORY_INDEX: 0x9AF2 <br/>
            ANT_X_READY: TRUE
         </div>
       </div>
 
-      {/* Right Side: Login Card */}
-      <div className="w-full md:w-[450px] flex-1 md:flex-none flex items-center justify-center relative bg-black/60 md:bg-black p-6">
-        <div className="glass-panel w-full max-w-md p-8 md:p-10 text-center border border-blue-500/20 shadow-2xl">
-            <div className="mb-10">
-               <div className="text-6xl mb-5 animate-pulse">🐜</div>
-               <h2 className="text-blue-500/70 text-xs font-bold tracking-[4px] uppercase mb-2">System Access</h2>
-               <h1 className="m-0 text-4xl font-extrabold text-[var(--danger)] tracking-tight">
-                 Inventory <span className="text-[var(--danger)]">Ant</span>
+      {/* Right Side: Login Form */}
+      <div className="w-full md:w-[500px] flex-1 md:flex-none flex items-center justify-center relative bg-white p-8">
+        <div className="w-full max-w-md text-center">
+            <div className="mb-8">
+               <h2 className="text-indigo-500 text-[10px] font-bold tracking-[4px] uppercase mb-3">System Access</h2>
+               <h1 className="m-0 text-3xl font-extrabold text-slate-800 tracking-tight mb-2">
+                 Inventory <span className="text-indigo-600">Ant</span>
                </h1>
-               <p className="text-[var(--text-muted)] mt-3 text-sm leading-relaxed">
-                  Secure terminal for autonomous <br/> warehouse management.
+               <p className="text-slate-500 mt-3 text-sm">
+                  Secure terminal for autonomous warehouse management.
                </p>
             </div>
             
             {savedId && (
-              <div className="bg-blue-500/5 border border-blue-500/15 rounded-xl p-4 mb-6 text-left flex items-center justify-between">
+              <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-6 text-left flex items-center justify-between">
                 <div>
-                  <div className="text-[10px] color-[var(--text-muted)] uppercase tracking-wider mb-1">Authorized Node</div>
-                  <div className="font-bold text-blue-400 text-base font-mono">{savedId}</div>
+                  <div className="text-[10px] text-indigo-400 uppercase tracking-wider mb-1 font-bold">Authorized Node</div>
+                  <div className="font-bold text-indigo-700 text-sm font-mono">{savedId}</div>
                 </div>
                 <button 
                   onClick={() => onLogin(savedId)} 
-                  className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-[var(--text-main)] rounded-lg transition-colors border-none cursor-pointer"
+                  className="px-4 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors border-none cursor-pointer shadow-sm"
                 >Resume</button>
               </div>
             )}
 
-            <form onSubmit={submit} className="flex flex-col gap-5">
+            {/* Toggle Tabs */}
+            <div className="flex mb-8 bg-slate-50 p-1 rounded-xl border border-slate-100">
+                <button className="flex-1 py-2.5 text-sm font-bold bg-white text-indigo-600 rounded-lg shadow-sm border border-slate-100 cursor-pointer">Sign In</button>
+                <button className="flex-1 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 rounded-lg bg-transparent border-none cursor-pointer transition-colors">Sign Up</button>
+            </div>
+
+            <form onSubmit={submit} className="flex flex-col gap-4 text-left">
                <input 
                   autoFocus 
                   type="text" 
-                  placeholder="Enter Workspace ID" 
+                  placeholder="Email Address" 
                   value={shopName} 
                   onChange={e=>setShopName(e.target.value)} 
-                  className="w-full p-4 bg-white/5 text-[var(--text-main)] border border-blue-500/10 focus:border-blue-500/40 rounded-xl text-base text-center outline-none transition-colors"
+                  className="w-full p-3.5 bg-white text-slate-800 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-xl text-sm outline-none transition-all"
+                  required
                />
+               <input 
+                  type="password" 
+                  placeholder="Password" 
+                  value={password} 
+                  onChange={e=>setPassword(e.target.value)} 
+                  className="w-full p-3.5 bg-white text-slate-800 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-xl text-sm outline-none transition-all"
+               />
+               
                <button 
                  type="submit" 
-                 className="w-full py-4 text-base font-bold bg-blue-600 hover:bg-blue-700 text-[var(--text-main)] rounded-xl transition-colors border-none cursor-pointer"
+                 className="w-full py-3.5 mt-2 text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg border-none cursor-pointer"
                >
-                 Login
+                 Login to Terminal
+               </button>
+
+               <div className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px bg-slate-200"></div>
+                  <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">OR</span>
+                  <div className="flex-1 h-px bg-slate-200"></div>
+               </div>
+
+               <button 
+                 type="button" 
+                 className="w-full py-3.5 text-sm font-bold bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl transition-all shadow-sm flex items-center justify-center gap-3 cursor-pointer"
+               >
+                 <span className="text-lg font-bold" style={{ color: '#EA4335' }}>G</span> Continue with Google
                </button>
             </form>
         </div>

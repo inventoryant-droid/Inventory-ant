@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import '../App.css';
 import { getExpiryInfo, getExpKey } from '../utils/expiryHelpers';
+import { Printer, Trash2, Edit3, Plus, Terminal } from 'lucide-react';
 
 function Inventory({ products, onAddProduct, onDeleteProduct, filterMode, setFilterMode }) {
   const [formData, setFormData] = useState({});
@@ -56,26 +57,31 @@ function Inventory({ products, onAddProduct, onDeleteProduct, filterMode, setFil
   };
 
   const standardFields = [
-    { key: 'productId', placeholder: headers.productId.toUpperCase(), className: 'flex-[1_1_120px]' },
-    { key: 'name', placeholder: headers.name.toUpperCase(), className: 'flex-[2_1_220px]' },
-    { key: 'quantity', placeholder: headers.quantity.toUpperCase(), className: 'flex-[1_1_100px]' },
-    { key: 'mrp', placeholder: headers.mrp.toUpperCase(), className: 'flex-[1_1_100px]' },
-    { key: 'details', placeholder: 'DETAILS', className: 'flex-[1_1_180px]' },
+    { key: 'productId', placeholder: headers.productId.toUpperCase(), className: 'w-24' },
+    { key: 'name', placeholder: headers.name.toUpperCase(), className: 'w-48' },
+    { key: 'quantity', placeholder: headers.quantity.toUpperCase(), className: 'w-24' },
+    { key: 'mrp', placeholder: headers.mrp.toUpperCase(), className: 'w-24' },
+    { key: 'details', placeholder: 'DETAILS', className: 'w-40' },
   ];
 
   return (
-    <div className="p-4 md:p-6 h-full overflow-y-auto flex-1">
-       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--glass-border)]">
+    <div className="p-4 md:p-8 h-full overflow-y-auto flex-1 bg-[#F8FAFC]">
+       
+       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
-            <h2 className="m-0 text-2xl md:text-3xl font-black text-[var(--text-dark)]">Master <span className="glow-text">Inventory</span></h2>
-            <p className="m-0 mt-1 text-[var(--text-muted)] text-xs font-semibold">
-              Showing <strong className="text-[var(--text-main)]">{displayProducts.length}</strong> items • Filter: <span className="text-[var(--primary)] font-bold">{filterMode.toUpperCase()}</span>
-            </p>
-        </div>
-        <div className="flex flex-wrap gap-2 items-center">
             {isFiltered && (
-              <button onClick={() => setFilterMode('all')} className="btn-outline !py-1.5 !px-3 !text-xs font-bold whitespace-nowrap">✕ RESET FILTER</button>
+              <p className="m-0 text-slate-500 text-xs font-semibold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full inline-block">
+                Showing {displayProducts.length} items • Filter: {filterMode.toUpperCase()}
+              </p>
             )}
+        </div>
+        <div className="flex flex-wrap gap-3 items-center ml-auto">
+            {isFiltered && (
+              <button onClick={() => setFilterMode('all')} className="py-2 px-4 text-xs font-bold whitespace-nowrap bg-white border border-slate-200 text-slate-600 rounded-full hover:bg-slate-50 cursor-pointer transition-all shadow-sm">✕ RESET</button>
+            )}
+            <button onClick={() => window.print()} className="flex items-center gap-2 py-2 px-4 text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-full cursor-pointer transition-all shadow-sm">
+                <Printer size={14} /> Print Report
+            </button>
             <button 
               onClick={async () => {
                 if(window.confirm("DANGER: This will delete ALL items from your account. Continue?")) {
@@ -86,17 +92,18 @@ function Inventory({ products, onAddProduct, onDeleteProduct, filterMode, setFil
                   window.location.reload(); 
                 }
               }}
-              className="btn-danger !py-1.5 !px-3 !text-xs font-bold"
+              className="flex items-center gap-2 py-2 px-4 text-xs font-bold bg-red-50 border border-red-100 text-red-600 hover:bg-red-100 rounded-full cursor-pointer transition-all shadow-sm"
             >
-              CLEAR ALL DATA
+              <Trash2 size={14} /> Clear All Data
             </button>
-            <button onClick={() => window.print()} className="btn-primary !py-1.5 !px-4 !text-xs font-semibold">PRINT REPORT</button>
         </div>
       </div>
 
-      <div className="glass-panel p-6 mb-8">
-          <h4 className="m-0 mb-4 text-xs font-bold text-[var(--text-muted)] tracking-wider">QUICK REGISTER</h4>
-          <form onSubmit={handleSubmit} className="flex flex-wrap gap-4 items-center">
+      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] mb-8">
+          <h4 className="m-0 mb-4 text-sm font-bold text-slate-800 flex items-center gap-2">
+            <Plus size={16} className="text-indigo-500" /> Quick Register
+          </h4>
+          <form onSubmit={handleSubmit} className="flex flex-col md:flex-row flex-wrap gap-3 items-stretch md:items-center">
             {standardFields.map(f => (
               <input 
                 key={f.key}
@@ -104,7 +111,7 @@ function Inventory({ products, onAddProduct, onDeleteProduct, filterMode, setFil
                 placeholder={f.placeholder} 
                 value={formData[f.key] || ''} 
                 onChange={e => setFormData({...formData, [f.key]: e.target.value})} 
-                className={`input-field min-w-[100px] ${f.className}`}
+                className={`bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-3 py-2.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all w-full md:w-auto flex-1 min-w-[100px]`}
               />
             ))}
             {dynamicColumns.filter(c => !['id', 'userId', 'name', 'quantity', 'mrp', 'csv_row', 'productId', 'details', '_timestamp', 'timestamp', '_headers'].includes(c.toLowerCase())).map(col => (
@@ -114,69 +121,85 @@ function Inventory({ products, onAddProduct, onDeleteProduct, filterMode, setFil
                 placeholder={col.toUpperCase()} 
                 value={formData[col] || ''} 
                 onChange={e => setFormData({...formData, [col]: e.target.value})} 
-                className="input-field min-w-[140px] flex-[1_1_140px]"
+                className="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-3 py-2.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all w-full md:w-32 flex-1 md:flex-none min-w-[100px]"
               />
             ))}
-            <button type="submit" className="btn-primary py-3 px-6 text-sm font-bold">ADD ITEM</button>
+            <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white border-none py-2.5 px-6 rounded-lg text-xs font-bold cursor-pointer shadow-sm transition-all whitespace-nowrap w-full md:w-auto mt-2 md:mt-0">ADD ITEM</button>
           </form>
       </div>
 
-      <div className="glass-panel p-0 overflow-hidden border-none bg-transparent shadow-none">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-100">
+           <h3 className="m-0 text-[15px] font-bold text-slate-800">Registered Catalog</h3>
+        </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs md:text-sm">
-            <thead className="bg-[var(--bg-card)]">
-              <tr className="border-b border-[var(--glass-border)]">
-                <th className="p-4 text-[var(--text-muted)] text-[10px] tracking-wider uppercase font-bold font-mono">ROW</th>
-                <th className="p-4 text-xs font-bold tracking-wider text-[var(--text-muted)] uppercase">{headers.name}</th>
-                <th className="p-4 text-xs font-bold tracking-wider text-[var(--text-muted)] uppercase">{headers.quantity}</th>
-                <th className="p-4 text-xs font-bold tracking-wider text-[var(--text-muted)] uppercase">{headers.mrp}</th>
-                {dynamicColumns.filter(c => !['id', 'userId', 'name', 'quantity', 'mrp', 'csv_row', 'productId', '_headers'].includes(c)).map(col => (
-                  <th key={col} className="p-4 text-[10px] tracking-wider font-bold text-[var(--text-muted)] uppercase">{col}</th>
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead>
+              <tr>
+                <th className="px-6 py-4 text-slate-400 text-[10px] tracking-wider uppercase font-bold w-16">ROW</th>
+                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-24">SKU CODE</th>
+                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase">{headers.name}</th>
+                {dynamicColumns.filter(c => !['id', 'userId', 'name', 'quantity', 'mrp', 'csv_row', 'productId', '_headers'].includes(c)).slice(0, 1).map(col => (
+                  <th key={col} className="px-6 py-4 text-[10px] tracking-wider font-bold text-slate-400 uppercase">{col}</th>
                 ))}
-                <th className="p-4 text-xs font-bold tracking-wider text-[var(--text-muted)] uppercase text-right">ACTIONS</th>
+                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-32">AVAILABLE STOCK</th>
+                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-24">MRP (₹)</th>
+                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase text-right w-24">ACTIONS</th>
               </tr>
             </thead>
             <tbody>
               {displayProducts.map((p, i) => (
-                <tr key={p.id} className="border-b border-[var(--glass-border)] hover:bg-[var(--primary-bg)] transition-colors">
-                  <td className="p-4 text-[var(--text-muted)] text-[10px] font-mono">#{i + 1}</td>
-                  <td className="p-4">
-                    <div className="font-bold text-[var(--text-dark)] text-sm md:text-base">{p.name}</div>
-                    <div className="text-[10px] text-[var(--primary)] tracking-wider mt-0.5">{headers.productId.toUpperCase()}: {p.productId || 'N/A'}</div>
-                    {p.details && <div className="text-xs text-[var(--text-muted)] mt-1">{p.details}</div>}
+                <tr key={p.id} className="border-t border-slate-50 hover:bg-slate-50 transition-colors group">
+                  <td className="px-6 py-5 text-slate-400 text-xs font-medium">{i + 1}</td>
+                  <td className="px-6 py-5 text-slate-700 text-sm font-bold">{p.productId || '-'}</td>
+                  <td className="px-6 py-5">
+                    <div className="font-bold text-slate-800 text-sm">{p.name}</div>
+                    {p.details && <div className="text-xs text-slate-400 mt-1">{p.details}</div>}
                   </td>
-                  <td className="p-4">
-                    <div className={`inline-block px-3 py-1 rounded-md text-xs font-black border ${
-                      parseInt(p.quantity) < 20 
-                        ? 'bg-[var(--danger-bg)] text-[var(--danger)] border-[var(--danger)]' 
-                        : 'bg-[var(--success-bg)] text-[var(--success)] border-[var(--success)]'
-                    }`}>
+                  
+                  {/* Category Pill (First Dynamic Column) */}
+                  {dynamicColumns.filter(c => !['id', 'userId', 'name', 'quantity', 'mrp', 'csv_row', 'productId', '_headers'].includes(c)).slice(0, 1).map(col => {
+                    let displayVal = p[col];
+                    return (
+                      <td key={col} className="px-6 py-5">
+                         {displayVal ? (
+                           <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[11px] font-bold">
+                             {displayVal}
+                           </span>
+                         ) : <span className="text-slate-300">-</span>}
+                      </td>
+                    );
+                  })}
+
+                  <td className="px-6 py-5">
+                    <div className="font-bold text-slate-700 text-sm">
                       {p.quantity}
                     </div>
                   </td>
-                  <td className="p-4 font-bold text-[var(--text-dark)] text-sm md:text-base">₹{p.mrp}</td>
-                  {dynamicColumns.filter(c => !['id', 'userId', 'name', 'quantity', 'mrp', 'csv_row', 'productId', '_headers'].includes(c)).map(col => {
-                    let displayVal = p[col];
-                    if (col.toLowerCase().includes('timestamp') || col.toLowerCase().includes('time')) {
-                      const ms = parseInt(displayVal, 10);
-                      if (!isNaN(ms)) {
-                        displayVal = new Date(ms).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-                      }
-                    }
-                    return (
-                      <td key={col} className="p-4 text-[var(--text-muted)] text-xs">{displayVal || '-'}</td>
-                    );
-                  })}
-                  <td className="p-4 text-right">
-                    <button 
-                      onClick={() => onDeleteProduct(p.id)} 
-                      className="btn-danger !py-1 !px-2.5 !text-xs font-semibold"
-                    >
-                      DELETE
-                    </button>
+                  <td className="px-6 py-5 font-bold text-slate-700 text-sm">₹{Number(p.mrp || 0).toFixed(2)}</td>
+                  
+                  <td className="px-6 py-5 text-right">
+                    <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button className="bg-transparent border-none text-indigo-500 hover:text-indigo-700 cursor-pointer p-1">
+                         <Edit3 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => onDeleteProduct(p.id)} 
+                        className="bg-transparent border-none text-red-400 hover:text-red-600 cursor-pointer p-1"
+                      >
+                         <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
+              {displayProducts.length === 0 && (
+                 <tr>
+                    <td colSpan="10" className="px-6 py-12 text-center text-slate-400 text-sm">
+                       No products found in the catalog.
+                    </td>
+                 </tr>
+              )}
             </tbody>
           </table>
         </div>
