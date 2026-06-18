@@ -78,6 +78,40 @@
   --glass-border: rgba(99, 102, 241, 0.1);
 }
 
+.dark-theme {
+  --bg-page: #0f172a; /* slate-900 */
+  --bg-card: #1e293b; /* slate-800 */
+  --text-dark: #f8fafc; /* slate-50 */
+  --text-main: #cbd5e1; /* slate-300 */
+  --text-muted: #94a3b8; /* slate-400 */
+  --glass-border: #334155; /* slate-700 */
+  --primary-bg: rgba(99, 102, 241, 0.15);
+}
+
+/* Dark Mode Global Overrides for Tailwind Classes */
+.dark-theme .bg-white { background-color: var(--bg-card) !important; }
+.dark-theme .bg-\[\#F8FAFC\] { background-color: var(--bg-page) !important; }
+.dark-theme .bg-slate-50 { background-color: #0f172a !important; }
+.dark-theme .bg-slate-100 { background-color: #334155 !important; }
+.dark-theme .text-slate-800, .dark-theme .text-slate-700 { color: var(--text-dark) !important; }
+.dark-theme .text-slate-600, .dark-theme .text-slate-500 { color: var(--text-main) !important; }
+.dark-theme .text-slate-400 { color: var(--text-muted) !important; }
+.dark-theme .border-slate-100, .dark-theme .border-slate-200 { border-color: var(--glass-border) !important; }
+.dark-theme .border-b, .dark-theme .border-r, .dark-theme .border-t, .dark-theme .border-l { border-color: var(--glass-border); }
+.dark-theme .hover\:bg-slate-50:hover { background-color: #334155 !important; }
+.dark-theme .hover\:bg-slate-100:hover { background-color: #475569 !important; }
+.dark-theme .bg-indigo-50 { background-color: var(--primary-bg) !important; }
+.dark-theme .text-indigo-600 { color: #818CF8 !important; }
+.dark-theme .border-indigo-100, .dark-theme .border-indigo-200 { border-color: rgba(99, 102, 241, 0.3) !important; }
+.dark-theme .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.1) !important; }
+.dark-theme .bg-amber-50 { background-color: rgba(245, 158, 11, 0.1) !important; }
+.dark-theme .bg-fuchsia-50 { background-color: rgba(217, 70, 239, 0.1) !important; }
+.dark-theme .bg-red-50 { background-color: rgba(239, 68, 68, 0.1) !important; }
+.dark-theme table tr:hover td { background-color: #0f172a !important; }
+.dark-theme th { color: var(--text-muted) !important; }
+.dark-theme td { color: var(--text-main) !important; border-color: var(--glass-border) !important; }
+.dark-theme input { background-color: #0f172a !important; color: var(--text-dark) !important; border-color: var(--glass-border) !important; }
+
 * {
   box-sizing: border-box;
   transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;

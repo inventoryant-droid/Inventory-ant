@@ -123,8 +123,8 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
            </div>
 
            {/* Chart Container */}
-           <div className="w-full overflow-x-auto pb-8">
-             <div className="h-64 min-w-[600px] flex items-end gap-1.5 border-l border-b border-slate-200 pb-2 pl-2 relative ml-8 mt-4">
+           <div className="w-full overflow-x-auto pb-8 pt-10">
+             <div className="h-64 min-w-[600px] flex items-end gap-2 border-l border-b border-slate-200 pb-2 pl-2 relative ml-8 mt-4">
                 {/* Y Axis labels */}
                 <div className="absolute -left-8 bottom-0 flex flex-col justify-between h-full text-[10px] text-slate-400 font-mono py-2">
                    <span>{maxStock}</span>
@@ -137,17 +137,21 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
                    const qty = parseInt(p.quantity || '0', 10) || 0;
                    const heightPct = Math.min(100, (qty / maxStock) * 100);
                    return (
-                     <div key={p.id || i} className="flex-1 flex flex-col items-center group relative h-full justify-end min-w-[8px]">
-                        {/* Tooltip */}
-                        <div className="absolute -top-10 opacity-0 group-hover:opacity-100 bg-slate-800 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-10 transition-opacity">
-                           {p.name || p.productId}: {qty}
+                     <div key={p.id || i} className="flex-1 flex flex-col items-center group relative h-full justify-end min-w-[12px]">
+                        {/* Enhanced Tooltip */}
+                        <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 bg-slate-900 text-white text-xs p-3 rounded-lg shadow-xl pointer-events-none w-48 z-50 transition-all duration-200 translate-y-2 group-hover:translate-y-0">
+                           <div className="font-bold border-b border-slate-700 pb-1.5 mb-1.5 truncate text-sm">{p.name || 'Unnamed Item'}</div>
+                           <div className="flex justify-between mb-1"><span>SKU:</span> <span className="font-mono text-slate-300">{p.productId || 'N/A'}</span></div>
+                           <div className="flex justify-between mb-1"><span>Stock:</span> <span className="font-bold text-emerald-400">{qty}</span></div>
+                           <div className="flex justify-between"><span>MRP:</span> <span>₹{p.mrp || 0}</span></div>
+                           {p.details && <div className="text-slate-400 text-[10px] mt-1.5 pt-1.5 border-t border-slate-700 line-clamp-2">{p.details}</div>}
                         </div>
                         <div 
                            className="w-full bg-indigo-500 rounded-t-sm hover:bg-indigo-400 transition-colors"
                            style={{ height: `${heightPct}%`, minHeight: qty > 0 ? '4px' : '0' }}
                         ></div>
                         {/* X Axis label (truncated) */}
-                        <div className="absolute -bottom-6 w-16 text-center -ml-6 text-[8px] text-slate-400 truncate hidden md:block" style={{ left: '50%' }}>
+                        <div className="absolute -bottom-7 w-20 text-center text-[9px] text-slate-400 truncate hidden md:block" style={{ left: '50%', transform: 'translateX(-50%)' }}>
                            {p.name || p.productId}
                         </div>
                      </div>
