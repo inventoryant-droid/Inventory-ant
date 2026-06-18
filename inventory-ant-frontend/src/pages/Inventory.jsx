@@ -1,10 +1,33 @@
 import React, { useState, useMemo } from 'react';
 import '../App.css';
 import { getExpiryInfo, getExpKey } from '../utils/expiryHelpers';
-import { Printer, Trash2, Edit3, Plus, Terminal } from 'lucide-react';
+import { Printer, Trash2, Edit3, Plus, Terminal, Check, X, CheckCircle } from 'lucide-react';
 
-function Inventory({ products, onAddProduct, onDeleteProduct, filterMode, setFilterMode }) {
+function Inventory({ products, onAddProduct, onDeleteProduct, onEditProduct, filterMode, setFilterMode }) {
   const [formData, setFormData] = useState({});
+  const [editingProductId, setEditingProductId] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const handleEditClick = (p) => {
+    setEditingProductId(p.id);
+    setEditFormData(p);
+  };
+
+  const handleSaveEdit = () => {
+    if (onEditProduct) {
+      onEditProduct(editingProductId, editFormData);
+    }
+    setEditingProductId(null);
+    setToastMessage(`${editFormData.name || 'Item'} updated successfully!`);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingProductId(null);
+  };
 
   const headers = useMemo(() => {
     const found = products.find(p => p._headers);
@@ -151,45 +174,122 @@ function Inventory({ products, onAddProduct, onDeleteProduct, filterMode, setFil
               {displayProducts.map((p, i) => (
                 <tr key={p.id} className="border-t border-slate-50 hover:bg-slate-50 transition-colors group">
                   <td className="px-6 py-5 text-slate-400 text-xs font-medium">{i + 1}</td>
-                  <td className="px-6 py-5 text-slate-700 text-sm font-bold">{p.productId || '-'}</td>
+                  
+                  <td className="px-6 py-5 text-slate-700 text-sm font-bold">
+                    {editingProductId === p.id ? (
+                      <input 
+                        type="text" 
+                        value={editFormData.productId || ''} 
+                        onChange={(e) => setEditFormData({...editFormData, productId: e.target.value})}
+                        className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
+                      />
+                    ) : (p.productId || '-')}
+                  </td>
+                  
                   <td className="px-6 py-5">
-                    <div className="font-bold text-slate-800 text-sm">{p.name}</div>
-                    {p.details && <div className="text-xs text-slate-400 mt-1">{p.details}</div>}
+                    {editingProductId === p.id ? (
+                      <div className="flex flex-col gap-2">
+                        <input 
+                          type="text" 
+                          value={editFormData.name || ''} 
+                          onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                          className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-full"
+                          placeholder="Name"
+                        />
+                        <input 
+                          type="text" 
+                          value={editFormData.details || ''} 
+                          onChange={(e) => setEditFormData({...editFormData, details: e.target.value})}
+                          className="bg-slate-50 border border-slate-300 text-slate-800 text-[10px] rounded px-2 py-1 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-full"
+                          placeholder="Details"
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="font-bold text-slate-800 text-sm">{p.name}</div>
+                        {p.details && <div className="text-xs text-slate-400 mt-1">{p.details}</div>}
+                      </>
+                    )}
                   </td>
                   
                   {/* Category Pill (First Dynamic Column) */}
                   {dynamicColumns.filter(c => !['id', 'userId', 'name', 'quantity', 'mrp', 'csv_row', 'productId', '_headers'].includes(c)).slice(0, 1).map(col => {
-                    let displayVal = p[col];
+                    let displayValue = p[col];
+                    if ((col === '_timestamp' || col === 'timestamp') && displayValue) {
+                      const dateObj = new Date(Number(displayValue));
+                      if (!isNaN(dateObj.getTime())) {
+                        displayValue = dateObj.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'short', timeStyle: 'short' });
+                      }
+                    }
                     return (
                       <td key={col} className="px-6 py-5">
-                         {displayVal ? (
-                           <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[11px] font-bold">
-                             {displayVal}
-                           </span>
-                         ) : <span className="text-slate-300">-</span>}
+                        {editingProductId === p.id ? (
+                          <input 
+                            type="text" 
+                            value={editFormData[col] || ''} 
+                            onChange={(e) => setEditFormData({...editFormData, [col]: e.target.value})}
+                            className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
+                          />
+                        ) : (
+                          displayValue ? (
+                            <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[11px] font-bold">
+                              {displayValue}
+                            </span>
+                          ) : <span className="text-slate-300">-</span>
+                        )}
                       </td>
                     );
                   })}
 
                   <td className="px-6 py-5">
-                    <div className="font-bold text-slate-700 text-sm">
-                      {p.quantity}
-                    </div>
+                    {editingProductId === p.id ? (
+                      <input 
+                        type="number" 
+                        value={editFormData.quantity || ''} 
+                        onChange={(e) => setEditFormData({...editFormData, quantity: e.target.value})}
+                        className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
+                      />
+                    ) : (
+                      <div className="font-bold text-slate-700 text-sm">{p.quantity}</div>
+                    )}
                   </td>
-                  <td className="px-6 py-5 font-bold text-slate-700 text-sm">₹{Number(p.mrp || 0).toFixed(2)}</td>
+                  
+                  <td className="px-6 py-5">
+                    {editingProductId === p.id ? (
+                      <input 
+                        type="number" 
+                        value={editFormData.mrp || ''} 
+                        onChange={(e) => setEditFormData({...editFormData, mrp: e.target.value})}
+                        className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
+                      />
+                    ) : (
+                      <div className="font-bold text-slate-700 text-sm">₹{Number(p.mrp || 0).toFixed(2)}</div>
+                    )}
+                  </td>
                   
                   <td className="px-6 py-5 text-right">
-                    <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="bg-transparent border-none text-indigo-500 hover:text-indigo-700 cursor-pointer p-1">
-                         <Edit3 size={16} />
-                      </button>
-                      <button 
-                        onClick={() => onDeleteProduct(p.id)} 
-                        className="bg-transparent border-none text-red-400 hover:text-red-600 cursor-pointer p-1"
-                      >
-                         <Trash2 size={16} />
-                      </button>
-                    </div>
+                    {editingProductId === p.id ? (
+                      <div className="flex justify-end gap-3">
+                        <button onClick={handleSaveEdit} className="bg-white border border-emerald-200 text-emerald-500 hover:text-white hover:bg-emerald-500 cursor-pointer p-1.5 rounded-md transition-colors shadow-sm">
+                          <Check size={16} strokeWidth={3} />
+                        </button>
+                        <button onClick={handleCancelEdit} className="bg-white border border-slate-200 text-slate-400 hover:text-white hover:bg-slate-400 cursor-pointer p-1.5 rounded-md transition-colors shadow-sm">
+                          <X size={16} strokeWidth={3} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleEditClick(p)} className="bg-transparent border-none text-indigo-500 hover:text-indigo-700 cursor-pointer p-1">
+                           <Edit3 size={16} />
+                        </button>
+                        <button 
+                          onClick={() => onDeleteProduct(p.id)} 
+                          className="bg-transparent border-none text-red-400 hover:text-red-600 cursor-pointer p-1"
+                        >
+                           <Trash2 size={16} />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -202,6 +302,16 @@ function Inventory({ products, onAddProduct, onDeleteProduct, filterMode, setFil
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Beautiful Toast Notification */}
+      <div className={`fixed bottom-6 right-1/2 translate-x-1/2 z-50 transition-all duration-300 transform ${showToast ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
+        <div className="bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.2)] flex items-center gap-3 border border-slate-700/50 backdrop-blur-md">
+          <div className="bg-emerald-500/20 text-emerald-400 p-1.5 rounded-full">
+            <CheckCircle size={18} />
+          </div>
+          <span className="text-sm font-bold tracking-wide">{toastMessage}</span>
         </div>
       </div>
     </div>

@@ -123,8 +123,9 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
            </div>
 
            {/* Chart Container */}
-           <div className="w-full overflow-x-auto pb-8 pt-10">
-             <div className="h-64 min-w-[600px] flex items-end gap-2 border-l border-b border-slate-200 pb-2 pl-2 relative ml-8 mt-4">
+           <div className="w-full overflow-x-auto pb-8 pt-32">
+             <div className="min-w-max pl-24 pr-24">
+               <div className="h-64 min-w-[600px] flex items-end gap-2 border-l border-b border-slate-200 pb-2 pl-2 relative mt-4">
                 {/* Y Axis labels */}
                 <div className="absolute -left-8 bottom-0 flex flex-col justify-between h-full text-[10px] text-slate-400 font-mono py-2">
                    <span>{maxStock}</span>
@@ -150,16 +151,13 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
                            className="w-full bg-indigo-500 rounded-t-sm hover:bg-indigo-400 transition-colors"
                            style={{ height: `${heightPct}%`, minHeight: qty > 0 ? '4px' : '0' }}
                         ></div>
-                        {/* X Axis label (truncated) */}
-                        <div className="absolute -bottom-7 w-20 text-center text-[9px] text-slate-400 truncate hidden md:block" style={{ left: '50%', transform: 'translateX(-50%)' }}>
-                           {p.name || p.productId}
-                        </div>
                      </div>
                    );
                 })}
              </div>
+             </div>
            </div>
-        </div>
+         </div>
       )}
     </div>
   );

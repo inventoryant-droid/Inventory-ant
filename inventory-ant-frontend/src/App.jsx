@@ -96,6 +96,18 @@ export default function App() {
     } catch(e) {}
   };
 
+  const handleEditProduct = async (id, updatedData) => {
+    try {
+      const res = await fetch(`http://localhost:3000/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+        body: JSON.stringify(updatedData)
+      });
+      const updatedProduct = await res.json();
+      setProducts(products.map(p => p.id === id ? updatedProduct : p));
+    } catch(e) {}
+  };
+
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerType, setScannerType] = useState('IN');
 
@@ -121,7 +133,7 @@ export default function App() {
             onGoToSettings={() => setView('settings')}
           />}
           {view === 'billing' && <Billing products={products} onSaleSuccess={fetchProducts} userId={userId} />}
-          {view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} />}
+          {view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onEditProduct={handleEditProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} />}
           {view === 'ai_lab' && <AITools userId={userId} onScanResult={fetchProducts} onOpenScanner={handleOpenScanner} />}
           {view === 'settings' && <Settings userId={userId} onScanResult={fetchProducts} />}
           {view === 'guide' && <UserGuide />}
