@@ -43,5 +43,23 @@
     "businessAddress": "Baraula sector 49 ,  noida , UP",
     "showPhoneOnBills": true,
     "showEmailOnBills": true
+  },
+  {
+    "id": "106001861789454061455",
+    "email": "sp453771@gmail.com",
+    "name": "Sahil Patel",
+    "picture": "https://lh3.googleusercontent.com/a/ACg8ocIXb_bsQXZ6xkpsZr80khufkyAUhbB9tIN5wWgUNOM-hbd7I99R=s96-c",
+    "role": "user",
+    "active": true,
+    "profileCompleted": true,
+    "createdAt": 1781884661264,
+    "updatedAt": 1781884853237,
+    "phone": "2584575858",
+    "businessName": "Sahil Patel",
+    "businessLogo": "",
+    "gstNumber": "",
+    "businessAddress": "Baraula",
+    "showPhoneOnBills": true,
+    "showEmailOnBills": true
   }
 ]

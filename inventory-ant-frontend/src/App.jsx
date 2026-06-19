@@ -248,6 +248,7 @@ export default function App() {
                 onTotalClick={() => { setView('inventory'); setInventoryFilter('all'); }}
                 onOpenScanner={handleOpenScanner}
                 onGoToProfile={() => setView('profile')}
+                onGoToSettings={() => setView('settings')}
                 userProfile={userProfile}
               />}
               {view === 'billing' && <Billing products={products} onSaleSuccess={fetchProducts} userId={userId} token={token} userProfile={userProfile} />}
