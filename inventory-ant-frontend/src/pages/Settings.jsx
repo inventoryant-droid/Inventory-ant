@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import '../App.css';
 import Papa from 'papaparse';
-import { UploadCloud, Trash2 } from 'lucide-react';
+import { UploadCloud, Trash2, Database } from 'lucide-react';
 
 function Settings({ userId, token, onScanResult }) {
   const fileInputRef = useRef(null);
@@ -123,9 +123,13 @@ function Settings({ userId, token, onScanResult }) {
 
   return (
     <div className="p-4 md:p-8 flex-1 overflow-y-auto bg-[#F8FAFC]">
-      <h1 className="m-0 text-3xl font-extrabold tracking-tight text-indigo-600 mb-8">
-        Account Settings
-      </h1>
+      <div className="flex flex-col mb-8">
+        <h1 className="m-0 text-3xl font-extrabold tracking-tight text-indigo-600">
+          Account Settings
+        </h1>
+        <p className="text-slate-500 mt-1 text-sm font-medium">Configure warehouse data imports and system registries.</p>
+      </div>
+
       <div className="flex flex-col gap-6 max-w-3xl">
           <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
             <h3 className="m-0 text-[15px] font-bold text-slate-800 flex items-center gap-2 mb-2">

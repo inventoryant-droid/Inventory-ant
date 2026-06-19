@@ -16,6 +16,14 @@ export interface User {
   active: boolean;
   createdAt: number;
   updatedAt: number;
+  // Profile onboarding fields
+  profileCompleted?: boolean;
+  businessName?: string;
+  businessLogo?: string;
+  gstNumber?: string;
+  businessAddress?: string;
+  showPhoneOnBills?: boolean;
+  showEmailOnBills?: boolean;
 }
 
 @Injectable()
@@ -70,6 +78,10 @@ export class UsersService implements OnModuleInit {
         user.password = await bcrypt.hash(user.password, 10);
         changed = true;
       }
+      if (user.profileCompleted === undefined) {
+        user.profileCompleted = user.role === 'admin';
+        changed = true;
+      }
     }
 
     // Seed default admin if it doesn't exist
@@ -87,6 +99,7 @@ export class UsersService implements OnModuleInit {
         picture: '',
         role: 'admin',
         active: true,
+        profileCompleted: true,
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
@@ -158,6 +171,7 @@ export class UsersService implements OnModuleInit {
       picture: '',
       role: 'user', // Public signup strictly user
       active: true,
+      profileCompleted: false,
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
@@ -216,6 +230,7 @@ export class UsersService implements OnModuleInit {
           picture: payload.picture || '',
           role: 'user',
           active: true,
+          profileCompleted: false,
           createdAt: Date.now(),
           updatedAt: Date.now()
         };
@@ -295,5 +310,117 @@ export class UsersService implements OnModuleInit {
       inactiveUsers,
       totalProducts
     };
+  }
+
+  async getProfile(userId: string): Promise<Omit<User, 'password'>> {
+    const db = await this.getDb();
+    const user = db.find(u => u.id === userId);
+    if (!user) throw new NotFoundException('User not found');
+    const { password: _, ...userWithoutPass } = user;
+    return userWithoutPass;
+  }
+
+  async updateProfile(userId: string, profileData: Partial<User>): Promise<Omit<User, 'password'>> {
+    const db = await this.getDb();
+    const user = db.find(u => u.id === userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    const email = profileData.email?.toLowerCase();
+    const phone = profileData.phone;
+
+    // Check if new email is taken
+    if (email && email !== user.email) {
+      const taken = db.some(u => u.id !== userId && u.email.toLowerCase() === email);
+      if (taken) {
+        throw new UnauthorizedException('Email is already in use by another account');
+      }
+    }
+
+    // Check if new phone is taken
+    if (phone && phone !== user.phone) {
+      const taken = db.some(u => u.id !== userId && u.phone === phone);
+      if (taken) {
+        throw new UnauthorizedException('Phone number is already in use by another account');
+      }
+    }
+
+    // Validate required fields if profileCompleted is true
+    if (profileData.profileCompleted === true) {
+      if (!profileData.businessName || !profileData.businessName.trim()) {
+        throw new UnauthorizedException('Business name is required');
+      }
+      if (!profileData.businessAddress || !profileData.businessAddress.trim()) {
+        throw new UnauthorizedException('Business address is required');
+      }
+      if (!profileData.name || !profileData.name.trim()) {
+        throw new UnauthorizedException('Name is required');
+      }
+      if (!email || !email.trim()) {
+        throw new UnauthorizedException('Email is required');
+      }
+      if (!phone || !phone.trim()) {
+        throw new UnauthorizedException('Phone number is required');
+      }
+    }
+
+    const oldEmail = user.email;
+
+    // Apply updates
+    if (profileData.name !== undefined) user.name = profileData.name;
+    if (email !== undefined) user.email = email;
+    if (phone !== undefined) user.phone = phone;
+    if (profileData.businessName !== undefined) user.businessName = profileData.businessName;
+    if (profileData.businessLogo !== undefined) user.businessLogo = profileData.businessLogo;
+    if (profileData.gstNumber !== undefined) user.gstNumber = profileData.gstNumber;
+    if (profileData.businessAddress !== undefined) user.businessAddress = profileData.businessAddress;
+    if (profileData.showPhoneOnBills !== undefined) user.showPhoneOnBills = profileData.showPhoneOnBills;
+    if (profileData.showEmailOnBills !== undefined) user.showEmailOnBills = profileData.showEmailOnBills;
+    if (profileData.profileCompleted !== undefined) user.profileCompleted = profileData.profileCompleted;
+
+    user.updatedAt = Date.now();
+    await this.saveDb(db);
+
+    // If email changed, migrate their products in database.json
+    if (email && email !== oldEmail) {
+      const dbPath = path.join(process.cwd(), 'database.json');
+      try {
+        const data = await fs.readFile(dbPath, 'utf8');
+        const products = JSON.parse(data);
+        let migrated = false;
+        products.forEach((p: any) => {
+          if (p.userId && p.userId.toLowerCase() === oldEmail.toLowerCase()) {
+            p.userId = email;
+            migrated = true;
+          }
+        });
+        if (migrated) {
+          await fs.writeFile(dbPath, JSON.stringify(products, null, 2), 'utf8');
+          console.log(`Migrated products owned by ${oldEmail} to ${email}`);
+        }
+      } catch (e) {
+        console.error('Failed to migrate user products:', e);
+      }
+    }
+
+    const { password: _, ...userWithoutPass } = user;
+    return userWithoutPass;
+  }
+
+  async changeUserPassword(userEmail: string, oldPass: string, newPass: string): Promise<{ success: boolean }> {
+    const db = await this.getDb();
+    const user = db.find(u => u.email.toLowerCase() === userEmail.toLowerCase());
+    if (!user || !user.password) {
+      throw new UnauthorizedException('User account not found');
+    }
+
+    const passMatch = await bcrypt.compare(oldPass, user.password);
+    if (!passMatch) {
+      throw new UnauthorizedException('Invalid old password');
+    }
+
+    user.password = await bcrypt.hash(newPass, 10);
+    user.updatedAt = Date.now();
+    await this.saveDb(db);
+    return { success: true };
   }
 }

@@ -16,6 +16,8 @@ import Inventory from './pages/Inventory';
 import About from './pages/About';
 import AdminPanel from './pages/AdminPanel';
 import WelcomeModal from './components/ui/WelcomeModal';
+import OnboardingScreen from './pages/OnboardingScreen';
+import Profile from './pages/Profile';
 
 export default function App() {
   const navigate = useNavigate();
@@ -30,6 +32,7 @@ export default function App() {
   const [theme, setTheme] = useState(localStorage.getItem('ant_theme') || 'dark');
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
   
   // GLOBAL VOICE CORE STATE
   const [isVoiceActive, setIsVoiceActive] = useState(false);
@@ -94,11 +97,43 @@ export default function App() {
       .catch(err => console.error("Failed to fetch products:", err));
   };
 
+  const fetchProfile = () => {
+    if (!token) return;
+    fetch('http://localhost:3000/api/user/profile', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => {
+         if (!res.ok) throw new Error("Failed to fetch profile");
+         return res.json();
+      })
+      .then(data => {
+         setUserProfile(data);
+      })
+      .catch(err => console.error("Profile fetch error:", err));
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchProfile();
+    } else {
+      setUserProfile(null);
+    }
+  }, [token]);
+
   useEffect(() => {
     if (token && userRole === 'user') {
       fetchProducts();
     }
   }, [userId, token, userRole]);
+
+  const handleProfileCompleted = (updatedProfile) => {
+    setUserProfile(updatedProfile);
+    if (updatedProfile.email && updatedProfile.email.toLowerCase() !== userId.toLowerCase()) {
+      const newEmail = updatedProfile.email.toLowerCase();
+      setUserId(newEmail);
+      localStorage.setItem('ant_user', newEmail);
+    }
+  };
 
   // Route protection and redirection checks
   useEffect(() => {
@@ -183,76 +218,89 @@ export default function App() {
       <Route path="/signup" element={<AuthScreen onLogin={handleLogin} defaultView="signup" />} />
       <Route path="/dashboard" element={
         token && userRole === 'user' ? (
-          <div className={(theme === 'dark' ? 'dark-theme ' : 'light-theme ') + "flex flex-col md:flex-row w-full min-h-screen bg-[#F8FAFC]"}>
-            <Sidebar 
-              setView={setView} 
-              view={view} 
-              userId={userId} 
-              userRole={userRole} 
+          userProfile && !userProfile.profileCompleted ? (
+            <OnboardingScreen 
+              token={token} 
+              userProfile={userProfile} 
+              onProfileCompleted={handleProfileCompleted} 
               onLogout={handleLogout} 
-              onSwitchAccount={handleSwitchAccount} 
-              setInventoryFilter={setInventoryFilter} 
-              theme={theme} 
-              onToggleTheme={toggleTheme} 
+              theme={theme}
             />
-            
-            {view === 'dashboard' && <Dashboard 
-              products={products} 
-              userId={userId} 
-              onAlertClick={(mode) => { setView('inventory'); setInventoryFilter(mode); }} 
-              onTotalClick={() => { setView('inventory'); setInventoryFilter('all'); }}
-              onOpenScanner={handleOpenScanner}
-              onGoToSettings={() => setView('settings')}
-            />}
-            {view === 'billing' && <Billing products={products} onSaleSuccess={fetchProducts} userId={userId} token={token} />}
-            {view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onEditProduct={handleEditProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} />}
-            {view === 'ai_lab' && <AITools userId={userId} token={token} onScanResult={fetchProducts} onOpenScanner={handleOpenScanner} />}
-            {view === 'ant_x' && <AntXTerminal 
-              userId={userId} 
-              token={token}
-              onUpdate={fetchProducts} 
-              onNavigate={(page) => setView(page)} 
-              onLogin={handleLogin} 
-              currentView={view} 
-              voiceState={{ isVoiceActive, setIsVoiceActive, globalTranscript, globalAiResponse, globalStatus }}
-            />}
+          ) : (
+            <div className={(theme === 'dark' ? 'dark-theme ' : 'light-theme ') + "flex flex-col md:flex-row w-full min-h-screen bg-[#F8FAFC]"}>
+              <Sidebar 
+                setView={setView} 
+                view={view} 
+                userId={userId} 
+                userRole={userRole} 
+                onLogout={handleLogout} 
+                onSwitchAccount={handleSwitchAccount} 
+                setInventoryFilter={setInventoryFilter} 
+                theme={theme} 
+                onToggleTheme={toggleTheme} 
+                userProfile={userProfile}
+              />
+              
+              {view === 'dashboard' && <Dashboard 
+                products={products} 
+                userId={userId} 
+                onAlertClick={(mode) => { setView('inventory'); setInventoryFilter(mode); }} 
+                onTotalClick={() => { setView('inventory'); setInventoryFilter('all'); }}
+                onOpenScanner={handleOpenScanner}
+                onGoToProfile={() => setView('profile')}
+                userProfile={userProfile}
+              />}
+              {view === 'billing' && <Billing products={products} onSaleSuccess={fetchProducts} userId={userId} token={token} userProfile={userProfile} />}
+              {view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onEditProduct={handleEditProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} />}
+              {view === 'ai_lab' && <AITools userId={userId} token={token} onScanResult={fetchProducts} onOpenScanner={handleOpenScanner} />}
+              {view === 'ant_x' && <AntXTerminal 
+                userId={userId} 
+                token={token}
+                onUpdate={fetchProducts} 
+                onNavigate={(page) => setView(page)} 
+                onLogin={handleLogin} 
+                currentView={view} 
+                voiceState={{ isVoiceActive, setIsVoiceActive, globalTranscript, globalAiResponse, globalStatus }}
+              />}
 
-            {/* Shared Views */}
-            {view === 'settings' && <Settings userId={userId} token={token} onScanResult={fetchProducts} />}
-            {view === 'guide' && <UserGuide />}
-            {view === 'about' && <About theme={theme} />}
+              {/* Shared Views */}
+              {view === 'settings' && <Settings userId={userId} token={token} onScanResult={fetchProducts} userProfile={userProfile} onProfileUpdate={handleProfileCompleted} />}
+              {view === 'profile' && <Profile token={token} userProfile={userProfile} onProfileUpdate={handleProfileCompleted} theme={theme} />}
+              {view === 'guide' && <UserGuide />}
+              {view === 'about' && <About theme={theme} />}
 
-            <WelcomeModal 
-              isOpen={showWelcomePopup} 
-              onClose={() => setShowWelcomePopup(false)} 
-              onUploadCSV={() => { setShowWelcomePopup(false); setView('settings'); }} 
-              onAddManually={() => { setShowWelcomePopup(false); setView('inventory'); }} 
-            />
+              <WelcomeModal 
+                isOpen={showWelcomePopup} 
+                onClose={() => setShowWelcomePopup(false)} 
+                onUploadCSV={() => { setShowWelcomePopup(false); setView('settings'); }} 
+                onAddManually={() => { setShowWelcomePopup(false); setView('inventory'); }} 
+              />
 
-            <ScannerModal 
-              isOpen={scannerOpen} 
-              onClose={() => setScannerOpen(false)} 
-              scanType={scannerType} 
-              userId={userId} 
-              token={token}
-              onScanSuccess={fetchProducts} 
-            />
+              <ScannerModal 
+                isOpen={scannerOpen} 
+                onClose={() => setScannerOpen(false)} 
+                scanType={scannerType} 
+                userId={userId} 
+                token={token}
+                onScanSuccess={fetchProducts} 
+              />
 
-            {/* ALWAYS MOUNTED VOICE CORE */}
-            <AntAgentV2 
-              userId={userId || 'guest_node'} 
-              token={token}
-              onUpdate={fetchProducts} 
-              onNavigate={(page) => setView(page)} 
-              onLogin={handleLogin} 
-              currentView={view} 
-              isTerminalView={view === 'ant_x'}
-              sharedState={{ 
-                 isVoiceActive, setIsVoiceActive, 
-                 setGlobalTranscript, setGlobalAiResponse, setGlobalStatus 
-              }}
-            />
-          </div>
+              {/* ALWAYS MOUNTED VOICE CORE */}
+              <AntAgentV2 
+                userId={userId || 'guest_node'} 
+                token={token}
+                onUpdate={fetchProducts} 
+                onNavigate={(page) => setView(page)} 
+                onLogin={handleLogin} 
+                currentView={view} 
+                isTerminalView={view === 'ant_x'}
+                sharedState={{ 
+                   isVoiceActive, setIsVoiceActive, 
+                   setGlobalTranscript, setGlobalAiResponse, setGlobalStatus 
+                }}
+              />
+            </div>
+          )
         ) : <Navigate to="/login" replace />
       } />
       <Route path="/admin" element={
