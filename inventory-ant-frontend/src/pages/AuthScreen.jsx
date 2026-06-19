@@ -215,12 +215,6 @@ function AuthScreen({ onLogin }) {
                 >
                   Sign Up
                 </button>
-                <button 
-                  onClick={() => setView('admin')}
-                  className="w-full sm:w-auto bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-8 py-4 rounded-xl font-bold transition-all cursor-pointer text-base shadow-sm"
-                >
-                  Login as Admin
-                </button>
               </div>
             </div>
           </div>
