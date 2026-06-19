@@ -13,13 +13,16 @@ import Settings from './pages/Settings';
 import Billing from './pages/Billing';
 import Inventory from './pages/Inventory';
 import About from './pages/About';
+import AdminPanel from './pages/AdminPanel';
 import WelcomeModal from './components/ui/WelcomeModal';
 
 export default function App() {
 
 
+  const initialRole = localStorage.getItem('ant_role') || 'user';
   const [userId, setUserId] = useState(localStorage.getItem('ant_user') || '');
-  const [view, setView] = useState('dashboard');
+  const [userRole, setUserRole] = useState(initialRole);
+  const [view, setView] = useState(initialRole === 'admin' ? 'admin_panel' : 'dashboard');
   const [inventoryFilter, setInventoryFilter] = useState('all');
   const [products, setProducts] = useState([]);
   const [theme, setTheme] = useState(localStorage.getItem('ant_theme') || 'dark');
@@ -38,17 +41,21 @@ export default function App() {
     localStorage.setItem('ant_theme', newTheme);
   };
 
-  const handleLogin = (id) => {
+  const handleLogin = (id, role = 'user') => {
      const normalized = id.trim().toLowerCase();
      setUserId(normalized);
+     setUserRole(role);
      localStorage.setItem('ant_user', normalized);
-     setView('dashboard');
+     localStorage.setItem('ant_role', role);
+     setView(role === 'admin' ? 'admin_panel' : 'dashboard');
   }
   const handleLogout = () => {
      setUserId('');
+     setUserRole('user');
      setProducts([]);
      setInventoryFilter('all');
      localStorage.removeItem('ant_user');
+     localStorage.removeItem('ant_role');
      setView('dashboard');
   };
 
@@ -122,9 +129,9 @@ export default function App() {
         <AuthScreen onLogin={handleLogin} />
       ) : (
         <div className={(theme === 'dark' ? 'dark-theme ' : 'light-theme ') + "flex flex-col md:flex-row w-full min-h-screen bg-[#F8FAFC]"}>
-          <Sidebar setView={setView} view={view} userId={userId} onLogout={handleLogout} onSwitchAccount={handleSwitchAccount} setInventoryFilter={setInventoryFilter} theme={theme} onToggleTheme={toggleTheme} />
+          <Sidebar setView={setView} view={view} userId={userId} userRole={userRole} onLogout={handleLogout} onSwitchAccount={handleSwitchAccount} setInventoryFilter={setInventoryFilter} theme={theme} onToggleTheme={toggleTheme} />
           
-          {view === 'dashboard' && <Dashboard 
+          {userRole !== 'admin' && view === 'dashboard' && <Dashboard 
             products={products} 
             userId={userId} 
             onAlertClick={(mode) => { setView('inventory'); setInventoryFilter(mode); }} 
@@ -132,13 +139,10 @@ export default function App() {
             onOpenScanner={handleOpenScanner}
             onGoToSettings={() => setView('settings')}
           />}
-          {view === 'billing' && <Billing products={products} onSaleSuccess={fetchProducts} userId={userId} />}
-          {view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onEditProduct={handleEditProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} />}
-          {view === 'ai_lab' && <AITools userId={userId} onScanResult={fetchProducts} onOpenScanner={handleOpenScanner} />}
-          {view === 'settings' && <Settings userId={userId} onScanResult={fetchProducts} />}
-          {view === 'guide' && <UserGuide />}
-          {view === 'about' && <About theme={theme} />}
-          {view === 'ant_x' && <AntXTerminal 
+          {userRole !== 'admin' && view === 'billing' && <Billing products={products} onSaleSuccess={fetchProducts} userId={userId} />}
+          {userRole !== 'admin' && view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onEditProduct={handleEditProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} />}
+          {userRole !== 'admin' && view === 'ai_lab' && <AITools userId={userId} onScanResult={fetchProducts} onOpenScanner={handleOpenScanner} />}
+          {userRole !== 'admin' && view === 'ant_x' && <AntXTerminal 
             userId={userId} 
             onUpdate={fetchProducts} 
             onNavigate={(page) => setView(page)} 
@@ -146,6 +150,12 @@ export default function App() {
             currentView={view} 
             voiceState={{ isVoiceActive, setIsVoiceActive, globalTranscript, globalAiResponse, globalStatus }}
           />}
+
+          {/* Shared Views */}
+          {view === 'settings' && <Settings userId={userId} onScanResult={fetchProducts} />}
+          {view === 'admin_panel' && userRole === 'admin' && <AdminPanel />}
+          {view === 'guide' && <UserGuide />}
+          {view === 'about' && <About theme={theme} />}
 
           <WelcomeModal 
             isOpen={showWelcomePopup} 

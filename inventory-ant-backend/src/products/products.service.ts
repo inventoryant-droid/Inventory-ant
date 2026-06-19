@@ -107,12 +107,17 @@ export class ProductsService {
     let bestIndices: number[] = [];
     let high = 0;
 
+    const sanitizeId = (id: any) => String(id || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    const incomingCleanId = sanitizeId(item.productId);
+
     db.forEach((p, i) => {
       if (p.userId !== userId) return;
       let score = 0;
       
+      const dbCleanId = sanitizeId(p.productId);
+
       // Strict Item Code Match
-      if (item.productId && p.productId === item.productId) {
+      if (incomingCleanId && dbCleanId === incomingCleanId) {
          score += 10000;
       }
       
@@ -173,7 +178,7 @@ export class ProductsService {
     } else {
       console.log(`❌ [NO_MATCH]: "${item.name}"`);
       if (actionType === 'IN') {
-        const pid = item.productId || await this.getNextNumericProductId(userId, db);
+        const pid = incomingCleanId || item.productId || await this.getNextNumericProductId(userId, db);
         const newItem: any = { id: this.generateId(), userId, productId: pid, name: item.name || 'Unknown Item', quantity: qty.toString(), mrp: item.mrp || '0', _timestamp: Date.now() };
         Object.keys(item).forEach(k => {
            if (!['name', 'qty', 'productId', 'mrp'].includes(k) && item[k] !== undefined) {
@@ -182,8 +187,17 @@ export class ProductsService {
         });
         db.push(newItem);
         return `NEW: ${newItem.name} (qty: ${qty})`;
+      } else {
+        const pid = incomingCleanId || item.productId || await this.getNextNumericProductId(userId, db);
+        const newItem: any = { id: this.generateId(), userId, productId: pid, name: item.name || 'Unknown Item', quantity: '0', mrp: item.mrp || '0', _timestamp: Date.now() };
+        Object.keys(item).forEach(k => {
+           if (!['name', 'qty', 'productId', 'mrp'].includes(k) && item[k] !== undefined) {
+               newItem[k] = item[k];
+           }
+        });
+        db.push(newItem);
+        return `NEW_OUTBOUND: ${newItem.name} (qty deducted below 0, recorded as 0)`;
       }
-      return `NOT_FOUND: Item not in registry`;
     }
   }
 
@@ -609,16 +623,20 @@ export class ProductsService {
       });
       const prompt = `
       You are an expert invoice/receipt parser. Analyze this invoice/receipt image.
-      Extract all line items of products purchased or sold.
+      CRITICAL INSTRUCTIONS:
+      - ONLY extract actual product items from the main table rows.
+      - DO NOT extract table headers (like "STOCK CODE", "ITEM DESCRIPTION").
+      - DO NOT extract subtotal, tax, or total lines.
+      
       For each item, extract:
-      1. productId: The product code, SKU, or serial number if explicitly mentioned, otherwise null.
-      2. name: The full product name/description, including specific attributes like size, color, pages, or count (e.g. "Studymate Notebook 80 Pages" or "Dettol Liquid Handwash 100ml").
-      3. qty: The quantity count.
-      4. mrp: The price or rate per item unit (without currency symbols, e.g. "120.00").
+      1. productId: Extract ONLY the alphanumeric code. If it says "CODE: 14", extract ONLY "14". Strip all prefixes.
+      2. name: The full product name/description, including specific attributes like size, color, pages (e.g. "Regular Register (Studymate) 176 Page").
+      3. qty: The exact quantity count.
+      4. mrp: The unit price or rate per item (without currency symbols).
 
       Return JSON ONLY as a list of objects:
       [
-        { "productId": "001", "name": "...", "qty": 10, "mrp": "..." }
+        { "productId": "14", "name": "...", "qty": 100, "mrp": "105" }
       ]
       Do not wrap in backticks or markdown formatting.
       `;
