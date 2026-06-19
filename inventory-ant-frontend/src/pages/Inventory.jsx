@@ -3,7 +3,7 @@ import '../App.css';
 import { getExpiryInfo, getExpKey } from '../utils/expiryHelpers';
 import { Printer, Trash2, Edit3, Plus, Terminal, Check, X, CheckCircle } from 'lucide-react';
 
-function Inventory({ products, onAddProduct, onDeleteProduct, onEditProduct, filterMode, setFilterMode }) {
+function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProduct, filterMode, setFilterMode }) {
   const [formData, setFormData] = useState({});
   const [editingProductId, setEditingProductId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
@@ -108,9 +108,9 @@ function Inventory({ products, onAddProduct, onDeleteProduct, onEditProduct, fil
             <button 
               onClick={async () => {
                 if(window.confirm("DANGER: This will delete ALL items from your account. Continue?")) {
-                  await fetch('http://localhost:3000/products/all', { 
+                  await fetch('http://localhost:3000/api/user/products/all', { 
                     method: 'DELETE', 
-                    headers: { 'x-user-id': localStorage.getItem('ant_user') } 
+                    headers: { 'Authorization': `Bearer ${token}` } 
                   });
                   window.location.reload(); 
                 }

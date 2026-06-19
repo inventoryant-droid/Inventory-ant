@@ -11,7 +11,7 @@ function sanitizeTextForSpeech(text) {
   return clean.trim().substring(0, 200);
 }
 
-export default function AntAgentV2({ userId, onUpdate, onNavigate, onLogin, currentView, isTerminalView, sharedState }) {
+export default function AntAgentV2({ userId, token, onUpdate, onNavigate, onLogin, currentView, isTerminalView, sharedState }) {
   const { isVoiceActive, setIsVoiceActive, setGlobalTranscript, setGlobalAiResponse, setGlobalStatus } = sharedState;
 
   const [isListening, setIsListening] = useState(false);
@@ -123,9 +123,12 @@ export default function AntAgentV2({ userId, onUpdate, onNavigate, onLogin, curr
       window.dispatchEvent(new CustomEvent('ANT_X_THINKING', { detail: { value: true } }));
       window.dispatchEvent(new CustomEvent('ANT_X_VOICE_COMMAND', { detail: { text } }));
 
-      const res = await fetch('http://localhost:3000/products/agent-command-v2', {
+      const res = await fetch('http://localhost:3000/api/user/products/agent-command-v2', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ text, currentView })
       });
       

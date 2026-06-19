@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import '../App.css';
 import { Search, ShoppingCart, Check, Plus, Minus } from 'lucide-react';
 
-function Billing({ products, onSaleSuccess, userId }) {
+function Billing({ products, onSaleSuccess, userId, token }) {
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -36,11 +36,14 @@ function Billing({ products, onSaleSuccess, userId }) {
   const handleCheckout = async () => {
      if (cart.length === 0) return;
      try {
-        const res = await fetch('http://localhost:3000/products/sell', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
-            body: JSON.stringify(cart.map(item => ({ id: item.id, quantity: item.quantity })))
-        });
+         const res = await fetch('http://localhost:3000/api/user/products/sell', {
+             method: 'POST',
+             headers: { 
+               'Content-Type': 'application/json',
+               'Authorization': `Bearer ${token}`
+             },
+             body: JSON.stringify(cart.map(item => ({ id: item.id, quantity: item.quantity })))
+         });
         if (res.ok) {
            setCart([]);
            onSaleSuccess();

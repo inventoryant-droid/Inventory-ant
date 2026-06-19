@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import './App.css';
 import AntAgentV2 from './components/AntAgentV2';
 import AntXTerminal from './components/AntXTerminal';
@@ -17,12 +18,13 @@ import AdminPanel from './pages/AdminPanel';
 import WelcomeModal from './components/ui/WelcomeModal';
 
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-
-  const initialRole = localStorage.getItem('ant_role') || 'user';
+  const [token, setToken] = useState(localStorage.getItem('ant_token') || '');
   const [userId, setUserId] = useState(localStorage.getItem('ant_user') || '');
-  const [userRole, setUserRole] = useState(initialRole);
-  const [view, setView] = useState(initialRole === 'admin' ? 'admin_panel' : 'dashboard');
+  const [userRole, setUserRole] = useState(localStorage.getItem('ant_role') || 'user');
+  const [view, setView] = useState('dashboard');
   const [inventoryFilter, setInventoryFilter] = useState('all');
   const [products, setProducts] = useState([]);
   const [theme, setTheme] = useState(localStorage.getItem('ant_theme') || 'dark');
@@ -41,77 +43,128 @@ export default function App() {
     localStorage.setItem('ant_theme', newTheme);
   };
 
-  const handleLogin = (id, role = 'user') => {
+  const handleLogin = (id, role = 'user', accessToken = '') => {
      const normalized = id.trim().toLowerCase();
      setUserId(normalized);
      setUserRole(role);
+     setToken(accessToken);
      localStorage.setItem('ant_user', normalized);
      localStorage.setItem('ant_role', role);
-     setView(role === 'admin' ? 'admin_panel' : 'dashboard');
-  }
+     localStorage.setItem('ant_token', accessToken);
+     
+     if (role === 'admin') {
+       navigate('/admin');
+     } else {
+       setView('dashboard');
+       navigate('/dashboard');
+     }
+  };
+
   const handleLogout = () => {
      setUserId('');
      setUserRole('user');
+     setToken('');
      setProducts([]);
      setInventoryFilter('all');
      localStorage.removeItem('ant_user');
      localStorage.removeItem('ant_role');
-     setView('dashboard');
+     localStorage.removeItem('ant_token');
+     navigate('/login');
   };
 
   const handleSwitchAccount = () => {
-     setUserId('');
-     setProducts([]);
-     setInventoryFilter('all');
-     setView('dashboard');
+     handleLogout();
   };
 
   const fetchProducts = () => {
-    if(!userId) return;
-    fetch('http://localhost:3000/products', { headers: { 'x-user-id': userId } })
+    if (!token) return;
+    fetch('http://localhost:3000/api/user/products', { 
+      headers: { 'Authorization': `Bearer ${token}` } 
+    })
       .then(res => res.json())
       .then(data => {
-         setProducts(data);
-         if (data.length === 0 && !hasShownWelcome) {
-            setShowWelcomePopup(true);
-            setHasShownWelcome(true);
+         if (Array.isArray(data)) {
+           setProducts(data);
+           if (data.length === 0 && !hasShownWelcome) {
+              setShowWelcomePopup(true);
+              setHasShownWelcome(true);
+           }
          }
       })
-      .catch(err => console.error("Failed to fetch:", err));
+      .catch(err => console.error("Failed to fetch products:", err));
   };
 
   useEffect(() => {
-    fetchProducts();
-  }, [userId]);
+    if (token && userRole === 'user') {
+      fetchProducts();
+    }
+  }, [userId, token, userRole]);
+
+  // Route protection and redirection checks
+  useEffect(() => {
+    const publicPaths = ['/', '/login', '/signup'];
+    const isPublicPath = publicPaths.includes(location.pathname);
+
+    if (!token) {
+      if (!isPublicPath) {
+        navigate('/login');
+      }
+    } else {
+      if (isPublicPath) {
+        if (userRole === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard');
+        }
+      } else if (location.pathname === '/admin' && userRole !== 'admin') {
+        navigate('/dashboard');
+      } else if (location.pathname === '/dashboard' && userRole === 'admin') {
+        navigate('/admin');
+      }
+    }
+  }, [token, userRole, location.pathname, navigate]);
 
   const handleAddProduct = async (data) => {
     try {
-      const res = await fetch('http://localhost:3000/products', {
+      const res = await fetch('http://localhost:3000/api/user/products', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}` 
+        },
         body: JSON.stringify(data)
       });
       const newP = await res.json();
-      setProducts([...products, newP]);
+      if (newP && newP.id) {
+        setProducts([...products, newP]);
+      }
     } catch(e) {}
   };
 
   const handleDeleteProduct = async (id) => {
     try {
-      await fetch(`http://localhost:3000/products/${id}`, { method: 'DELETE', headers: { 'x-user-id': userId } });
+      await fetch(`http://localhost:3000/api/user/products/${id}`, { 
+        method: 'DELETE', 
+        headers: { 'Authorization': `Bearer ${token}` } 
+      });
       setProducts(products.filter(p => p.id !== id));
     } catch(e) {}
   };
 
   const handleEditProduct = async (id, updatedData) => {
     try {
-      const res = await fetch(`http://localhost:3000/products/${id}`, {
+      const res = await fetch(`http://localhost:3000/api/user/products/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}` 
+        },
         body: JSON.stringify(updatedData)
       });
       const updatedProduct = await res.json();
-      setProducts(products.map(p => p.id === id ? updatedProduct : p));
+      if (updatedProduct && updatedProduct.id) {
+        setProducts(products.map(p => p.id === id ? updatedProduct : p));
+      }
     } catch(e) {}
   };
 
@@ -124,72 +177,103 @@ export default function App() {
   };
 
   return (
-    <>
-      {!userId ? (
-        <AuthScreen onLogin={handleLogin} />
-      ) : (
-        <div className={(theme === 'dark' ? 'dark-theme ' : 'light-theme ') + "flex flex-col md:flex-row w-full min-h-screen bg-[#F8FAFC]"}>
-          <Sidebar setView={setView} view={view} userId={userId} userRole={userRole} onLogout={handleLogout} onSwitchAccount={handleSwitchAccount} setInventoryFilter={setInventoryFilter} theme={theme} onToggleTheme={toggleTheme} />
-          
-          {userRole !== 'admin' && view === 'dashboard' && <Dashboard 
-            products={products} 
-            userId={userId} 
-            onAlertClick={(mode) => { setView('inventory'); setInventoryFilter(mode); }} 
-            onTotalClick={() => { setView('inventory'); setInventoryFilter('all'); }}
-            onOpenScanner={handleOpenScanner}
-            onGoToSettings={() => setView('settings')}
-          />}
-          {userRole !== 'admin' && view === 'billing' && <Billing products={products} onSaleSuccess={fetchProducts} userId={userId} />}
-          {userRole !== 'admin' && view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onEditProduct={handleEditProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} />}
-          {userRole !== 'admin' && view === 'ai_lab' && <AITools userId={userId} onScanResult={fetchProducts} onOpenScanner={handleOpenScanner} />}
-          {userRole !== 'admin' && view === 'ant_x' && <AntXTerminal 
-            userId={userId} 
-            onUpdate={fetchProducts} 
-            onNavigate={(page) => setView(page)} 
-            onLogin={handleLogin} 
-            currentView={view} 
-            voiceState={{ isVoiceActive, setIsVoiceActive, globalTranscript, globalAiResponse, globalStatus }}
-          />}
+    <Routes>
+      <Route path="/" element={<AuthScreen onLogin={handleLogin} defaultView="landing" />} />
+      <Route path="/login" element={<AuthScreen onLogin={handleLogin} defaultView="login" />} />
+      <Route path="/signup" element={<AuthScreen onLogin={handleLogin} defaultView="signup" />} />
+      <Route path="/dashboard" element={
+        token && userRole === 'user' ? (
+          <div className={(theme === 'dark' ? 'dark-theme ' : 'light-theme ') + "flex flex-col md:flex-row w-full min-h-screen bg-[#F8FAFC]"}>
+            <Sidebar 
+              setView={setView} 
+              view={view} 
+              userId={userId} 
+              userRole={userRole} 
+              onLogout={handleLogout} 
+              onSwitchAccount={handleSwitchAccount} 
+              setInventoryFilter={setInventoryFilter} 
+              theme={theme} 
+              onToggleTheme={toggleTheme} 
+            />
+            
+            {view === 'dashboard' && <Dashboard 
+              products={products} 
+              userId={userId} 
+              onAlertClick={(mode) => { setView('inventory'); setInventoryFilter(mode); }} 
+              onTotalClick={() => { setView('inventory'); setInventoryFilter('all'); }}
+              onOpenScanner={handleOpenScanner}
+              onGoToSettings={() => setView('settings')}
+            />}
+            {view === 'billing' && <Billing products={products} onSaleSuccess={fetchProducts} userId={userId} token={token} />}
+            {view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onEditProduct={handleEditProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} />}
+            {view === 'ai_lab' && <AITools userId={userId} token={token} onScanResult={fetchProducts} onOpenScanner={handleOpenScanner} />}
+            {view === 'ant_x' && <AntXTerminal 
+              userId={userId} 
+              token={token}
+              onUpdate={fetchProducts} 
+              onNavigate={(page) => setView(page)} 
+              onLogin={handleLogin} 
+              currentView={view} 
+              voiceState={{ isVoiceActive, setIsVoiceActive, globalTranscript, globalAiResponse, globalStatus }}
+            />}
 
-          {/* Shared Views */}
-          {view === 'settings' && <Settings userId={userId} onScanResult={fetchProducts} />}
-          {view === 'admin_panel' && userRole === 'admin' && <AdminPanel />}
-          {view === 'guide' && <UserGuide />}
-          {view === 'about' && <About theme={theme} />}
+            {/* Shared Views */}
+            {view === 'settings' && <Settings userId={userId} token={token} onScanResult={fetchProducts} />}
+            {view === 'guide' && <UserGuide />}
+            {view === 'about' && <About theme={theme} />}
 
-          <WelcomeModal 
-            isOpen={showWelcomePopup} 
-            onClose={() => setShowWelcomePopup(false)} 
-            onUploadCSV={() => { setShowWelcomePopup(false); setView('settings'); }} 
-            onAddManually={() => { setShowWelcomePopup(false); setView('inventory'); }} 
-          />
+            <WelcomeModal 
+              isOpen={showWelcomePopup} 
+              onClose={() => setShowWelcomePopup(false)} 
+              onUploadCSV={() => { setShowWelcomePopup(false); setView('settings'); }} 
+              onAddManually={() => { setShowWelcomePopup(false); setView('inventory'); }} 
+            />
 
-          <ScannerModal 
-            isOpen={scannerOpen} 
-            onClose={() => setScannerOpen(false)} 
-            scanType={scannerType} 
-            userId={userId} 
-            onScanSuccess={fetchProducts} 
-          />
+            <ScannerModal 
+              isOpen={scannerOpen} 
+              onClose={() => setScannerOpen(false)} 
+              scanType={scannerType} 
+              userId={userId} 
+              token={token}
+              onScanSuccess={fetchProducts} 
+            />
 
-          {/* ALWAYS MOUNTED VOICE CORE */}
-          <AntAgentV2 
-            userId={userId || 'guest_node'} 
-            onUpdate={fetchProducts} 
-            onNavigate={(page) => setView(page)} 
-            onLogin={handleLogin} 
-            currentView={view} 
-            isTerminalView={view === 'ant_x'}
-            sharedState={{ 
-               isVoiceActive, setIsVoiceActive, 
-               setGlobalTranscript, setGlobalAiResponse, setGlobalStatus 
-            }}
-          />
-        </div>
-      )}
-    </>
+            {/* ALWAYS MOUNTED VOICE CORE */}
+            <AntAgentV2 
+              userId={userId || 'guest_node'} 
+              token={token}
+              onUpdate={fetchProducts} 
+              onNavigate={(page) => setView(page)} 
+              onLogin={handleLogin} 
+              currentView={view} 
+              isTerminalView={view === 'ant_x'}
+              sharedState={{ 
+                 isVoiceActive, setIsVoiceActive, 
+                 setGlobalTranscript, setGlobalAiResponse, setGlobalStatus 
+              }}
+            />
+          </div>
+        ) : <Navigate to="/login" replace />
+      } />
+      <Route path="/admin" element={
+        token && userRole === 'admin' ? (
+          <div className={(theme === 'dark' ? 'dark-theme ' : 'light-theme ') + "flex flex-col md:flex-row w-full min-h-screen bg-[#F8FAFC]"}>
+            <Sidebar 
+              setView={setView} 
+              view="admin_panel" 
+              userId={userId} 
+              userRole={userRole} 
+              onLogout={handleLogout} 
+              onSwitchAccount={handleSwitchAccount} 
+              setInventoryFilter={setInventoryFilter} 
+              theme={theme} 
+              onToggleTheme={toggleTheme} 
+            />
+            <AdminPanel token={token} onLogout={handleLogout} />
+          </div>
+        ) : <Navigate to="/login" replace />
+      } />
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
   );
 }
-
-
-

@@ -1,7 +1,10 @@
-import { Controller, Post, Body, Get, Delete, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Delete, Param, UseGuards, Query, Req } from '@nestjs/common';
 import { UsersService } from './users.service';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import { RolesGuard } from './roles.guard';
+import { Roles } from './roles.decorator';
 
-@Controller('users')
+@Controller('api')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -17,27 +20,53 @@ export class UsersController {
 
   @Post('auth/login')
   async login(@Body() body: { email: string; password?: string }) {
-    // The frontend sends the "Email or Phone Number" value in the `email` field
-    return this.usersService.userLogin(body.email, body.password);
+    return this.usersService.login(body.email, body.password);
   }
 
   @Post('admin/login')
-  async adminLogin(@Body() body: { username: string; password: string }) {
-    return this.usersService.adminLogin(body.username, body.password);
+  async adminLogin(@Body() body: { username: string; password?: string }) {
+    return this.usersService.login(body.username, body.password);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   @Post('admin/change-password')
-  async changeAdminPassword(@Body() body: { oldPass: string; newPass: string }) {
-    return this.usersService.changeAdminPassword(body.oldPass, body.newPass);
+  async changeAdminPassword(@Req() req: any, @Body() body: { oldPass: string; newPass: string }) {
+    return this.usersService.changeAdminPassword(req.user.email, body.oldPass, body.newPass);
   }
 
-  @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('admin/users')
   async getAllUsers() {
     return this.usersService.findAllUsers();
   }
 
-  @Delete(':email')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('admin/users/search')
+  async searchUsers(@Query('q') query: string) {
+    return this.usersService.searchUsers(query || '');
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('admin/users/:email')
+  async getUserProfile(@Param('email') email: string) {
+    return this.usersService.findUserByEmail(email);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Delete('admin/users/:email')
   async removeUser(@Param('email') email: string) {
-    return this.usersService.removeUser(email);
+    return this.usersService.softDeleteUser(email);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('admin/stats')
+  async getStats() {
+    return this.usersService.getStats();
   }
 }

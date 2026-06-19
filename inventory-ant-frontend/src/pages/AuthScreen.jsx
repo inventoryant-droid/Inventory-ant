@@ -20,6 +20,8 @@ function AuthScreen({ onLogin }) {
   const [toast, setToast] = useState({ show: false, message: '' });
 
   const savedId = localStorage.getItem('ant_user');
+  const savedToken = localStorage.getItem('ant_token');
+  const savedRole = localStorage.getItem('ant_role') || 'user';
 
   const handleUserSubmit = async (e) => {
     e.preventDefault();
@@ -38,14 +40,14 @@ function AuthScreen({ onLogin }) {
       setView('verify-otp');
     } else if (view === 'login') {
       try {
-        const res = await fetch('http://localhost:3000/users/auth/login', {
+        const res = await fetch('http://localhost:3000/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
         });
         const data = await res.json();
-        if (data.email) {
-          onLogin(data.email, data.role || 'user');
+        if (data.access_token) {
+          onLogin(data.user.email, data.user.role, data.access_token);
         } else {
           alert(data.message || 'Invalid credentials');
         }
@@ -53,7 +55,6 @@ function AuthScreen({ onLogin }) {
         alert('Network error');
       }
     } else if (view === 'otp') {
-      // Mock OTP request
       alert(`OTP sent to ${mobile}! (Mocked)`);
     }
   };
@@ -78,14 +79,14 @@ function AuthScreen({ onLogin }) {
     }
     
     try {
-      const res = await fetch('http://localhost:3000/users/auth/signup', {
+      const res = await fetch('http://localhost:3000/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password, phone: mobile }) 
       });
       const data = await res.json();
-      if (data.email) {
-        onLogin(data.email, 'user');
+      if (data.access_token) {
+        onLogin(data.user.email, data.user.role, data.access_token);
       } else {
         alert(data.message || 'Signup failed');
       }
@@ -97,16 +98,16 @@ function AuthScreen({ onLogin }) {
   const handleAdminSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3000/users/admin/login', {
+      const res = await fetch('http://localhost:3000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: adminUsername, password })
+        body: JSON.stringify({ email: adminUsername, password })
       });
       const data = await res.json();
-      if (data.success) {
-        onLogin(data.userId, data.role);
+      if (data.access_token) {
+        onLogin(data.user.email, data.user.role, data.access_token);
       } else {
-        alert('Invalid admin credentials');
+        alert(data.message || 'Invalid admin credentials');
       }
     } catch (err) {
       alert('Network error');
@@ -117,14 +118,14 @@ function AuthScreen({ onLogin }) {
     flow: 'auth-code',
     onSuccess: async (codeResponse) => {
       try {
-        const res = await fetch('http://localhost:3000/users/auth/google', {
+        const res = await fetch('http://localhost:3000/api/auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code: codeResponse.code })
         });
-        const user = await res.json();
-        if (user && user.email) {
-          onLogin(user.email, user.role || 'user');
+        const data = await res.json();
+        if (data && data.access_token) {
+          onLogin(data.user.email, data.user.role, data.access_token);
         } else {
           alert('Failed to authenticate with Google');
         }
@@ -179,14 +180,14 @@ function AuthScreen({ onLogin }) {
             }}
           >
             <div className="max-w-3xl text-center space-y-6">
-              {savedId && (
+              {savedId && savedToken && (
                 <div className="inline-flex bg-white/80 backdrop-blur-md border border-slate-200 rounded-xl p-3 mb-8 text-left items-center justify-between gap-6 shadow-sm">
                   <div>
                     <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Authorized Node</div>
                     <div className="font-bold text-slate-700 text-sm">{savedId}</div>
                   </div>
                   <button 
-                    onClick={() => onLogin(savedId)} 
+                    onClick={() => onLogin(savedId, savedRole, savedToken)} 
                     className="px-4 py-2 text-xs font-bold bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-lg transition-colors border-none cursor-pointer"
                   >Resume Session</button>
                 </div>

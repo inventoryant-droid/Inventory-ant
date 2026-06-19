@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException, OnModuleInit } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { OAuth2Client } from 'google-auth-library';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcryptjs';
 
 export interface User {
   id: string;
@@ -11,11 +13,13 @@ export interface User {
   name: string;
   picture: string;
   role: 'user' | 'admin';
-  joinedAt: number;
+  active: boolean;
+  createdAt: number;
+  updatedAt: number;
 }
 
 @Injectable()
-export class UsersService {
+export class UsersService implements OnModuleInit {
   private readonly usersPath = path.join(process.cwd(), 'users.json');
   private readonly adminPath = path.join(process.cwd(), 'admin.json');
   private readonly oauth2Client = new OAuth2Client(
@@ -23,6 +27,8 @@ export class UsersService {
     process.env.GOOGLE_CLIENT_SECRET,
     'postmessage'
   );
+
+  constructor(private readonly jwtService: JwtService) {}
 
   private async getDb(): Promise<User[]> {
     try {
@@ -38,29 +44,100 @@ export class UsersService {
     await fs.writeFile(this.usersPath, JSON.stringify(data, null, 2), 'utf8');
   }
 
-  private async getAdminDb(): Promise<any> {
-    try {
-      const data = await fs.readFile(this.adminPath, 'utf8');
-      return JSON.parse(data);
-    } catch (e: any) {
-      if (e.code === 'ENOENT') return { username: 'admin', password: 'admin123' };
-      throw e;
+  async onModuleInit() {
+    const db = await this.getDb();
+    let changed = false;
+
+    // Migrate existing users to have new fields and bcrypt passwords
+    for (const user of db) {
+      if (!user.role) {
+        user.role = 'user';
+        changed = true;
+      }
+      if (user.active === undefined) {
+        user.active = true;
+        changed = true;
+      }
+      if (!user.createdAt) {
+        user.createdAt = (user as any).joinedAt || Date.now();
+        changed = true;
+      }
+      if (!user.updatedAt) {
+        user.updatedAt = user.createdAt || Date.now();
+        changed = true;
+      }
+      if (user.password && !this.isBCryptHash(user.password)) {
+        user.password = await bcrypt.hash(user.password, 10);
+        changed = true;
+      }
+    }
+
+    // Seed default admin if it doesn't exist
+    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@inventoryant.com').toLowerCase();
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
+    const adminExists = db.some(u => u.email.toLowerCase() === adminEmail && u.role === 'admin');
+    if (!adminExists) {
+      const hashedPass = await bcrypt.hash(adminPassword, 10);
+      const defaultAdmin: User = {
+        id: 'admin-' + Math.random().toString(36).substring(2, 10),
+        email: adminEmail,
+        name: 'Super Admin',
+        password: hashedPass,
+        picture: '',
+        role: 'admin',
+        active: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      db.push(defaultAdmin);
+      changed = true;
+    }
+
+    if (changed) {
+      await this.saveDb(db);
     }
   }
 
-  private async saveAdminDb(data: any): Promise<void> {
-    await fs.writeFile(this.adminPath, JSON.stringify(data, null, 2), 'utf8');
+  private isBCryptHash(str: string): boolean {
+    return /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(str);
   }
 
-  async adminLogin(username: string, password: string): Promise<{ success: boolean; role: string; userId: string }> {
-    const admin = await this.getAdminDb();
-    if (admin.username === username && admin.password === password) {
-      return { success: true, role: 'admin', userId: 'admin' };
+  async login(identifier: string, password?: string): Promise<{ access_token: string; user: Omit<User, 'password'> }> {
+    const db = await this.getDb();
+    const user = db.find(u => 
+      u.email.toLowerCase() === identifier.toLowerCase() || 
+      (u.phone && u.phone === identifier)
+    );
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
     }
-    throw new UnauthorizedException('Invalid admin credentials');
+
+    if (!user.active) {
+      throw new UnauthorizedException('Account is deactivated. Please contact administrator.');
+    }
+
+    if (!password || !user.password) {
+      throw new UnauthorizedException('Authentication details missing');
+    }
+
+    const passMatch = await bcrypt.compare(password, user.password);
+    if (!passMatch) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const payload = { sub: user.id, email: user.email, role: user.role };
+    const token = await this.jwtService.signAsync(payload);
+
+    const { password: _, ...userWithoutPass } = user;
+    return {
+      access_token: token,
+      user: userWithoutPass
+    };
   }
 
-  async userSignup(name: string, email: string, password?: string, phone?: string): Promise<User> {
+  async userSignup(name: string, email: string, password?: string, phone?: string): Promise<{ access_token: string; user: Omit<User, 'password'> }> {
     const db = await this.getDb();
     const existingUser = db.find(u => 
       u.email.toLowerCase() === email.toLowerCase() || 
@@ -70,49 +147,53 @@ export class UsersService {
       throw new UnauthorizedException('User with this email or phone already exists');
     }
 
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
+
     const newUser: User = {
       id: Math.random().toString(36).substring(2, 10),
       email: email.toLowerCase(),
       phone,
-      password,
+      password: hashedPassword,
       name,
       picture: '',
-      role: 'user',
-      joinedAt: Date.now()
+      role: 'user', // Public signup strictly user
+      active: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
     };
     db.push(newUser);
     await this.saveDb(db);
-    return newUser;
+
+    const payload = { sub: newUser.id, email: newUser.email, role: newUser.role };
+    const token = await this.jwtService.signAsync(payload);
+
+    const { password: _, ...userWithoutPass } = newUser;
+    return {
+      access_token: token,
+      user: userWithoutPass
+    };
   }
 
-  async userLogin(identifier: string, password?: string): Promise<User> {
+  async changeAdminPassword(adminEmail: string, oldPass: string, newPass: string): Promise<{ success: boolean }> {
     const db = await this.getDb();
-    const user = db.find(u => 
-      u.email.toLowerCase() === identifier.toLowerCase() || 
-      (u.phone && u.phone === identifier)
-    );
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+    const admin = db.find(u => u.email.toLowerCase() === adminEmail.toLowerCase() && u.role === 'admin');
+    if (!admin || !admin.password) {
+      throw new UnauthorizedException('Admin account not found');
     }
-    if (user.password !== password) {
-      throw new UnauthorizedException('Invalid password');
+
+    const passMatch = await bcrypt.compare(oldPass, admin.password);
+    if (!passMatch) {
+      throw new UnauthorizedException('Invalid old password');
     }
-    return user;
+
+    admin.password = await bcrypt.hash(newPass, 10);
+    admin.updatedAt = Date.now();
+    await this.saveDb(db);
+    return { success: true };
   }
 
-  async changeAdminPassword(oldPass: string, newPass: string): Promise<{ success: boolean }> {
-    const admin = await this.getAdminDb();
-    if (admin.password === oldPass) {
-      admin.password = newPass;
-      await this.saveAdminDb(admin);
-      return { success: true };
-    }
-    throw new UnauthorizedException('Invalid old password');
-  }
-
-  async handleGoogleLogin(code: string): Promise<User> {
+  async handleGoogleLogin(code: string): Promise<{ access_token: string; user: Omit<User, 'password'> }> {
     try {
-      // Exchange code for tokens
       const { tokens } = await this.oauth2Client.getToken(code);
       if (!tokens.id_token) throw new UnauthorizedException('No ID Token returned');
 
@@ -122,49 +203,97 @@ export class UsersService {
       });
       const payload = ticket.getPayload();
       if (!payload || !payload.email) throw new UnauthorizedException('Invalid Google token');
+      const googleEmail = payload.email;
 
       const db = await this.getDb();
-      let user = db.find(u => u.email === payload.email);
+      let user = db.find(u => u.email.toLowerCase() === googleEmail.toLowerCase());
 
       if (!user) {
         user = {
           id: payload.sub,
-          email: payload.email,
+          email: payload.email.toLowerCase(),
           name: payload.name || payload.email,
           picture: payload.picture || '',
           role: 'user',
-          joinedAt: Date.now()
+          active: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
         };
         db.push(user);
         await this.saveDb(db);
       }
 
-      return user;
+      if (!user.active) {
+        throw new UnauthorizedException('Account is deactivated. Please contact administrator.');
+      }
+
+      const jwtPayload = { sub: user.id, email: user.email, role: user.role };
+      const token = await this.jwtService.signAsync(jwtPayload);
+
+      const { password: _, ...userWithoutPass } = user;
+      return {
+        access_token: token,
+        user: userWithoutPass
+      };
     } catch (error: any) {
       console.error('Google Auth Error:', error.message);
       throw new UnauthorizedException('Google authentication failed');
     }
   }
 
-  async findAllUsers(): Promise<User[]> {
-    return this.getDb();
+  async findAllUsers(): Promise<Omit<User, 'password'>[]> {
+    const db = await this.getDb();
+    return db.map(({ password: _, ...u }) => u);
   }
 
-  async removeUser(email: string): Promise<{ message: string }> {
+  async searchUsers(query: string): Promise<Omit<User, 'password'>[]> {
     const db = await this.getDb();
-    const idx = db.findIndex(u => u.email === email);
-    if (idx === -1) throw new NotFoundException('User not found');
-    db.splice(idx, 1);
-    await this.saveDb(db);
+    const q = query.toLowerCase();
+    return db
+      .filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+      .map(({ password: _, ...u }) => u);
+  }
 
-    // Also remove their inventory
+  async findUserByEmail(email: string): Promise<Omit<User, 'password'>> {
+    const db = await this.getDb();
+    const user = db.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (!user) throw new NotFoundException('User not found');
+    const { password: _, ...userWithoutPass } = user;
+    return userWithoutPass;
+  }
+
+  async softDeleteUser(email: string): Promise<{ success: boolean; active: boolean }> {
+    const db = await this.getDb();
+    const user = db.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (!user) throw new NotFoundException('User not found');
+    
+    // Soft delete / deactivate user
+    user.active = false;
+    user.updatedAt = Date.now();
+    await this.saveDb(db);
+    
+    return { success: true, active: false };
+  }
+
+  async getStats(): Promise<any> {
+    const db = await this.getDb();
+    const totalUsers = db.length;
+    const activeUsers = db.filter(u => u.active).length;
+    const inactiveUsers = totalUsers - activeUsers;
+    
+    let totalProducts = 0;
     const dbPath = path.join(process.cwd(), 'database.json');
     try {
-      const dbData = JSON.parse(await fs.readFile(dbPath, 'utf8'));
-      const newDb = dbData.filter((p: any) => p.userId !== email);
-      await fs.writeFile(dbPath, JSON.stringify(newDb, null, 2), 'utf8');
-    } catch(e) {}
+      const data = await fs.readFile(dbPath, 'utf8');
+      const products = JSON.parse(data);
+      totalProducts = products.length;
+    } catch (e) {}
 
-    return { message: 'User deleted successfully' };
+    return {
+      totalUsers,
+      activeUsers,
+      inactiveUsers,
+      totalProducts
+    };
   }
 }

@@ -3,7 +3,7 @@ import '../App.css';
 import Papa from 'papaparse';
 import { UploadCloud, Trash2 } from 'lucide-react';
 
-function Settings({ userId, onScanResult }) {
+function Settings({ userId, token, onScanResult }) {
   const fileInputRef = useRef(null);
 
   const handleFileUpload = (e) => {
@@ -79,9 +79,12 @@ function Settings({ userId, onScanResult }) {
         alert(`ATTENTION: Found ${mappedData.length} valid rows. Sending to server...`);
 
         try {
-          const res = await fetch('http://localhost:3000/products/bulk', {
+          const res = await fetch('http://localhost:3000/api/user/products/bulk', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+            headers: { 
+              'Content-Type': 'application/json', 
+              'Authorization': `Bearer ${token}` 
+            },
             body: JSON.stringify(mappedData)
           });
           if (res.ok) {
@@ -102,7 +105,10 @@ function Settings({ userId, onScanResult }) {
   const handleWipeCatalog = async () => {
     if(window.confirm("Kya aap sach me apna saara data delete karna chahte hain?")) {
         try {
-            const res = await fetch('http://localhost:3000/products/all', { method: 'DELETE', headers: { 'x-user-id': userId } });
+             const res = await fetch('http://localhost:3000/api/user/products/all', { 
+               method: 'DELETE', 
+               headers: { 'Authorization': `Bearer ${token}` } 
+             });
             if (res.ok) {
                 alert('Aapka saara data delete ho gaya hai.');
                 onScanResult();

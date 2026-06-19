@@ -7,7 +7,7 @@ function sanitizeTextForSpeech(text) {
   return clean.trim().substring(0, 200);
 }
 
-export default function AntXTerminal({ userId, onUpdate, onNavigate, onLogin, currentView, voiceState }) {
+export default function AntXTerminal({ userId, token, onUpdate, onNavigate, onLogin, currentView, voiceState }) {
   const { isVoiceActive, setIsVoiceActive, globalTranscript, globalAiResponse, globalStatus } = voiceState;
 
   const [messages, setMessages] = useState([
@@ -41,9 +41,12 @@ export default function AntXTerminal({ userId, onUpdate, onNavigate, onLogin, cu
     setIsThinking(true);
 
     try {
-      const res = await fetch('http://localhost:3000/products/agent-command-v2', {
+      const res = await fetch('http://localhost:3000/api/user/products/agent-command-v2', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ text, currentView: 'ant_x_terminal' })
       });
       const data = await res.json();

@@ -1,26 +1,28 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, Headers, UnauthorizedException, Query, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Req, UseGuards, Query, Res } from '@nestjs/common';
 import { ProductsService } from './products.service';
+import { JwtAuthGuard } from '../users/jwt-auth.guard';
 
-@Controller('products')
+@Controller('api/user/products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
-  private validateUser(userId: string) {
-    if (!userId) throw new UnauthorizedException("Missing x-user-id header. You must be logged in.");
-    return userId;
-  }
-
-  @Post('scan-bill')
-  async scanBill(@Headers('x-user-id') userId: string, @Body() scanPayload: any) {
-    if(!scanPayload.base64Image) {
-        return this.productsService.processBillMock(this.validateUser(userId), scanPayload);
+  private validateUser(req: any): string {
+    if (!req.user || !req.user.email) {
+      throw new Error("User context is missing in token payload");
     }
-    return this.productsService.processBillWithGemini(this.validateUser(userId), scanPayload);
+    return req.user.email.toLowerCase();
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Post('scan-bill')
+  async scanBill(@Req() req: any, @Body() scanPayload: any) {
+    return this.productsService.processBillWithGemini(this.validateUser(req), scanPayload);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('agent-command-v2')
-  async agentCommandV2(@Headers('x-user-id') userId: string, @Body() payload: { text: string }) {
-    return this.productsService.processAgentCommandV2(this.validateUser(userId), payload);
+  async agentCommandV2(@Req() req: any, @Body() payload: { text: string }) {
+    return this.productsService.processAgentCommandV2(this.validateUser(req), payload);
   }
 
   @Get('tts')
@@ -28,43 +30,51 @@ export class ProductsController {
     return this.productsService.getGoogleTTS(text, res);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('bulk')
-  async createBulk(@Headers('x-user-id') userId: string, @Body() productsArray: any[]) {
-    return this.productsService.createBulk(this.validateUser(userId), productsArray);
+  async createBulk(@Req() req: any, @Body() productsArray: any[]) {
+    return this.productsService.createBulk(this.validateUser(req), productsArray);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('sell')
-  async sellProducts(@Headers('x-user-id') userId: string, @Body() cart: any[]) {
-    return this.productsService.sellProducts(this.validateUser(userId), cart);
+  async sellProducts(@Req() req: any, @Body() cart: any[]) {
+    return this.productsService.sellProducts(this.validateUser(req), cart);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post()
-  async create(@Headers('x-user-id') userId: string, @Body() createProductDto: any) {
-    return this.productsService.create(this.validateUser(userId), createProductDto);
+  async create(@Req() req: any, @Body() createProductDto: any) {
+    return this.productsService.create(this.validateUser(req), createProductDto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get()
-  async findAll(@Headers('x-user-id') userId: string) {
-    return this.productsService.findAll(this.validateUser(userId));
+  async findAll(@Req() req: any) {
+    return this.productsService.findAll(this.validateUser(req));
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
-  async findOne(@Headers('x-user-id') userId: string, @Param('id') id: string) {
-    return this.productsService.findOne(this.validateUser(userId), id);
+  async findOne(@Req() req: any, @Param('id') id: string) {
+    return this.productsService.findOne(this.validateUser(req), id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete('all')
-  async removeAll(@Headers('x-user-id') userId: string) {
-    return this.productsService.removeAll(this.validateUser(userId));
+  async removeAll(@Req() req: any) {
+    return this.productsService.removeAll(this.validateUser(req));
   }
 
+  @UseGuards(JwtAuthGuard)
   @Put(':id')
-  async update(@Headers('x-user-id') userId: string, @Param('id') id: string, @Body() updateProductDto: any) {
-    return this.productsService.update(this.validateUser(userId), id, updateProductDto);
+  async update(@Req() req: any, @Param('id') id: string, @Body() updateProductDto: any) {
+    return this.productsService.update(this.validateUser(req), id, updateProductDto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  async remove(@Headers('x-user-id') userId: string, @Param('id') id: string) {
-    return this.productsService.remove(this.validateUser(userId), id);
+  async remove(@Req() req: any, @Param('id') id: string) {
+    return this.productsService.remove(this.validateUser(req), id);
   }
 }

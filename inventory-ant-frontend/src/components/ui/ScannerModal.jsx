@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import '../../App.css';
 import { X, Inbox, Flame, FileText, CheckCircle2, Loader2, Circle } from 'lucide-react';
 
-function ScannerModal({ isOpen, onClose, scanType, userId, onScanSuccess }) {
+function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess }) {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [scanResult, setScanResult] = useState(null);
@@ -38,9 +38,12 @@ function ScannerModal({ isOpen, onClose, scanType, userId, onScanSuccess }) {
     reader.onload = async (event) => {
        const base64Str = event.target.result.split(',')[1];
        try {
-         const res = await fetch('http://localhost:3000/products/scan-bill', {
+         const res = await fetch('http://localhost:3000/api/user/products/scan-bill', {
              method: 'POST',
-             headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+             headers: { 
+               'Content-Type': 'application/json',
+               'Authorization': `Bearer ${token}`
+             },
              body: JSON.stringify({ 
                  fileName: file.name, 
                  fileType: file.type, 

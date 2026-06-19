@@ -3,10 +3,36 @@
     "id": "7pxz4emi",
     "email": "sp@gmail.com",
     "phone": "6200239192",
-    "password": "12345",
+    "password": "$2b$10$VoyTNNo56MPBrh3jLJLSdeuDLmpswaaCyLWiQgkUfnvrw/Ijtwa2G",
     "name": "sp",
     "picture": "",
     "role": "user",
-    "joinedAt": 1781857958313
+    "joinedAt": 1781857958313,
+    "active": false,
+    "createdAt": 1781857958313,
+    "updatedAt": 1781866209944
+  },
+  {
+    "id": "admin-icrunod6",
+    "email": "admin@inventoryant.com",
+    "name": "Super Admin",
+    "password": "$2b$10$mdb7iRRkZXsMYUXfZo5J..jqoU3SLvIYwqSWYgYIdjmLVgVbh5fgS",
+    "picture": "",
+    "role": "admin",
+    "active": true,
+    "createdAt": 1781864332169,
+    "updatedAt": 1781864332169
+  },
+  {
+    "id": "th6d1xtm",
+    "email": "dk@warehouse.com",
+    "phone": "1234567890",
+    "password": "$2b$10$ejBmhcRCHwGUvmwwkDfXneANUvBPcxQYKOkXyf9u1W.GohWzkwfSO",
+    "name": "deepak",
+    "picture": "",
+    "role": "user",
+    "active": true,
+    "createdAt": 1781866286030,
+    "updatedAt": 1781866286030
   }
 ]
