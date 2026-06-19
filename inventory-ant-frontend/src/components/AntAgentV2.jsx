@@ -88,7 +88,7 @@ export default function AntAgentV2({ userId, token, onUpdate, onNavigate, onLogi
     audioRef.current.currentTime = 0;
 
     // Use Backend Proxy for Google TTS
-    const url = `http://localhost:3000/products/tts?text=${encodeURIComponent(cleanText)}&t=${Date.now()}`;
+    const url = `http://localhost:3000/api/user/products/tts?text=${encodeURIComponent(cleanText)}&t=${Date.now()}`;
     
     audioRef.current.src = url;
     audioRef.current.load(); // Explicitly load the new source
