@@ -2,6 +2,22 @@ import React, { useState, useEffect } from 'react';
 import '../App.css';
 import { Search, ShoppingCart, Check, Plus, Minus, Printer, X, Receipt, Trash2, AlertTriangle, Download, Send, Share2 } from 'lucide-react';
 
+// Helper to extract all detail descriptions (including dynamic CSV columns) for display
+const getProductDetailsText = (p) => {
+  if (!p) return '';
+  const parts = [];
+  if (p.details) {
+    parts.push(p.details);
+  }
+  const standardKeys = ['id', 'userId', 'quantity', 'mrp', 'productId', 'name', 'details', '_headers', '_timestamp', 'timestamp', 'csv_row'];
+  Object.keys(p).forEach(k => {
+    if (!standardKeys.includes(k) && p[k] !== undefined && p[k] !== null && String(p[k]).trim() !== '') {
+      parts.push(`${k}: ${p[k]}`);
+    }
+  });
+  return parts.join(' | ');
+};
+
 function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
   const [activeTab, setActiveTab] = useState('terminal'); // 'terminal' or 'history'
   const [cart, setCart] = useState([]);
@@ -367,7 +383,13 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                                            <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Out of Stock</span>
                                         )}
                                      </div>
-                                     <div className="text-xs text-slate-400 font-semibold mt-0.5">SKU: {p.productId || '---'}</div>
+                                     <div className="text-xs text-slate-400 font-semibold mt-0.5">
+                                        SKU: {p.productId || '---'}
+                                        {(() => {
+                                          const detailsText = getProductDetailsText(p);
+                                          return detailsText ? ` • ${detailsText}` : '';
+                                        })()}
+                                     </div>
                                   </div>
                                   <div className={`${isOutOfStock ? 'text-red-500' : 'text-indigo-600'} font-bold text-sm`}>₹{p.mrp}</div>
                                </div>
@@ -390,8 +412,12 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                          cart.map(item => (
                             <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
                                <div className="flex-1 min-w-0 pr-4 text-left">
-                                  <div className="font-bold text-sm text-slate-800 truncate">{item.name}</div>
-                                  <div className="text-xs text-indigo-600 font-semibold mt-0.5">₹{item.mrp}</div>
+                                   <div className="font-bold text-sm text-slate-800 truncate">{item.name}</div>
+                                   {(() => {
+                                     const detailsText = getProductDetailsText(item);
+                                     return detailsText ? <div className="text-[10px] text-slate-400 mt-0.5 truncate">{detailsText}</div> : null;
+                                   })()}
+                                   <div className="text-xs text-indigo-600 font-semibold mt-0.5">₹{item.mrp}</div>
                                </div>
                                <div className="flex items-center gap-3">
                                   <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1 gap-2">
@@ -658,7 +684,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                               const itemTotal = taxable + itemGst;
 
                               const matchingProduct = products.find(p => p.id === item.id);
-                              const detailsText = matchingProduct?.details || 'No details provided';
+                              const detailsText = matchingProduct ? getProductDetailsText(matchingProduct) : 'No details provided';
 
                               return (
                                  <tr key={item.id || idx} style={{ borderBottom: '1px solid var(--inv-border)' }}>
@@ -722,7 +748,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                               const itemTotal = rate * qty;
 
                               const matchingProduct = products.find(p => p.id === item.id);
-                              const detailsText = matchingProduct?.details || 'No details provided';
+                              const detailsText = matchingProduct ? getProductDetailsText(matchingProduct) : 'No details provided';
 
                               return (
                                  <tr key={item.id || idx} style={{ borderBottom: '1px solid var(--inv-border)' }}>

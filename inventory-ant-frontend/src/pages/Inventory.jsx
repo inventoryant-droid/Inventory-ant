@@ -45,7 +45,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
   const dynamicColumns = useMemo(() => {
     const cols = new Set();
     products.forEach(p => Object.keys(p).forEach(k => {
-      if (!['id', 'userId', 'quantity', 'mrp', 'productId', 'name', 'details', '_headers'].includes(k)) {
+      if (!['id', 'userId', 'quantity', 'mrp', 'productId', 'name', 'details', '_headers', '_timestamp', 'timestamp', 'csv_row'].includes(k)) {
           cols.add(k);
       }
     }));
@@ -154,7 +154,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                 className={`bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-3 py-2.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all w-full md:w-auto flex-1 min-w-[100px]`}
               />
             ))}
-            {dynamicColumns.filter(c => !['id', 'userId', 'name', 'quantity', 'mrp', 'csv_row', 'productId', 'details', '_timestamp', 'timestamp', '_headers'].includes(c.toLowerCase())).map(col => (
+            {dynamicColumns.map(col => (
               <input 
                 key={col}
                 type="text" 
@@ -179,7 +179,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                 <th className="px-6 py-4 text-slate-400 text-[10px] tracking-wider uppercase font-bold w-16">ROW</th>
                 <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-24">SKU CODE</th>
                 <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase">{headers.name}</th>
-                {dynamicColumns.filter(c => !['id', 'userId', 'name', 'quantity', 'mrp', 'csv_row', 'productId', '_headers'].includes(c)).slice(0, 1).map(col => (
+                {dynamicColumns.map(col => (
                   <th key={col} className="px-6 py-4 text-[10px] tracking-wider font-bold text-slate-400 uppercase">{col}</th>
                 ))}
                 <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-32">AVAILABLE STOCK</th>
@@ -229,15 +229,9 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                     )}
                   </td>
                   
-                  {/* Category Pill (First Dynamic Column) */}
-                  {dynamicColumns.filter(c => !['id', 'userId', 'name', 'quantity', 'mrp', 'csv_row', 'productId', '_headers'].includes(c)).slice(0, 1).map(col => {
+                  {/* Custom CSV columns (e.g. Details / Pages, Pkg) */}
+                  {dynamicColumns.map(col => {
                     let displayValue = p[col];
-                    if ((col === '_timestamp' || col === 'timestamp') && displayValue) {
-                      const dateObj = new Date(Number(displayValue));
-                      if (!isNaN(dateObj.getTime())) {
-                        displayValue = dateObj.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'short', timeStyle: 'short' });
-                      }
-                    }
                     return (
                       <td key={col} className="px-6 py-5">
                         {editingProductId === p.id ? (
