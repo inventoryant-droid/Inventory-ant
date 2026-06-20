@@ -3,7 +3,7 @@ import '../App.css';
 import { getExpiryInfo, getExpKey } from '../utils/expiryHelpers';
 import { Box, AlertTriangle, Layers, BarChart2, TrendingUp, Edit, MapPin, Building, ShieldCheck } from 'lucide-react';
 
-function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner, onGoToProfile, onGoToSett ings, userProfile }) {
+function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner, onGoToProfile, onGoToSettings, userProfile }) {
   const dynamicColumns = useMemo(() => {
     const cols = new Set();
     products.forEach(p => Object.keys(p).forEach(k => {

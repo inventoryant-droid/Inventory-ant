@@ -1,0 +1,12 @@
+[33mdda6bd6[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat: create Dashboard component with inventory overview, metrics, and stock visualization
+[33mbbb2f63[m feat: add initial users database and dashboard page scaffolding
+[33m888cd21[m feat: implement AntAgentV2 with voice recognition and text-to-speech integration
+[33mee2a9e2[m feat: implement sales terminal dashboard with billing, transaction processing, and user management modules
+[33m7ebfe08[m feat: add authentication screen with login, signup, OTP verification, and Google auth support
+[33mde09711[m feat: implement full-stack authentication system including JWT guards, RBAC, and Google OAuth integration
+[33m3bbfed5[m feat: initialize core frontend architecture and backend user service with OAuth2 support
+[33mad9ae07[m feat: implement primary application layout, dashboard overview, and inventory management pages
+[33me5143b5[m feat: initialize dashboard and global application structure with theme support
+[33m2a57447[m feat: implement AI scanner interface, bulk CSV product import, and account settings management
+[33m920d61e[m Smart Scanner and Ant X terminal is working fine
+[33mc6c7663[m first commit

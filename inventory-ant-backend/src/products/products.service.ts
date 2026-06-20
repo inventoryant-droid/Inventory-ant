@@ -49,6 +49,7 @@ export class ProductsService {
   private async getDb(): Promise<Product[]> {
     try {
       const data = await fs.readFile(this.filePath, 'utf8');
+      if (!data || !data.trim()) return [];
       return JSON.parse(data);
     } catch (e: any) {
       if (e.code === 'ENOENT') return [];

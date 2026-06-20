@@ -41,6 +41,7 @@ export class UsersService implements OnModuleInit {
   private async getDb(): Promise<User[]> {
     try {
       const data = await fs.readFile(this.usersPath, 'utf8');
+      if (!data || !data.trim()) return [];
       return JSON.parse(data);
     } catch (e: any) {
       if (e.code === 'ENOENT') return [];
