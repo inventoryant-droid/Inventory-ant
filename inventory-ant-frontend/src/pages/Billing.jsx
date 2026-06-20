@@ -1,12 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import '../App.css';
-import { Search, ShoppingCart, Check, Plus, Minus, Printer, X, Receipt } from 'lucide-react';
+import { Search, ShoppingCart, Check, Plus, Minus, Printer, X, Receipt, Trash2, AlertTriangle, Download, Send, Share2 } from 'lucide-react';
 
 function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
+  const [activeTab, setActiveTab] = useState('terminal'); // 'terminal' or 'history'
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [lastBill, setLastBill] = useState(null);
+  const [bills, setBills] = useState([]);
+
+  // Buyer Info states
+  const [buyerName, setBuyerName] = useState('');
+  const [buyerPhone, setBuyerPhone] = useState('');
+  const [buyerAddress, setBuyerAddress] = useState('');
+
+  // Toast Notification states
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('success'); // 'success' or 'error'
+
+  const showSuccessToast = (msg) => {
+    setToastMessage(msg);
+    setToastType('success');
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
+
+  const showErrorToast = (msg) => {
+    setToastMessage(msg);
+    setToastType('error');
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
 
   useEffect(() => {
      if (searchTerm.trim().length > 0) {
@@ -20,18 +46,72 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
      }
   }, [searchTerm, products]);
 
+  const fetchBills = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch('http://localhost:3000/api/user/products/bills', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setBills(data);
+      }
+    } catch(e) {
+      console.error("Failed to fetch billing history:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'history') {
+      fetchBills();
+    }
+  }, [activeTab]);
+
   const addToCart = (product) => {
+     const maxQty = parseInt(product.quantity || '0', 10);
+     if (maxQty <= 0) {
+        showErrorToast("This item is Out of Stock!");
+        return;
+     }
+
      const exists = cart.find(item => item.id === product.id);
      if (exists) {
+        if (exists.quantity >= maxQty) {
+           showErrorToast(`Only ${maxQty} units of this item are available in stock.`);
+           return;
+        }
         setCart(cart.map(item => item.id === product.id ? {...item, quantity: item.quantity + 1} : item));
      } else {
-        setCart([...cart, {...product, quantity: 1}]);
+        setCart([...cart, {...product, quantity: 1, availableStock: maxQty}]);
      }
      setSearchTerm('');
   };
 
   const updateQty = (id, delta) => {
-     setCart(cart.map(item => item.id === id ? {...item, quantity: Math.max(1, item.quantity + delta)} : item));
+     let exceeded = false;
+     let maxQty = 0;
+     const newCart = cart.map(item => {
+        if (item.id === id) {
+           const newQty = item.quantity + delta;
+           if (delta > 0 && newQty > item.availableStock) {
+              exceeded = true;
+              maxQty = item.availableStock;
+              return item;
+           }
+           return { ...item, quantity: Math.max(1, newQty) };
+        }
+        return item;
+     });
+
+     if (exceeded) {
+        showErrorToast(`Only ${maxQty} items are in stock!`);
+     } else {
+        setCart(newCart);
+     }
+  };
+
+  const removeFromCart = (id) => {
+     setCart(cart.filter(item => item.id !== id));
   };
 
   const handleCheckout = async () => {
@@ -43,48 +123,167 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                'Content-Type': 'application/json',
                'Authorization': `Bearer ${token}`
              },
-             body: JSON.stringify(cart.map(item => ({ id: item.id, quantity: item.quantity })))
+             body: JSON.stringify({
+               cart: cart.map(item => ({ id: item.id, quantity: item.quantity })),
+               buyerName,
+               buyerPhone,
+               buyerAddress,
+               hasGst: !!userProfile?.gstNumber
+             })
          });
          if (res.ok) {
-            // Save transaction info for the printable invoice modal
-            setLastBill({
-              id: 'TXN-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
-              date: Date.now(),
-              items: [...cart],
-              total: totalAmount
-            });
+            const data = await res.json();
+            // Clear inputs
+            setBuyerName('');
+            setBuyerPhone('');
+            setBuyerAddress('');
             setCart([]);
+            setLastBill(data.bill); // Use structured bill returned from backend
             onSaleSuccess();
+            fetchBills(); // Refresh history
          }
      } catch (e) {
         console.error("Checkout failed:", e);
      }
   };
 
-  const totalAmount = cart.reduce((acc, item) => acc + (parseFloat(item.mrp || 0) * item.quantity), 0);
+  const hasGst = !!userProfile?.gstNumber;
+  const subtotal = cart.reduce((acc, item) => acc + (parseFloat(item.mrp || 0) * item.quantity), 0);
+  const gstAmount = hasGst ? subtotal * 0.18 : 0;
+  const totalAmount = subtotal + gstAmount;
 
   const handlePrint = () => {
      window.print();
   };
 
+  const formatDate = (timestamp) => {
+    if (!timestamp) return '';
+    const dateObj = new Date(timestamp);
+    return dateObj.toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    }).replace(/am/i, 'am').replace(/pm/i, 'pm');
+  };
+
+  const shareWhatsApp = (bill) => {
+    const isGst = bill.hasGst !== undefined ? !!bill.hasGst : !!userProfile?.gstNumber;
+    const finalTotal = isGst ? bill.total : bill.subtotal;
+    
+    let itemsText = bill.items.map(item => {
+      const rate = parseFloat(item.mrp || 0);
+      const qty = item.quantity || 1;
+      return `• ${item.name} (${qty} x ₹${rate.toFixed(2)}) = ₹${(rate * qty).toFixed(2)}`;
+    }).join('\n');
+
+    const shareText = `*INVOICE FROM ${userProfile?.businessName || 'Test Warehouse'}*\n` +
+      `-------------------------------------------\n` +
+      `*Order ID:* ${bill.id}\n` +
+      `*Date:* ${formatDate(bill.date)}\n` +
+      `-------------------------------------------\n` +
+      `*Items:*\n${itemsText}\n` +
+      `-------------------------------------------\n` +
+      `${isGst ? `*Subtotal:* ₹${bill.subtotal.toFixed(2)}\n*GST (18%):* ₹${bill.gst.toFixed(2)}\n` : ''}` +
+      `*TOTAL AMOUNT:* ₹${finalTotal.toFixed(2)}\n` +
+      `-------------------------------------------\n` +
+      `Thank you for shopping with us!`;
+
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const shareSystem = async (bill) => {
+    const isGst = bill.hasGst !== undefined ? !!bill.hasGst : !!userProfile?.gstNumber;
+    const finalTotal = isGst ? bill.total : bill.subtotal;
+
+    const shareText = `Invoice from ${userProfile?.businessName || 'Test Warehouse'} - Order: ${bill.id} - Total: ₹${finalTotal.toFixed(2)}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Invoice ${bill.id}`,
+          text: shareText,
+          url: window.location.origin
+        });
+      } catch (error) {
+        console.log('Error sharing:', error);
+      }
+    }
+  };
+
+  const triggerPrintForBill = (bill) => {
+     setLastBill(bill);
+     setTimeout(() => {
+        window.print();
+     }, 150);
+  };
+
   return (
-     <div className="p-4 md:p-8 flex-1 flex flex-col lg:flex-row gap-6 lg:gap-8 overflow-y-auto bg-[#F8FAFC]">
+     <div className="p-4 md:p-8 flex-1 flex flex-col overflow-y-auto bg-[#F8FAFC]">
         {/* Style injection to enable clean document printing */}
         <style>{`
+          /* On-screen Theme Variables for Invoice */
+          :root {
+            --inv-bg: #ffffff;
+            --inv-border: #e2e8f0;
+            --inv-bg-alt: #f8fafc;
+            --inv-text-primary: #1e293b;
+            --inv-text-secondary: #475569;
+            --inv-text-muted: #94a3b8;
+          }
+          
+          .dark-theme {
+            --inv-bg: #1e293b;
+            --inv-border: #334155;
+            --inv-bg-alt: #0f172a;
+            --inv-text-primary: #f8fafc;
+            --inv-text-secondary: #cbd5e1;
+            --inv-text-muted: #94a3b8;
+          }
+
           @media print {
             /* Hide everything by default */
             body * {
-              visibility: hidden;
+              visibility: hidden !important;
             }
-            /* Render ONLY the invoice container and its nested children */
-            #printable-invoice, #printable-invoice * {
-              visibility: visible;
+            /* Render ONLY the overlay wrapper, invoice container and its nested children */
+            .print-modal-overlay,
+            #printable-invoice, 
+            #printable-invoice * {
+              visibility: visible !important;
+            }
+            /* Reset modal overlay positioning and background so it is transparent and fits page */
+            .print-modal-overlay {
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              height: auto !important;
+              background: white !important;
+              backdrop-filter: none !important;
+              -webkit-backdrop-filter: none !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              display: block !important;
+              overflow: visible !important;
             }
             #printable-invoice {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
+              /* Always force white bg and dark text for physical print */
+              --inv-bg: #ffffff !important;
+              --inv-border: #e2e8f0 !important;
+              --inv-bg-alt: #f8fafc !important;
+              --inv-text-primary: #1e293b !important;
+              --inv-text-secondary: #475569 !important;
+              --inv-text-muted: #94a3b8 !important;
+
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              max-width: 100% !important;
               border: none !important;
               box-shadow: none !important;
               padding: 0 !important;
@@ -93,204 +292,539 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
             .no-print-btn {
               display: none !important;
             }
+            /* Force landscape layout for printable invoices */
+            @page {
+              size: landscape;
+              margin: 10mm;
+            }
+            /* Prevent parent element clipping */
+            html, body, #root, #root > div {
+              overflow: visible !important;
+              height: auto !important;
+            }
           }
         `}</style>
 
-        <div className="flex-[2] min-w-full lg:min-w-[400px]">
-           <h1 className="m-0 text-3xl font-extrabold tracking-tight text-indigo-600 mb-6">
+        {/* Sales Terminal Header */}
+        <div className="flex flex-col mb-4 no-print-btn text-left">
+           <h1 className="m-0 text-3xl font-extrabold tracking-tight text-indigo-600">
               Sales Terminal
            </h1>
-           <div className="relative mt-2">
-              <div className="relative">
-                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
-                 <input 
-                    type="text" 
-                    placeholder="Scan or Search Registry..." 
-                    value={searchTerm} 
-                    onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full p-4 pl-12 text-sm text-slate-800 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-xl outline-none transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
-                 />
-              </div>
-              {searchResults.length > 0 && (
-                 <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
-                    {searchResults.map(p => (
-                       <div 
-                         key={p.id} 
-                         className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0" 
-                         onClick={() => addToCart(p)}
-                       >
-                          <div>
-                             <div className="font-bold text-slate-800 text-sm">{p.name}</div>
-                             <div className="text-xs text-slate-500 mt-0.5">ID: {p.productId || '---'}</div>
-                          </div>
-                          <div className="text-indigo-600 font-bold text-sm">₹{p.mrp}</div>
-                       </div>
-                    ))}
-                 </div>
-              )}
+           {/* Sub Tabs */}
+           <div className="flex gap-6 border-b border-slate-100 pb-3 mt-4">
+             <button 
+               onClick={() => setActiveTab('terminal')}
+               className={`pb-1 text-sm font-bold border-none bg-transparent cursor-pointer transition-all ${activeTab === 'terminal' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+               style={{ borderBottom: activeTab === 'terminal' ? '2px solid var(--primary)' : '2px solid transparent', borderRadius: 0 }}
+             >
+               Terminal
+             </button>
+             <button 
+               onClick={() => setActiveTab('history')}
+               className={`pb-1 text-sm font-bold border-none bg-transparent cursor-pointer transition-all ${activeTab === 'history' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+               style={{ borderBottom: activeTab === 'history' ? '2px solid var(--primary)' : '2px solid transparent', borderRadius: 0 }}
+             >
+               Billing History
+             </button>
            </div>
         </div>
- 
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] flex-1 min-w-full lg:min-w-[350px] p-6 flex flex-col justify-between">
-           <div>
-              <h2 className="m-0 text-slate-800 text-lg font-bold mb-6 flex items-center gap-2">
-                 <ShoppingCart size={20} className="text-indigo-500" /> Payload Batch
-              </h2>
-              <div className="flex flex-col gap-3">
-                 {cart.length === 0 ? (
-                   <p className="text-slate-500 text-sm italic bg-slate-50 p-4 rounded-xl text-center border border-slate-100">Cart is empty.</p>
-                 ) : (
-                   cart.map(item => (
-                      <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
-                         <div className="flex-1 min-w-0 pr-2">
-                            <div className="font-bold text-sm text-slate-800 truncate">{item.name}</div>
-                            <div className="text-xs text-indigo-600 font-semibold mt-0.5">₹{item.mrp}</div>
-                         </div>
-                         <div className="flex items-center gap-3">
-                            <button onClick={() => updateQty(item.id, -1)} className="bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 w-7 h-7 rounded-md flex items-center justify-center cursor-pointer transition-colors shadow-sm">
-                               <Minus size={14} />
-                            </button>
-                            <span className="font-bold text-slate-800 text-sm min-w-[20px] text-center">{item.quantity}</span>
-                            <button onClick={() => updateQty(item.id, 1)} className="bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 w-7 h-7 rounded-md flex items-center justify-center cursor-pointer transition-colors shadow-sm">
-                               <Plus size={14} />
-                            </button>
-                         </div>
+
+        {activeTab === 'terminal' ? (
+           <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 flex-1">
+              <div className="flex-[2] min-w-[320px] no-print-btn text-left">
+                 <div className="relative mt-2">
+                    <div className="relative">
+                       <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                       <input 
+                          type="text" 
+                          placeholder="Scan Barcode or Search SKU / Name..." 
+                          value={searchTerm} 
+                          onChange={e => setSearchTerm(e.target.value)}
+                          className="w-full p-4 pl-12 text-sm text-slate-800 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-xl outline-none transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
+                       />
+                    </div>
+                    {searchResults.length > 0 && (
+                       <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                          {searchResults.map(p => {
+                             const qty = parseInt(p.quantity || '0', 10);
+                             const isOutOfStock = isNaN(qty) || qty <= 0;
+                             return (
+                               <div 
+                                 key={p.id} 
+                                 className={`flex items-center justify-between p-4 transition-colors border-b border-slate-100 last:border-b-0 ${isOutOfStock ? 'bg-red-50/40 hover:bg-red-50/60 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-50'}`} 
+                                 onClick={() => {
+                                   if (isOutOfStock) {
+                                     showErrorToast("This item is Out of Stock!");
+                                     return;
+                                   }
+                                   addToCart(p);
+                                 }}
+                               >
+                                  <div className="flex flex-col text-left">
+                                     <div className="flex items-center gap-2">
+                                        <span className={`font-bold text-sm ${isOutOfStock ? 'text-red-800 line-through decoration-red-300' : 'text-slate-800'}`}>{p.name}</span>
+                                        {isOutOfStock && (
+                                           <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Out of Stock</span>
+                                        )}
+                                     </div>
+                                     <div className="text-xs text-slate-400 font-semibold mt-0.5">SKU: {p.productId || '---'}</div>
+                                  </div>
+                                  <div className={`${isOutOfStock ? 'text-red-500' : 'text-indigo-600'} font-bold text-sm`}>₹{p.mrp}</div>
+                               </div>
+                             );
+                          })}
+                       </div>
+                    )}
+                 </div>
+              </div>
+       
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] flex-1 min-w-[320px] p-6 flex flex-col justify-between no-print-btn">
+                 <div>
+                    <h2 className="m-0 text-slate-800 text-lg font-bold mb-6 flex items-center gap-2 text-left">
+                       <ShoppingCart size={20} className="text-indigo-500" /> Payload Batch
+                    </h2>
+                    <div className="flex flex-col gap-3">
+                       {cart.length === 0 ? (
+                         <p className="text-slate-500 text-sm italic bg-slate-50 p-4 rounded-xl text-center border border-slate-100">Cart is empty.</p>
+                       ) : (
+                         cart.map(item => (
+                            <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                               <div className="flex-1 min-w-0 pr-4 text-left">
+                                  <div className="font-bold text-sm text-slate-800 truncate">{item.name}</div>
+                                  <div className="text-xs text-indigo-600 font-semibold mt-0.5">₹{item.mrp}</div>
+                               </div>
+                               <div className="flex items-center gap-3">
+                                  <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1 gap-2">
+                                     <button 
+                                       onClick={() => updateQty(item.id, -1)} 
+                                       className="hover:bg-slate-100 border-none bg-transparent text-slate-700 w-6 h-6 rounded flex items-center justify-center cursor-pointer transition-colors"
+                                     >
+                                        <Minus size={12} />
+                                     </button>
+                                     <span className="font-bold text-slate-800 text-xs min-w-[16px] text-center">{item.quantity}</span>
+                                     <button 
+                                       onClick={() => updateQty(item.id, 1)} 
+                                       className="hover:bg-slate-100 border-none bg-transparent text-slate-700 w-6 h-6 rounded flex items-center justify-center cursor-pointer transition-colors"
+                                     >
+                                        <Plus size={12} />
+                                     </button>
+                                  </div>
+                                  <button 
+                                    onClick={() => removeFromCart(item.id)} 
+                                    className="hover:bg-red-50 hover:text-red-500 border border-slate-200 text-slate-400 w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-colors bg-white"
+                                  >
+                                     <Trash2 size={14} />
+                                  </button>
+                               </div>
+                            </div>
+                         ))
+                       )}
+                    </div>
+
+                    {cart.length > 0 && (
+                      <div className="border-t border-slate-100 mt-6 pt-6 flex flex-col gap-4 text-left">
+                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Buyer Info (Optional)</span>
+                         <input 
+                           type="text" 
+                           placeholder="Buyer Name" 
+                           value={buyerName}
+                           onChange={e => setBuyerName(e.target.value)}
+                           className="w-full p-3.5 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl outline-none transition-all placeholder-slate-400"
+                         />
+                         <input 
+                           type="text" 
+                           placeholder="Buyer Phone Number" 
+                           value={buyerPhone}
+                           onChange={e => setBuyerPhone(e.target.value)}
+                           className="w-full p-3.5 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl outline-none transition-all placeholder-slate-400"
+                         />
+                         <input 
+                           type="text" 
+                           placeholder="Shipping / Billing Address" 
+                           value={buyerAddress}
+                           onChange={e => setBuyerAddress(e.target.value)}
+                           className="w-full p-3.5 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl outline-none transition-all placeholder-slate-400"
+                         />
                       </div>
-                   ))
+                    )}
+                 </div>
+       
+                 <div className="border-t border-slate-100 mt-8 pt-6">
+                    <div className="flex flex-col gap-2 mb-4 text-left text-sm">
+                       {hasGst ? (
+                          <>
+                             <div className="flex justify-between items-center text-xs font-semibold text-slate-400">
+                                <span>Subtotal:</span>
+                                <span className="font-mono text-slate-700">₹{subtotal.toFixed(2)}</span>
+                             </div>
+                             <div className="flex justify-between items-center text-xs font-semibold text-slate-400">
+                                <span>GST (18%):</span>
+                                <span className="font-mono text-emerald-600">+₹{gstAmount.toFixed(2)}</span>
+                             </div>
+                          </>
+                       ) : (
+                          <div className="flex justify-between items-center text-xs font-semibold text-slate-400">
+                             <span>Items Price:</span>
+                             <span className="font-mono text-slate-700">₹{subtotal.toFixed(2)}</span>
+                          </div>
+                       )}
+                    </div>
+                    <div className="flex justify-between items-center text-xl font-extrabold text-slate-800 border-t border-slate-100 pt-4">
+                       <span>Total:</span>
+                       <span className="text-indigo-600 font-mono">₹{totalAmount.toFixed(2)}</span>
+                    </div>
+                    <button 
+                      className={`w-full mt-6 py-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all border-none ${cart.length === 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-md hover:shadow-lg'}`}
+                      disabled={cart.length === 0} 
+                      onClick={handleCheckout}
+                    >
+                      <Check size={18} /> Confirm Terminal Sync
+                    </button>
+                 </div>
+              </div>
+           </div>
+        ) : (
+           <div className="w-full no-print-btn text-left">
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6">
+                 <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                    <Receipt size={22} className="text-indigo-500" /> Billing Transaction History
+                 </h2>
+                 {bills.length === 0 ? (
+                    <p className="text-slate-500 italic bg-slate-50 p-6 rounded-xl text-center border border-slate-100">
+                       No billing transactions recorded yet.
+                    </p>
+                 ) : (
+                    <div className="overflow-x-auto">
+                       <table className="w-full text-left text-sm border-collapse">
+                          <thead>
+                             <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                                <th className="p-4 pl-6">Invoice ID</th>
+                                <th className="p-4">Date</th>
+                                <th className="p-4">Buyer Details</th>
+                                <th className="p-4">Items Count</th>
+                                <th className="p-4">Total Amount</th>
+                                <th className="p-4 text-right pr-6">Action</th>
+                             </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                             {bills.map(b => (
+                                <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
+                                   <td className="p-4 pl-6 font-mono font-bold text-xs text-indigo-600">
+                                      {b.id}
+                                   </td>
+                                   <td className="p-4 text-xs text-slate-600">
+                                      {formatDate(b.date)}
+                                   </td>
+                                   <td className="p-4 text-xs">
+                                      {b.buyerName ? (
+                                         <div className="flex flex-col gap-0.5">
+                                            <span className="font-bold text-slate-800">{b.buyerName}</span>
+                                            {b.buyerPhone && <span className="text-[10px] text-slate-400">{b.buyerPhone}</span>}
+                                         </div>
+                                      ) : (
+                                         <span className="text-slate-400 italic">None</span>
+                                      )}
+                                   </td>
+                                   <td className="p-4 text-xs font-bold text-slate-700">
+                                      {b.items?.reduce((acc, it) => acc + (it.quantity || 0), 0) || 0} units
+                                   </td>
+                                   <td className="p-4 text-sm font-extrabold text-slate-800">
+                                      ₹{b.total?.toFixed(2)}
+                                   </td>
+                                   <td className="p-4 text-right pr-6 flex items-center justify-end gap-2">
+                                      <button 
+                                         onClick={() => setLastBill(b)}
+                                         className="py-1.5 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-none rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 inline-flex"
+                                         title="View Invoice"
+                                      >
+                                         <Receipt size={14} /> View Invoice
+                                      </button>
+                                      <button 
+                                         onClick={() => triggerPrintForBill(b)}
+                                         className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg cursor-pointer transition-colors border-none inline-flex"
+                                         title="Download PDF / Print"
+                                      >
+                                         <Download size={14} />
+                                      </button>
+                                      <button 
+                                         onClick={() => shareWhatsApp(b)}
+                                         className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg cursor-pointer transition-colors border-none inline-flex"
+                                         title="Share on WhatsApp"
+                                      >
+                                         <Send size={14} />
+                                      </button>
+                                   </td>
+                                </tr>
+                             ))}
+                          </tbody>
+                       </table>
+                    </div>
                  )}
               </div>
            </div>
- 
-           <div className="border-t border-slate-100 mt-8 pt-6">
-              <div className="flex justify-between items-center text-xl font-extrabold text-slate-800">
-                 <span>Total:</span>
-                 <span className="text-indigo-600">₹{totalAmount.toFixed(2)}</span>
-              </div>
-              <button 
-                className={`w-full mt-6 py-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all border-none ${cart.length === 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-md hover:shadow-lg'}`}
-                disabled={cart.length === 0} 
-                onClick={handleCheckout}
-              >
-                <Check size={18} /> Confirm Terminal Sync
-              </button>
-           </div>
-        </div>
-
+        )}
         {/* Printable Tax Invoice Modal */}
-        {lastBill && (
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[1000] flex items-center justify-center p-4 overflow-y-auto no-print-btn">
-            <div 
-              id="printable-invoice" 
-              className="bg-white text-slate-800 rounded-2xl w-full max-w-lg p-6 md:p-8 shadow-2xl border border-slate-100 flex flex-col gap-6"
-            >
-              {/* Receipt Header */}
-              <div className="flex justify-between items-start border-b border-slate-100 pb-5">
-                <div className="flex flex-col gap-1.5 flex-1 pr-4">
-                  <h3 className="m-0 text-xl font-extrabold text-indigo-600 leading-tight uppercase">
-                    {userProfile?.businessName || 'Business Name'}
-                  </h3>
-                  <p className="m-0 text-xs text-slate-500 font-medium whitespace-pre-line leading-relaxed">
-                    {userProfile?.businessAddress || 'Address details not set'}
-                  </p>
-                  {userProfile?.gstNumber && (
-                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono font-bold tracking-wider w-max mt-1">
-                      GSTIN: {userProfile.gstNumber}
-                    </span>
-                  )}
+        {lastBill && (() => {
+          // If invoice has a saved gst value > 0 and userProfile has gstNumber, show GST.
+          // Otherwise, fall back to checking if userProfile.gstNumber exists.
+          // This allows viewing past bills with/without GST depending on their saved structure as well.
+          const showGst = lastBill.hasGst !== undefined ? !!lastBill.hasGst : !!userProfile?.gstNumber;
+          return (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[1000] flex items-center justify-center p-4 overflow-y-auto print-modal-overlay">
+              <div 
+                id="printable-invoice" 
+                className="rounded-2xl w-full max-w-4xl p-6 md:p-8 shadow-2xl border flex flex-col gap-6"
+                style={{ 
+                  backgroundColor: 'var(--inv-bg)', 
+                  borderColor: 'var(--inv-border)', 
+                  color: 'var(--inv-text-secondary)',
+                  transition: 'none'
+                }}
+              >
+                {/* Receipt Header Grid */}
+                <div style={{ border: '1px solid var(--inv-border)', borderRadius: '12px', padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--inv-bg-alt)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                     <span style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        {showGst ? 'Tax Invoice' : 'Invoice'}
+                     </span>
+                     <span style={{ fontSize: '0.65rem', color: 'var(--inv-text-muted)', fontWeight: 'bold', textTransform: 'uppercase', marginTop: '2px' }}>
+                        Original for Recipient
+                     </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '2rem', fontSize: '0.75rem', textAlign: 'left', color: 'var(--inv-text-secondary)' }}>
+                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        <div><strong>Order ID:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--inv-text-primary)' }}>{lastBill.id}</span></div>
+                        <div><strong>Order Date:</strong> <span style={{ color: 'var(--inv-text-primary)' }}>{formatDate(lastBill.date)}</span></div>
+                     </div>
+                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        <div><strong>Invoice No:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--inv-text-primary)' }}>{lastBill.id}</span></div>
+                        <div><strong>Invoice Date:</strong> <span style={{ color: 'var(--inv-text-primary)' }}>{formatDate(lastBill.date)}</span></div>
+                        {showGst && userProfile?.gstNumber && (
+                           <div><strong>GSTIN:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--inv-text-primary)', fontWeight: 'bold' }}>{userProfile.gstNumber}</span></div>
+                        )}
+                     </div>
+                  </div>
                 </div>
-                {userProfile?.businessLogo ? (
-                  <div className="w-16 h-16 rounded-xl border border-slate-200/50 flex items-center justify-center overflow-hidden bg-slate-50 shrink-0 shadow-sm">
-                    <img src={userProfile.businessLogo} alt="Logo" className="w-full h-full object-cover" />
+
+                {/* Parties Details Grid */}
+                <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem', flexWrap: 'wrap' }}>
+                   {/* Sold By Info Block */}
+                   <div style={{ flex: '1 1 300px', border: '1px solid var(--inv-border)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', textAlign: 'left', fontSize: '0.75rem', backgroundColor: 'var(--inv-bg)', color: 'var(--inv-text-secondary)' }}>
+                      <strong style={{ textTransform: 'uppercase', color: 'var(--inv-text-muted)', fontSize: '0.65rem', letterSpacing: '1px', marginBottom: '0.25rem' }}>Sold By</strong>
+                      <strong style={{ fontSize: '0.95rem', color: 'var(--inv-text-primary)' }}>{userProfile?.businessName || 'test warehouse'}</strong>
+                      <div>{userProfile?.businessAddress || 'Baraula sector 49, noida, UP'}</div>
+                      <div>Phone: {userProfile?.phone || '1234567890'}</div>
+                      {userProfile?.email && <div>Email: {userProfile.email}</div>}
+                   </div>
+
+                   {/* Billed To (Buyer Info) */}
+                   <div style={{ flex: '1 1 300px', border: '1px solid var(--inv-border)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', textAlign: 'left', fontSize: '0.75rem', backgroundColor: 'var(--inv-bg)', color: 'var(--inv-text-secondary)', minHeight: '100%' }}>
+                      <strong style={{ textTransform: 'uppercase', color: 'var(--inv-text-muted)', fontSize: '0.65rem', letterSpacing: '1px', marginBottom: '0.25rem' }}>Billed To</strong>
+                      {lastBill.buyerName || lastBill.buyerPhone || lastBill.buyerAddress ? (
+                         <>
+                            {lastBill.buyerName && <div><strong>Name:</strong> <span style={{ color: 'var(--inv-text-primary)', fontWeight: 'bold' }}>{lastBill.buyerName}</span></div>}
+                            {lastBill.buyerPhone && <div><strong>Phone:</strong> <span style={{ color: 'var(--inv-text-primary)', fontWeight: 'bold' }}>{lastBill.buyerPhone}</span></div>}
+                            {lastBill.buyerAddress && <div><strong>Address:</strong> <span style={{ color: 'var(--inv-text-primary)', fontWeight: 'bold' }}>{lastBill.buyerAddress}</span></div>}
+                         </>
+                      ) : (
+                         <div style={{ color: 'var(--inv-text-muted)', fontStyle: 'italic', margin: 'auto 0' }}>Walk-in Customer / Retail Invoice</div>
+                      )}
+                   </div>
+                </div>
+
+                {/* Invoice Items Table */}
+                {showGst ? (
+                  /* 7-column GST Invoice Table */
+                  <div style={{ border: '1px solid var(--inv-border)', borderRadius: '12px', overflow: 'hidden' }}>
+                     <table className="w-full text-left text-xs whitespace-nowrap" style={{ borderCollapse: 'collapse', margin: 0, backgroundColor: 'var(--inv-bg)' }}>
+                        <thead>
+                           <tr style={{ background: 'var(--inv-bg-alt)', borderBottom: '1px solid var(--inv-border)' }}>
+                              <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem' }}>PRODUCT</th>
+                              <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem' }}>DESCRIPTION</th>
+                              <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'center' }}>QTY</th>
+                              <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'right' }}>GROSS AMOUNT</th>
+                              <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'right' }}>TAXABLE VALUE</th>
+                              <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'right' }}>GST (18%)</th>
+                              <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'right' }}>TOTAL</th>
+                           </tr>
+                        </thead>
+                        <tbody>
+                           {lastBill.items.map((item, idx) => {
+                              const rate = parseFloat(item.mrp || 0);
+                              const qty = item.quantity || 1;
+                              const gross = rate * qty;
+                              const taxable = gross;
+                              const itemGst = taxable * 0.18;
+                              const itemTotal = taxable + itemGst;
+
+                              const matchingProduct = products.find(p => p.id === item.id);
+                              const detailsText = matchingProduct?.details || 'No details provided';
+
+                              return (
+                                 <tr key={item.id || idx} style={{ borderBottom: '1px solid var(--inv-border)' }}>
+                                    <td style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-primary)', textAlign: 'left' }}>
+                                       {item.name}
+                                    </td>
+                                    <td style={{ padding: '0.85rem 1rem', color: 'var(--inv-text-secondary)', fontSize: '0.65rem', textAlign: 'left' }}>
+                                       <div>{detailsText}</div>
+                                       <div style={{ fontSize: '0.6rem', color: 'var(--inv-text-muted)' }}>GST Rate: 18.00%</div>
+                                    </td>
+                                    <td style={{ padding: '0.85rem 1rem', textAlign: 'center', fontWeight: 'bold', color: 'var(--inv-text-primary)' }}>
+                                       {qty}
+                                    </td>
+                                    <td style={{ padding: '0.85rem 1rem', textAlign: 'right', fontFamily: 'monospace', color: 'var(--inv-text-secondary)' }}>
+                                       ₹{gross.toFixed(2)}
+                                    </td>
+                                    <td style={{ padding: '0.85rem 1rem', textAlign: 'right', fontFamily: 'monospace', color: 'var(--inv-text-secondary)' }}>
+                                       ₹{taxable.toFixed(2)}
+                                    </td>
+                                    <td style={{ padding: '0.85rem 1rem', textAlign: 'right', color: '#10B981', fontFamily: 'monospace' }}>
+                                       ₹{itemGst.toFixed(2)}
+                                    </td>
+                                    <td style={{ padding: '0.85rem 1rem', textAlign: 'right', fontWeight: 'bold', color: 'var(--inv-text-primary)', fontFamily: 'monospace' }}>
+                                       ₹{itemTotal.toFixed(2)}
+                                    </td>
+                                 </tr>
+                              );
+                           })}
+                           {/* Summary Row */}
+                           <tr style={{ background: 'var(--inv-bg-alt)', fontWeight: 'bold', borderTop: '2px solid var(--inv-border)' }}>
+                              <td colSpan="3" style={{ padding: '1rem', textAlign: 'left', color: 'var(--inv-text-primary)' }}>
+                                 TOTAL QTY: {lastBill.items.reduce((acc, item) => acc + (item.quantity || 0), 0)}
+                              </td>
+                              <td colSpan="4" style={{ padding: '1rem', textAlign: 'right', fontSize: '0.85rem', color: 'var(--inv-text-primary)' }}>
+                                 TOTAL PRICE: <span style={{ fontSize: '1rem', color: 'var(--primary)', fontFamily: 'monospace' }}>₹{lastBill.total.toFixed(2)}</span>
+                                 <div style={{ fontWeight: 'normal', marginTop: '2px', fontSize: '0.6rem', color: 'var(--inv-text-muted)' }}>
+                                    All values are in INR
+                                 </div>
+                              </td>
+                           </tr>
+                        </tbody>
+                     </table>
                   </div>
                 ) : (
-                  <div className="w-16 h-16 rounded-xl bg-indigo-50 border border-indigo-100/50 flex items-center justify-center text-indigo-600 shrink-0">
-                    <Receipt size={28} />
+                  /* 5-column Standard Invoice Table */
+                  <div style={{ border: '1px solid var(--inv-border)', borderRadius: '12px', overflow: 'hidden' }}>
+                     <table className="w-full text-left text-xs whitespace-nowrap" style={{ borderCollapse: 'collapse', margin: 0, backgroundColor: 'var(--inv-bg)' }}>
+                        <thead>
+                           <tr style={{ background: 'var(--inv-bg-alt)', borderBottom: '1px solid var(--inv-border)' }}>
+                              <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem' }}>PRODUCT</th>
+                              <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem' }}>DESCRIPTION</th>
+                              <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'center' }}>QTY</th>
+                              <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'right' }}>RATE (₹)</th>
+                              <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'right' }}>TOTAL</th>
+                           </tr>
+                        </thead>
+                        <tbody>
+                           {lastBill.items.map((item, idx) => {
+                              const rate = parseFloat(item.mrp || 0);
+                              const qty = item.quantity || 1;
+                              const itemTotal = rate * qty;
+
+                              const matchingProduct = products.find(p => p.id === item.id);
+                              const detailsText = matchingProduct?.details || 'No details provided';
+
+                              return (
+                                 <tr key={item.id || idx} style={{ borderBottom: '1px solid var(--inv-border)' }}>
+                                    <td style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-primary)', textAlign: 'left' }}>
+                                       {item.name}
+                                    </td>
+                                    <td style={{ padding: '0.85rem 1rem', color: 'var(--inv-text-secondary)', fontSize: '0.65rem', textAlign: 'left' }}>
+                                       <div>{detailsText}</div>
+                                    </td>
+                                    <td style={{ padding: '0.85rem 1rem', textAlign: 'center', fontWeight: 'bold', color: 'var(--inv-text-primary)' }}>
+                                       {qty}
+                                    </td>
+                                    <td style={{ padding: '0.85rem 1rem', textAlign: 'right', fontFamily: 'monospace', color: 'var(--inv-text-secondary)' }}>
+                                       ₹{rate.toFixed(2)}
+                                    </td>
+                                    <td style={{ padding: '0.85rem 1rem', textAlign: 'right', fontWeight: 'bold', color: 'var(--inv-text-primary)', fontFamily: 'monospace' }}>
+                                       ₹{itemTotal.toFixed(2)}
+                                    </td>
+                                 </tr>
+                              );
+                           })}
+                           {/* Summary Row */}
+                           <tr style={{ background: 'var(--inv-bg-alt)', fontWeight: 'bold', borderTop: '2px solid var(--inv-border)' }}>
+                              <td colSpan="2" style={{ padding: '1rem', textAlign: 'left', color: 'var(--inv-text-primary)' }}>
+                                 TOTAL QTY: {lastBill.items.reduce((acc, item) => acc + (item.quantity || 0), 0)}
+                              </td>
+                              <td colSpan="3" style={{ padding: '1rem', textAlign: 'right', fontSize: '0.85rem', color: 'var(--inv-text-primary)' }}>
+                                 TOTAL PRICE: <span style={{ fontSize: '1rem', color: 'var(--primary)', fontFamily: 'monospace' }}>₹{lastBill.subtotal.toFixed(2)}</span>
+                                 <div style={{ fontWeight: 'normal', marginTop: '2px', fontSize: '0.6rem', color: 'var(--inv-text-muted)' }}>
+                                    All values are in INR
+                                 </div>
+                              </td>
+                           </tr>
+                        </tbody>
+                     </table>
                   </div>
                 )}
-              </div>
 
-              {/* Contact Details (conditional visibility) */}
-              {(userProfile?.showPhoneOnBills || userProfile?.showEmailOnBills) && (
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-xs flex flex-col gap-1 text-slate-600">
-                  <span className="font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">Contact Info</span>
-                  {userProfile?.showPhoneOnBills && (
-                    <span className="flex items-center gap-1.5 font-medium">
-                      Phone: <span className="font-bold text-slate-800">{userProfile.phone}</span>
-                    </span>
+                {/* Address / Declaration */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', textAlign: 'left', fontSize: '0.7rem', color: 'var(--inv-text-secondary)' }}>
+                   <div><strong>Seller Registered Address:</strong> {userProfile?.businessName || 'test warehouse'}, {userProfile?.businessAddress || 'Baraula sector 49, noida, UP'}</div>
+                   <div><strong>Declaration:</strong> The goods sold are intended for end user consumption and not for resale.</div>
+                </div>
+
+                {/* Signature Block */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '1rem' }}>
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', textAlign: 'left', fontSize: '0.75rem', color: 'var(--inv-text-muted)' }}>
+                      <div>E. & O.E.</div>
+                      <div>Ordered Through: <strong>Inventory Ant</strong></div>
+                   </div>
+                   <div style={{ border: '1px solid var(--inv-border)', borderRadius: '12px', padding: '1rem', width: '220px', display: 'flex', flexDirection: 'column', justify: 'center', gap: '1.5rem', textAlign: 'center', background: 'var(--inv-bg-alt)' }}>
+                      <span style={{ fontSize: '0.6rem', fontWeight: 'bold', color: 'var(--inv-text-muted)', letterSpacing: '0.5px' }}>AUTHORIZED SIGNATORY</span>
+                      <strong style={{ fontSize: '0.8rem', color: 'var(--inv-text-primary)' }}>{userProfile?.businessName || 'test warehouse'}</strong>
+                   </div>
+                </div>
+
+                {/* Print Close Buttons */}
+                <div className="flex flex-wrap gap-3 pt-2 no-print-btn">
+                  <button 
+                    onClick={handlePrint}
+                    className="flex-1 min-w-[140px] py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer border-none"
+                  >
+                    <Download size={16} /> Download PDF / Print
+                  </button>
+                  
+                  <button 
+                    onClick={() => shareWhatsApp(lastBill)}
+                    className="flex-1 min-w-[140px] py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer border-none"
+                  >
+                    <Send size={16} /> Share on WhatsApp
+                  </button>
+
+                  {navigator.share && (
+                    <button 
+                      onClick={() => shareSystem(lastBill)}
+                      className="flex-1 min-w-[140px] py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer border-none"
+                    >
+                      <Share2 size={16} /> Share Bill
+                    </button>
                   )}
-                  {userProfile?.showEmailOnBills && (
-                    <span className="flex items-center gap-1.5 font-medium">
-                      Email: <span className="font-bold text-slate-800">{userProfile.email}</span>
-                    </span>
-                  )}
-                </div>
-              )}
 
-              {/* Transaction Metadata */}
-              <div className="grid grid-cols-2 gap-4 text-xs font-medium text-slate-500 border-b border-slate-100 pb-4">
-                <div className="flex flex-col gap-0.5">
-                  <span>INVOICE NO:</span>
-                  <span className="font-mono font-bold text-slate-800">{lastBill.id}</span>
+                  <button 
+                    onClick={() => setLastBill(null)}
+                    className="py-3 px-5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer border-none"
+                  >
+                    <X size={14} /> Close
+                  </button>
                 </div>
-                <div className="flex flex-col gap-0.5 text-right">
-                  <span>DATE:</span>
-                  <span className="font-bold text-slate-800">
-                    {new Date(lastBill.date).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-
-              {/* Invoice Items Table */}
-              <div className="flex flex-col flex-1">
-                <div className="flex text-[10px] font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-100">
-                  <span className="flex-[3]">Item details</span>
-                  <span className="flex-1 text-center">Qty</span>
-                  <span className="flex-1 text-right">Rate</span>
-                  <span className="flex-1 text-right">Amount</span>
-                </div>
-
-                <div className="flex flex-col gap-3 py-3 border-b border-slate-100 max-h-48 overflow-y-auto">
-                  {lastBill.items.map((item, idx) => {
-                    const price = parseFloat(item.mrp || 0);
-                    const sub = price * item.quantity;
-                    return (
-                      <div key={item.id || idx} className="flex text-xs font-semibold text-slate-800">
-                        <span className="flex-[3] truncate pr-2" title={item.name}>{item.name}</span>
-                        <span className="flex-1 text-center font-mono">{item.quantity}</span>
-                        <span className="flex-1 text-right font-mono">₹{price.toFixed(2)}</span>
-                        <span className="flex-1 text-right font-mono">₹{sub.toFixed(2)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Subtotal & Totals */}
-                <div className="flex justify-between items-center pt-4 text-slate-800">
-                  <span className="text-sm font-extrabold uppercase">Total Tax Invoice</span>
-                  <span className="text-lg font-black text-indigo-600 font-mono">
-                    ₹{lastBill.total.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Print Close Buttons */}
-              <div className="flex gap-3 pt-2 no-print-btn">
-                <button 
-                  onClick={handlePrint}
-                  className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer border-none"
-                >
-                  <Printer size={16} /> Print / Save PDF
-                </button>
-                <button 
-                  onClick={() => setLastBill(null)}
-                  className="py-3 px-5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer border-none"
-                >
-                  <X size={14} /> Close
-                </button>
               </div>
             </div>
+          );
+        })()}
+
+        {/* Premium Toast Notification */}
+        <div className={`fixed bottom-6 right-1/2 translate-x-1/2 z-[2000] transition-all duration-300 transform ${showToast ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
+          <div className={`px-5 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.2)] flex items-center gap-3 border backdrop-blur-md text-white ${toastType === 'error' ? 'bg-red-900/90 border-red-700/50' : 'bg-slate-900/90 border-slate-700/50'}`}>
+            <div className={`p-1.5 rounded-full ${toastType === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+              {toastType === 'error' ? <AlertTriangle size={18} /> : <Check size={18} />}
+            </div>
+            <span className="text-sm font-bold tracking-wide">{toastMessage}</span>
           </div>
-        )}
+        </div>
      </div>
   );
 }

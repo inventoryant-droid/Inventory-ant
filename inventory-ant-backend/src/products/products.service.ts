@@ -36,7 +36,23 @@ export interface UserSession {
 @Injectable()
 export class ProductsService {
   private readonly filePath = path.join(process.cwd(), 'database.json');
+  private readonly billsPath = path.join(process.cwd(), 'bills.json');
   private readonly userSessions = new Map<string, UserSession>();
+
+  private async getBillsDb(): Promise<any[]> {
+    try {
+      const data = await fs.readFile(this.billsPath, 'utf8');
+      if (!data || !data.trim()) return [];
+      return JSON.parse(data);
+    } catch (e: any) {
+      if (e.code === 'ENOENT') return [];
+      throw e;
+    }
+  }
+
+  private async saveBillsDb(data: any[]): Promise<void> {
+    await fs.writeFile(this.billsPath, JSON.stringify(data, null, 2), 'utf8');
+  }
 
   private getOrCreateSession(userId: string): UserSession {
     const cleanId = userId.trim().toLowerCase();
@@ -757,16 +773,81 @@ export class ProductsService {
     return { success: true, action: payload.actionType, parsedItems: items, auditLog: log };
   }
 
-  async sellProducts(userId: string, cart: any[]): Promise<any> {
+  async sellProducts(userId: string, payload: any): Promise<any> {
+    let cart: any[] = [];
+    let buyerName = '';
+    let buyerPhone = '';
+    let buyerAddress = '';
+
+    if (Array.isArray(payload)) {
+      cart = payload;
+    } else if (payload && Array.isArray(payload.cart)) {
+      cart = payload.cart;
+      buyerName = payload.buyerName || '';
+      buyerPhone = payload.buyerPhone || '';
+      buyerAddress = payload.buyerAddress || '';
+    }
+
     const db = await this.getDb();
+    const billedItems: any[] = [];
+    let subtotal = 0;
+
     for (const c of cart) {
       const idx = db.findIndex(p => p.userId === userId && p.id === c.id);
       if (idx !== -1) {
-        db[idx].quantity = Math.max(0, parseInt(db[idx].quantity || '0', 10) - parseInt(c.quantity, 10)).toString();
+        const product = db[idx];
+        const qtyToSell = parseInt(c.quantity, 10) || 1;
+        product.quantity = Math.max(0, parseInt(product.quantity || '0', 10) - qtyToSell).toString();
+
+        const rate = parseFloat(product.mrp || '0');
+        subtotal += rate * qtyToSell;
+
+        billedItems.push({
+          id: product.id,
+          name: product.name || 'Unknown Item',
+          mrp: product.mrp || '0',
+          quantity: qtyToSell
+        });
       }
     }
+
     await this.saveDb(db);
-    return { success: true };
+
+    // Save transaction to bills.json
+    const hasGst = payload && payload.hasGst !== undefined ? !!payload.hasGst : true;
+    const gstRate = 0.18;
+    const gst = hasGst ? subtotal * gstRate : 0;
+    const total = subtotal + gst;
+    const billId = 'TXN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+
+    const newBill = {
+      id: billId,
+      userId,
+      date: Date.now(),
+      items: billedItems,
+      subtotal,
+      gst,
+      total,
+      buyerName,
+      buyerPhone,
+      buyerAddress,
+      hasGst,
+      hasBuyerInfo: !!(buyerName || buyerPhone || buyerAddress)
+    };
+
+    const billsDb = await this.getBillsDb();
+    billsDb.push(newBill);
+    await this.saveBillsDb(billsDb);
+
+    return { success: true, bill: newBill };
+  }
+
+  async getBills(userId: string): Promise<any[]> {
+    const bills = await this.getBillsDb();
+    const cleanUserId = userId.trim().toLowerCase();
+    return bills
+      .filter(b => (b.userId || '').trim().toLowerCase() === cleanUserId)
+      .sort((a, b) => b.date - a.date);
   }
 
   async findAll(userId: string): Promise<Product[]> {

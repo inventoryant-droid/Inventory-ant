@@ -38,8 +38,14 @@ export class ProductsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('sell')
-  async sellProducts(@Req() req: any, @Body() cart: any[]) {
-    return this.productsService.sellProducts(this.validateUser(req), cart);
+  async sellProducts(@Req() req: any, @Body() payload: any) {
+    return this.productsService.sellProducts(this.validateUser(req), payload);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('bills')
+  async getBills(@Req() req: any) {
+    return this.productsService.getBills(this.validateUser(req));
   }
 
   @UseGuards(JwtAuthGuard)

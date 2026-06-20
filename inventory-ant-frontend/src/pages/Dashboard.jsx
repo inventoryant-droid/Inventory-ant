@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import '../App.css';
 import { getExpiryInfo, getExpKey } from '../utils/expiryHelpers';
-import { Box, AlertTriangle, Layers, BarChart2, TrendingUp, Edit, MapPin, Building, ShieldCheck } from 'lucide-react';
+import { Box, AlertTriangle, Layers, BarChart2, TrendingUp, Edit, MapPin, Building, ShieldCheck, XCircle } from 'lucide-react';
 
 function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner, onGoToProfile, onGoToSettings, userProfile }) {
   const dynamicColumns = useMemo(() => {
@@ -17,7 +17,12 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
   const expKey = getExpKey(dynamicColumns);
   const lowStockCount = products.filter(p => {
     const q = parseInt(p.quantity || '0', 10);
-    return !isNaN(q) && q < 20;
+    return !isNaN(q) && q > 0 && q < 20;
+  }).length;
+
+  const outOfStockCount = products.filter(p => {
+    const q = parseInt(p.quantity || '0', 10);
+    return !isNaN(q) && q === 0;
   }).length;
 
   const totalStock = products.reduce((acc, p) => acc + (parseInt(p.quantity || '0', 10) || 0), 0);
@@ -95,7 +100,7 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
         </div>
       )}
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
         {/* Total SKU Card */}
         <div 
           className="bg-white border border-slate-100 rounded-2xl p-6 flex items-start justify-between cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow" 
@@ -132,6 +137,28 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
            </div>
            <div className={`w-12 h-12 rounded-2xl ${lowStockCount > 0 ? 'bg-amber-50 text-amber-500' : 'bg-slate-50 text-slate-400'} flex items-center justify-center`}>
               <AlertTriangle size={24} strokeWidth={2} />
+           </div>
+        </div>
+
+        {/* Out of Stock Card */}
+        <div 
+          className={`bg-white border ${outOfStockCount > 0 ? 'border-red-200' : 'border-slate-100'} rounded-2xl p-6 flex items-start justify-between cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow`} 
+          onClick={() => onAlertClick('outOfStock')}
+        >
+           <div className="flex flex-col">
+             <div className="flex items-center gap-3">
+               <h3 className="text-slate-400 m-0 uppercase text-[10px] tracking-wider font-bold">Out of Stock</h3>
+             </div>
+             <div className="flex items-center gap-3 my-3">
+                <p className="text-4xl m-0 font-extrabold text-slate-800">{outOfStockCount}</p>
+                {outOfStockCount > 0 && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded uppercase font-bold tracking-wider">Critical</span>}
+             </div>
+             <span className="text-xs text-slate-500 font-medium">
+                Items with zero units remaining.
+             </span>
+           </div>
+           <div className={`w-12 h-12 rounded-2xl ${outOfStockCount > 0 ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-400'} flex items-center justify-center`}>
+              <XCircle size={24} strokeWidth={2} />
            </div>
         </div>
 

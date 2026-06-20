@@ -53,7 +53,19 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
   }, [products]);
 
   const displayProducts = useMemo(() => {
-    if (filterMode === 'lowStock') return products.filter(p => parseInt(p.quantity || '0', 10) < 20);
+    if (filterMode === 'lowStock') {
+      return products.filter(p => {
+        const q = parseInt(p.quantity || '0', 10);
+        return !isNaN(q) && q > 0 && q < 20;
+      });
+    }
+    
+    if (filterMode === 'outOfStock') {
+      return products.filter(p => {
+        const q = parseInt(p.quantity || '0', 10);
+        return !isNaN(q) && q === 0;
+      });
+    }
     
     if (filterMode === 'expired' || filterMode === 'expiringSoon') {
       const expKey = getExpKey(dynamicColumns);
@@ -94,7 +106,12 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
         <div>
             {isFiltered && (
               <p className="m-0 text-slate-500 text-xs font-semibold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full inline-block">
-                Showing {displayProducts.length} items • Filter: {filterMode.toUpperCase()}
+                Showing {displayProducts.length} items • Filter: {
+                  filterMode === 'outOfStock' ? 'OUT OF STOCK' :
+                  filterMode === 'lowStock' ? 'LOW STOCK' :
+                  filterMode === 'expiringSoon' ? 'EXPIRING SOON' :
+                  filterMode.toUpperCase()
+                }
               </p>
             )}
         </div>
