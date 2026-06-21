@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import './App.css';
 import AntAgentV2 from './components/AntAgentV2';
 import AntXTerminal from './components/AntXTerminal';
+import { API_BASE_URL } from './utils/config';
 
 import AuthScreen from './pages/AuthScreen';
 import UserGuide from './pages/UserGuide';
@@ -82,17 +83,17 @@ export default function App() {
 
   const fetchProducts = () => {
     if (!token) return;
-    fetch('http://localhost:3000/api/user/products', { 
+    fetch(`${API_BASE_URL}/api/user/products`, { 
       headers: { 'Authorization': `Bearer ${token}` } 
     })
       .then(res => res.json())
       .then(data => {
          if (Array.isArray(data)) {
-           setProducts(data);
-           if (data.length === 0 && !hasShownWelcome) {
-              setShowWelcomePopup(true);
-              setHasShownWelcome(true);
-           }
+            setProducts(data);
+            if (data.length === 0 && !hasShownWelcome) {
+               setShowWelcomePopup(true);
+               setHasShownWelcome(true);
+            }
          }
       })
       .catch(err => console.error("Failed to fetch products:", err));
@@ -100,7 +101,7 @@ export default function App() {
 
   const fetchProfile = () => {
     if (!token) return;
-    fetch('http://localhost:3000/api/user/profile', {
+    fetch(`${API_BASE_URL}/api/user/profile`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => {
@@ -162,7 +163,7 @@ export default function App() {
 
   const handleAddProduct = async (data) => {
     try {
-      const res = await fetch('http://localhost:3000/api/user/products', {
+      const res = await fetch(`${API_BASE_URL}/api/user/products`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
@@ -179,7 +180,7 @@ export default function App() {
 
   const handleDeleteProduct = async (id) => {
     try {
-      await fetch(`http://localhost:3000/api/user/products/${id}`, { 
+      await fetch(`${API_BASE_URL}/api/user/products/${id}`, { 
         method: 'DELETE', 
         headers: { 'Authorization': `Bearer ${token}` } 
       });
@@ -189,7 +190,7 @@ export default function App() {
 
   const handleEditProduct = async (id, updatedData) => {
     try {
-      const res = await fetch(`http://localhost:3000/api/user/products/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/user/products/${id}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json', 

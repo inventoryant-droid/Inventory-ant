@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../utils/config';
 import React, { useState, useRef, useEffect } from 'react';
 
 // A helper to clean text so TTS engines don't spell out weird characters or JSON
@@ -88,7 +89,7 @@ export default function AntAgentV2({ userId, token, onUpdate, onNavigate, onLogi
     audioRef.current.currentTime = 0;
 
     // Use Backend Proxy for Google TTS
-    const url = `http://localhost:3000/api/user/products/tts?text=${encodeURIComponent(cleanText)}&t=${Date.now()}`;
+    const url = `${API_BASE_URL}/api/user/products/tts?text=${encodeURIComponent(cleanText)}&t=${Date.now()}`;
     
     audioRef.current.src = url;
     audioRef.current.load(); // Explicitly load the new source
@@ -123,7 +124,7 @@ export default function AntAgentV2({ userId, token, onUpdate, onNavigate, onLogi
       window.dispatchEvent(new CustomEvent('ANT_X_THINKING', { detail: { value: true } }));
       window.dispatchEvent(new CustomEvent('ANT_X_VOICE_COMMAND', { detail: { text } }));
 
-      const res = await fetch('http://localhost:3000/api/user/products/agent-command-v2', {
+      const res = await fetch(`${API_BASE_URL}/api/user/products/agent-command-v2`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

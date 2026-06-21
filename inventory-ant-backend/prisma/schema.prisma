@@ -1,0 +1,116 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String   @id
+  email            String   @unique
+  phone            String?  @unique
+  password         String?
+  name             String
+  picture          String?  @default("")
+  role             String   // "user" | "admin" | "staff"
+  active           Boolean  @default(true)
+  createdAt        Float
+  updatedAt        Float
+  parentEmail      String?
+  profileCompleted Boolean  @default(false)
+  businessName     String?
+  businessType     String?
+  businessLogo     String?
+  gstNumber        String?
+  businessAddress  String?
+  showPhoneOnBills Boolean  @default(false)
+  showEmailOnBills Boolean  @default(false)
+  plan             String?  @default("free") // "free" | "basic" | "pro" | "enterprise"
+  validUntil       Float?
+  storageUsed      Float?
+  lastLogin        Float?
+  adminRole        String?  // "super_admin" | "support_admin" | "finance_admin" | "tech_admin"
+}
+
+model Product {
+  id               String   @id
+  userId           String   // references user email
+  productId        String?  // SKU
+  name             String?
+  details          String?
+  mrp              String?
+  paket            String?
+  quantity         String?
+  timestamp        Float    @map("_timestamp")
+  extraAttributes  Json?    // dynamic fields (expiry, pkg, etc.)
+}
+
+model Bill {
+  id             String   @id
+  userId         String
+  date           Float
+  items          Json     // array of billed items
+  subtotal       Float
+  gst            Float
+  total          Float
+  buyerName      String?
+  buyerPhone     String?
+  buyerAddress   String?
+  hasGst         Boolean  @default(true)
+  hasBuyerInfo   Boolean  @default(false)
+  operatorName   String   @default("Owner")
+}
+
+model ScanHistory {
+  id           String   @id
+  userId       String
+  timestamp    Float
+  actionType   String
+  operatorName String   @default("Owner")
+  items        Json
+  auditLog     Json
+}
+
+model SupportTicket {
+  id             String   @id
+  userId         String
+  businessName   String
+  subject        String
+  description    String
+  priority       String
+  status         String   @default("open")
+  createdAt      Float
+  assignedAdmin  String?  @default("")
+}
+
+model Notification {
+  id        String @id
+  target    String // "all" | "basic" | "pro" | "enterprise"
+  title     String
+  message   String
+  createdAt Float
+}
+
+model Payment {
+  id           String   @id
+  userId       String
+  businessName String
+  amount       Float
+  plan         String
+  status       String   // "success" | "refunded"
+  timestamp    Float
+  invoiceId    String
+}
+
+model ActivityLog {
+  id        String   @id
+  userId    String
+  userName  String
+  role      String
+  action    String
+  ip        String   @default("127.0.0.1")
+  device    String   @default("Desktop Web")
+  timestamp Float
+}

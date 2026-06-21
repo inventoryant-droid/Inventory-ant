@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../utils/config';
 import React, { useState, useEffect } from 'react';
 import '../../App.css';
 import { X, Inbox, Flame, FileText, CheckCircle2, Loader2, Circle } from 'lucide-react';
@@ -38,7 +39,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess 
     reader.onload = async (event) => {
        const base64Str = event.target.result.split(',')[1];
        try {
-         const res = await fetch('http://localhost:3000/api/user/products/scan-bill', {
+         const res = await fetch(`${API_BASE_URL}/api/user/products/scan-bill`, {
              method: 'POST',
              headers: { 
                'Content-Type': 'application/json',

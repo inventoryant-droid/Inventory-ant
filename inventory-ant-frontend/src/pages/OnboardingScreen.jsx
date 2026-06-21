@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../utils/config';
 import React, { useState, useRef } from 'react';
 import { Upload, X, Building, Mail, Phone, MapPin, Check, LogOut, Loader2, Sparkles, ShieldCheck } from 'lucide-react';
 import '../App.css';
@@ -72,7 +73,7 @@ export default function OnboardingScreen({ token, userProfile, onProfileComplete
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:3000/api/user/profile', {
+      const res = await fetch(`${API_BASE_URL}/api/user/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

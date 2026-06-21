@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../utils/config';
 import React, { useState, useMemo } from 'react';
 import '../App.css';
 import { getExpiryInfo, getExpKey } from '../utils/expiryHelpers';
@@ -126,7 +127,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
               <button 
                 onClick={async () => {
                   if(window.confirm("DANGER: This will delete ALL items from your account. Continue?")) {
-                    await fetch('http://localhost:3000/api/user/products/all', { 
+                    await fetch(`${API_BASE_URL}/api/user/products/all`, { 
                       method: 'DELETE', 
                       headers: { 'Authorization': `Bearer ${token}` } 
                     });

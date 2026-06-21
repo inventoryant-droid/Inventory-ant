@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../utils/config';
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Trash2, KeyRound, ShieldAlert, Search, UserCheck, UserX, 
@@ -285,8 +286,8 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
     try {
       // 1. Fetch Users
       const userRes = await fetch(searchQuery 
-        ? `http://localhost:3000/api/admin/users/search?q=${encodeURIComponent(searchQuery)}`
-        : 'http://localhost:3000/api/admin/users', {
+        ? `${API_BASE_URL}/api/admin/users/search?q=${encodeURIComponent(searchQuery)}`
+        : `${API_BASE_URL}/api/admin/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const userData = await userRes.json();
@@ -295,7 +296,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
       }
 
       // 2. Fetch Stats
-      const statRes = await fetch('http://localhost:3000/api/admin/stats', {
+      const statRes = await fetch(`${API_BASE_URL}/api/admin/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const statData = await statRes.json();
@@ -305,7 +306,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
 
       // 3. Conditional fetches based on RBAC permissions
       if (hasAccess('support')) {
-        const ticketRes = await fetch('http://localhost:3000/api/admin/tickets', {
+        const ticketRes = await fetch(`${API_BASE_URL}/api/admin/tickets`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const ticketData = await ticketRes.json();
@@ -313,7 +314,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
       }
 
       if (hasAccess('payments')) {
-        const paymentRes = await fetch('http://localhost:3000/api/admin/payments', {
+        const paymentRes = await fetch(`${API_BASE_URL}/api/admin/payments`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const paymentData = await paymentRes.json();
@@ -321,7 +322,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
       }
 
       if (hasAccess('logs')) {
-        const logRes = await fetch('http://localhost:3000/api/admin/logs', {
+        const logRes = await fetch(`${API_BASE_URL}/api/admin/logs`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const logData = await logRes.json();
@@ -329,7 +330,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
       }
 
       if (hasAccess('system')) {
-        const sysRes = await fetch('http://localhost:3000/api/admin/system', {
+        const sysRes = await fetch(`${API_BASE_URL}/api/admin/system`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const sysData = await sysRes.json();
@@ -349,7 +350,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
   const handleDeactivate = async (email) => {
     if (!window.confirm(`Are you sure you want to deactivate ${email}?`)) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/admin/users/${encodeURIComponent(email)}/deactivate`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/users/${encodeURIComponent(email)}/deactivate`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -371,7 +372,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
   const handleActivate = async (email) => {
     if (!window.confirm(`Activate account ${email}?`)) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/admin/users/${encodeURIComponent(email)}/activate`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/users/${encodeURIComponent(email)}/activate`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -393,7 +394,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
   const handleHardDelete = async (email) => {
     if (!window.confirm(`CRITICAL WARNING:\nAre you sure you want to hard delete ${email}?\n\nThis will strip all matching user parameters, staff logs, inventories, billing transaction files, and scans across ALL databases. This process cannot be undone.`)) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/admin/users/${encodeURIComponent(email)}`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/users/${encodeURIComponent(email)}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -414,7 +415,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
     e.preventDefault();
     if (!selectedUserPlan) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/admin/users/${encodeURIComponent(selectedUserPlan.email)}/plan`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/users/${encodeURIComponent(selectedUserPlan.email)}/plan`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -439,7 +440,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
     e.preventDefault();
     if (!selectedUserReset) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/admin/users/${encodeURIComponent(selectedUserReset.email)}/reset-password`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/users/${encodeURIComponent(selectedUserReset.email)}/reset-password`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -462,7 +463,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
 
   const handleImpersonate = async (email) => {
     try {
-      const res = await fetch(`http://localhost:3000/api/admin/impersonate/${encodeURIComponent(email)}`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/impersonate/${encodeURIComponent(email)}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -493,7 +494,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
   // Support Inbox
   const handleAssignTicket = async (ticketId) => {
     try {
-      const res = await fetch(`http://localhost:3000/api/admin/tickets/${ticketId}/assign`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/tickets/${ticketId}/assign`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -506,7 +507,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
 
   const handleResolveTicket = async (ticketId) => {
     try {
-      const res = await fetch(`http://localhost:3000/api/admin/tickets/${ticketId}/status`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/tickets/${ticketId}/status`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -525,7 +526,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
   const handleRefundTransaction = async (txnId) => {
     if (!window.confirm('Trigger instant refund for this invoice?')) return;
     try {
-      const res = await fetch('http://localhost:3000/api/admin/payments/refund', {
+      const res = await fetch(`${API_BASE_URL}/api/admin/payments/refund`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -545,7 +546,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
   const handleAnnouncementSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3000/api/admin/notifications', {
+      const res = await fetch(`${API_BASE_URL}/api/admin/notifications`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -565,7 +566,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
   const handleChangeConsolePassword = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3000/api/admin/change-password', {
+      const res = await fetch(`${API_BASE_URL}/api/admin/change-password`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

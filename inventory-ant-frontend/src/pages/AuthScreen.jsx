@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../utils/config';
 import React, { useState } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { Mail, Lock, Phone, User, ArrowRight, Eye, EyeOff, CheckCircle2, ShieldCheck, RefreshCw, ShieldAlert, Cpu, Sparkles } from 'lucide-react';
@@ -40,7 +41,7 @@ function AuthScreen({ onLogin }) {
       setView('verify-otp');
     } else if (view === 'login') {
       try {
-        const res = await fetch('http://localhost:3000/api/auth/login', {
+        const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
@@ -79,7 +80,7 @@ function AuthScreen({ onLogin }) {
     }
     
     try {
-      const res = await fetch('http://localhost:3000/api/auth/signup', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password, phone: mobile }) 
@@ -98,7 +99,7 @@ function AuthScreen({ onLogin }) {
   const handleAdminSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3000/api/auth/login', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: adminUsername, password })
@@ -118,7 +119,7 @@ function AuthScreen({ onLogin }) {
     flow: 'auth-code',
     onSuccess: async (codeResponse) => {
       try {
-        const res = await fetch('http://localhost:3000/api/auth/google', {
+        const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code: codeResponse.code })

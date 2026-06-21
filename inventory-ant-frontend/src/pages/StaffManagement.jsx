@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../utils/config';
 import React, { useState, useEffect, useRef } from 'react';
 import { Users, UserPlus, Shield, ShieldAlert, Phone, Mail, Key, Trash2, ShieldCheck, Check, X, RefreshCw, ToggleLeft, ToggleRight, Loader2, Image } from 'lucide-react';
 import '../App.css';
@@ -32,7 +33,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:3000/api/user/staff', {
+      const res = await fetch(`${API_BASE_URL}/api/user/staff`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -84,7 +85,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
     }
 
     try {
-      const res = await fetch('http://localhost:3000/api/user/staff', {
+      const res = await fetch(`${API_BASE_URL}/api/user/staff`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -118,7 +119,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
 
   const handleToggleStatus = async (staff) => {
     try {
-      const res = await fetch(`http://localhost:3000/api/user/staff/${staff.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/user/staff/${staff.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -141,7 +142,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
       return;
     }
     try {
-      const res = await fetch(`http://localhost:3000/api/user/staff/${staff.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/user/staff/${staff.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -167,7 +168,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
 
     setPassLoading(true);
     try {
-      const res = await fetch(`http://localhost:3000/api/user/staff/${selectedStaff.id}/password`, {
+      const res = await fetch(`${API_BASE_URL}/api/user/staff/${selectedStaff.id}/password`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

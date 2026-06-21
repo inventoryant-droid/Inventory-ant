@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../utils/config';
 import React, { useState, useEffect, useRef } from 'react';
 import { Building, Mail, Phone, MapPin, Check, ShieldCheck, Loader2, Sparkles, Key, User, Calendar, ShieldAlert } from 'lucide-react';
 import '../App.css';
@@ -116,7 +117,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
     setProfileLoading(true);
 
     try {
-      const res = await fetch('http://localhost:3000/api/user/profile', {
+      const res = await fetch(`${API_BASE_URL}/api/user/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -174,7 +175,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
     setPasswordLoading(true);
 
     try {
-      const res = await fetch('http://localhost:3000/api/user/change-password', {
+      const res = await fetch(`${API_BASE_URL}/api/user/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

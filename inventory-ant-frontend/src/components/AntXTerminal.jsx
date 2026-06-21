@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../utils/config';
 import React, { useState, useRef, useEffect } from 'react';
 
 function sanitizeTextForSpeech(text) {
@@ -41,7 +42,7 @@ export default function AntXTerminal({ userId, token, onUpdate, onNavigate, onLo
     setIsThinking(true);
 
     try {
-      const res = await fetch('http://localhost:3000/api/user/products/agent-command-v2', {
+      const res = await fetch(`${API_BASE_URL}/api/user/products/agent-command-v2`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

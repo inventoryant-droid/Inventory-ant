@@ -4,6 +4,7 @@ import * as path from 'path';
 import { OAuth2Client } from 'google-auth-library';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { PrismaService } from '../prisma.service';
 
 export interface User {
   id: string;
@@ -17,7 +18,6 @@ export interface User {
   createdAt: number;
   updatedAt: number;
   parentEmail?: string;
-  // Profile onboarding fields
   profileCompleted?: boolean;
   businessName?: string;
   businessType?: string;
@@ -26,7 +26,6 @@ export interface User {
   businessAddress?: string;
   showPhoneOnBills?: boolean;
   showEmailOnBills?: boolean;
-  // Admin panel & subscription attributes
   plan?: 'free' | 'basic' | 'pro' | 'enterprise';
   validUntil?: number;
   storageUsed?: number;
@@ -36,109 +35,75 @@ export interface User {
 
 @Injectable()
 export class UsersService implements OnModuleInit {
-  private readonly usersPath = path.join(process.cwd(), 'users.json');
-  private readonly adminPath = path.join(process.cwd(), 'admin.json');
-  private readonly ticketsPath = path.join(process.cwd(), 'support_tickets.json');
-  private readonly activityLogsPath = path.join(process.cwd(), 'activity_logs.json');
-  private readonly paymentsPath = path.join(process.cwd(), 'payments.json');
-  private readonly notificationsPath = path.join(process.cwd(), 'notifications.json');
   private readonly oauth2Client = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
     'postmessage'
   );
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService
+  ) {}
 
-  private async getDb(): Promise<User[]> {
-    try {
-      const data = await fs.readFile(this.usersPath, 'utf8');
-      if (!data || !data.trim()) return [];
-      return JSON.parse(data);
-    } catch (e: any) {
-      if (e.code === 'ENOENT') return [];
-      throw e;
-    }
+  private isBCryptHash(str: string): boolean {
+    return /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(str);
   }
 
-  private async saveDb(data: User[]): Promise<void> {
-    await fs.writeFile(this.usersPath, JSON.stringify(data, null, 2), 'utf8');
+  private mapUser(dbUser: any): Omit<User, 'password'> {
+    return {
+      id: dbUser.id,
+      email: dbUser.email,
+      phone: dbUser.phone || undefined,
+      name: dbUser.name,
+      picture: dbUser.picture || '',
+      role: dbUser.role as any,
+      active: dbUser.active,
+      createdAt: dbUser.createdAt,
+      updatedAt: dbUser.updatedAt,
+      parentEmail: dbUser.parentEmail || undefined,
+      profileCompleted: dbUser.profileCompleted,
+      businessName: dbUser.businessName || undefined,
+      businessType: dbUser.businessType || undefined,
+      businessLogo: dbUser.businessLogo || undefined,
+      gstNumber: dbUser.gstNumber || undefined,
+      businessAddress: dbUser.businessAddress || undefined,
+      showPhoneOnBills: dbUser.showPhoneOnBills,
+      showEmailOnBills: dbUser.showEmailOnBills,
+      plan: (dbUser.plan as any) || undefined,
+      validUntil: dbUser.validUntil || undefined,
+      storageUsed: dbUser.storageUsed || undefined,
+      lastLogin: dbUser.lastLogin || undefined,
+      adminRole: (dbUser.adminRole as any) || undefined,
+    };
   }
 
   async onModuleInit() {
-    const db = await this.getDb();
-    let changed = false;
-
     // Seed default admin if it doesn't exist
     const adminEmail = (process.env.ADMIN_EMAIL || 'admin@inventoryant.com').toLowerCase();
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
 
-    // Migrate existing users to have new fields and bcrypt passwords
-    for (const user of db) {
-      if (!user.role) {
-        user.role = 'user';
-        changed = true;
-      }
-      if (user.active === undefined) {
-        user.active = true;
-        changed = true;
-      }
-      if (!user.createdAt) {
-        user.createdAt = (user as any).joinedAt || Date.now();
-        changed = true;
-      }
-      if (!user.updatedAt) {
-        user.updatedAt = user.createdAt || Date.now();
-        changed = true;
-      }
-      if (user.password && !this.isBCryptHash(user.password)) {
-        user.password = await bcrypt.hash(user.password, 10);
-        changed = true;
-      }
-      if (user.profileCompleted === undefined) {
-        user.profileCompleted = user.role === 'admin';
-        changed = true;
-      }
-      // Migrate subscription plan attributes for owner accounts
-      if (user.role === 'user') {
-        if (!user.plan) {
-          user.plan = 'free';
-          changed = true;
-        }
-        if (!user.validUntil) {
-          user.validUntil = Date.now() + 30 * 24 * 60 * 60 * 1000;
-          changed = true;
-        }
-        if (user.storageUsed === undefined) {
-          user.storageUsed = Math.round((5 + Math.random() * 20) * 10) / 10;
-          changed = true;
-        }
-      }
-      // Migrate adminRole for Super Admin
-      if (user.role === 'admin' && user.email.toLowerCase() === adminEmail && !user.adminRole) {
-        user.adminRole = 'super_admin';
-        changed = true;
-      }
-    }
+    const admin = await this.prisma.user.findUnique({
+      where: { email: adminEmail }
+    });
 
-    const adminExists = db.some(u => u.email.toLowerCase() === adminEmail && u.role === 'admin');
-    if (!adminExists) {
+    if (!admin) {
       const hashedPass = await bcrypt.hash(adminPassword, 10);
-      const defaultAdmin: User = {
-        id: 'admin-' + Math.random().toString(36).substring(2, 10),
-        email: adminEmail,
-        name: 'Super Admin',
-        password: hashedPass,
-        picture: '',
-        role: 'admin',
-        active: true,
-        profileCompleted: true,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        adminRole: 'super_admin'
-      };
-      db.push(defaultAdmin);
-      changed = true;
+      await this.prisma.user.create({
+        data: {
+          id: 'admin-' + Math.random().toString(36).substring(2, 10),
+          email: adminEmail,
+          name: 'Super Admin',
+          password: hashedPass,
+          picture: '',
+          role: 'admin',
+          active: true,
+          profileCompleted: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          adminRole: 'super_admin'
+        }
+      });
     }
 
     const defaultAdminsList = [
@@ -148,42 +113,39 @@ export class UsersService implements OnModuleInit {
     ];
 
     for (const adm of defaultAdminsList) {
-      const exists = db.some(u => u.email.toLowerCase() === adm.email && u.role === 'admin');
+      const exists = await this.prisma.user.findUnique({
+        where: { email: adm.email }
+      });
       if (!exists) {
         const hashedPass = await bcrypt.hash('admin123', 10);
-        const defaultSubAdmin: User = {
-          id: 'admin-' + Math.random().toString(36).substring(2, 10),
-          email: adm.email,
-          name: adm.name,
-          password: hashedPass,
-          picture: '',
-          role: 'admin',
-          active: true,
-          profileCompleted: true,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          adminRole: adm.role as any
-        };
-        db.push(defaultSubAdmin);
-        changed = true;
+        await this.prisma.user.create({
+          data: {
+            id: 'admin-' + Math.random().toString(36).substring(2, 10),
+            email: adm.email,
+            name: adm.name,
+            password: hashedPass,
+            picture: '',
+            role: 'admin',
+            active: true,
+            profileCompleted: true,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            adminRole: adm.role
+          }
+        });
       }
     }
-
-    if (changed) {
-      await this.saveDb(db);
-    }
-  }
-
-  private isBCryptHash(str: string): boolean {
-    return /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(str);
   }
 
   async login(identifier: string, password?: string): Promise<{ access_token: string; user: Omit<User, 'password'> }> {
-    const db = await this.getDb();
-    const user = db.find(u => 
-      u.email.toLowerCase() === identifier.toLowerCase() || 
-      (u.phone && u.phone === identifier)
-    );
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: identifier.toLowerCase() },
+          { phone: identifier }
+        ]
+      }
+    });
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -202,56 +164,64 @@ export class UsersService implements OnModuleInit {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    user.lastLogin = Date.now();
-    await this.saveDb(db);
+    const updatedUser = await this.prisma.user.update({
+      where: { email: user.email },
+      data: { lastLogin: Date.now() }
+    });
 
-    const parentEmail = user.role === 'staff' ? user.parentEmail : user.email;
+    const parentEmail = updatedUser.role === 'staff' ? updatedUser.parentEmail : updatedUser.email;
     const payload = { 
-      sub: user.id, 
-      email: user.email, 
-      name: user.name,
-      role: user.role, 
-      tenantEmail: (parentEmail || user.email).toLowerCase(),
-      adminRole: user.adminRole
+      sub: updatedUser.id, 
+      email: updatedUser.email, 
+      name: updatedUser.name,
+      role: updatedUser.role, 
+      tenantEmail: (parentEmail || updatedUser.email).toLowerCase(),
+      adminRole: updatedUser.adminRole
     };
     const token = await this.jwtService.signAsync(payload);
 
-    await this.logAction(user.email, user.name, user.role, `Logged in successfully`);
+    await this.logAction(updatedUser.email, updatedUser.name, updatedUser.role, `Logged in successfully`);
 
-    const { password: _, ...userWithoutPass } = user;
     return {
       access_token: token,
-      user: userWithoutPass
+      user: this.mapUser(updatedUser)
     };
   }
 
   async userSignup(name: string, email: string, password?: string, phone?: string): Promise<{ access_token: string; user: Omit<User, 'password'> }> {
-    const db = await this.getDb();
-    const existingUser = db.find(u => 
-      u.email.toLowerCase() === email.toLowerCase() || 
-      (phone && u.phone === phone)
-    );
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: email.toLowerCase() },
+          ...(phone ? [{ phone }] : [])
+        ]
+      }
+    });
+
     if (existingUser) {
       throw new UnauthorizedException('User with this email or phone already exists');
     }
 
     const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
 
-    const newUser: User = {
-      id: Math.random().toString(36).substring(2, 10),
-      email: email.toLowerCase(),
-      phone,
-      password: hashedPassword,
-      name,
-      picture: '',
-      role: 'user', // Public signup strictly user
-      active: true,
-      profileCompleted: false,
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
-    db.push(newUser);
-    await this.saveDb(db);
+    const newUser = await this.prisma.user.create({
+      data: {
+        id: Math.random().toString(36).substring(2, 10),
+        email: email.toLowerCase(),
+        phone: phone || null,
+        password: hashedPassword || null,
+        name,
+        picture: '',
+        role: 'user',
+        active: true,
+        profileCompleted: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        plan: 'free',
+        validUntil: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        storageUsed: Math.round((5 + Math.random() * 20) * 10) / 10
+      }
+    });
 
     const payload = { 
       sub: newUser.id, 
@@ -262,16 +232,17 @@ export class UsersService implements OnModuleInit {
     };
     const token = await this.jwtService.signAsync(payload);
 
-    const { password: _, ...userWithoutPass } = newUser;
     return {
       access_token: token,
-      user: userWithoutPass
+      user: this.mapUser(newUser)
     };
   }
 
   async changeAdminPassword(adminEmail: string, oldPass: string, newPass: string): Promise<{ success: boolean }> {
-    const db = await this.getDb();
-    const admin = db.find(u => u.email.toLowerCase() === adminEmail.toLowerCase() && u.role === 'admin');
+    const admin = await this.prisma.user.findFirst({
+      where: { email: adminEmail.toLowerCase(), role: 'admin' }
+    });
+
     if (!admin || !admin.password) {
       throw new UnauthorizedException('Admin account not found');
     }
@@ -281,9 +252,15 @@ export class UsersService implements OnModuleInit {
       throw new UnauthorizedException('Invalid old password');
     }
 
-    admin.password = await bcrypt.hash(newPass, 10);
-    admin.updatedAt = Date.now();
-    await this.saveDb(db);
+    const newHashed = await bcrypt.hash(newPass, 10);
+    await this.prisma.user.update({
+      where: { email: adminEmail.toLowerCase() },
+      data: {
+        password: newHashed,
+        updatedAt: Date.now()
+      }
+    });
+
     return { success: true };
   }
 
@@ -300,31 +277,37 @@ export class UsersService implements OnModuleInit {
       if (!payload || !payload.email) throw new UnauthorizedException('Invalid Google token');
       const googleEmail = payload.email;
 
-      const db = await this.getDb();
-      let user = db.find(u => u.email.toLowerCase() === googleEmail.toLowerCase());
+      let user = await this.prisma.user.findUnique({
+        where: { email: googleEmail.toLowerCase() }
+      });
 
       if (!user) {
-        user = {
-          id: payload.sub,
-          email: payload.email.toLowerCase(),
-          name: payload.name || payload.email,
-          picture: payload.picture || '',
-          role: 'user',
-          active: true,
-          profileCompleted: false,
-          createdAt: Date.now(),
-          updatedAt: Date.now()
-        };
-        db.push(user);
-        await this.saveDb(db);
+        user = await this.prisma.user.create({
+          data: {
+            id: payload.sub,
+            email: payload.email.toLowerCase(),
+            name: payload.name || payload.email,
+            picture: payload.picture || '',
+            role: 'user',
+            active: true,
+            profileCompleted: false,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            plan: 'free',
+            validUntil: Date.now() + 30 * 24 * 60 * 60 * 1000,
+            storageUsed: Math.round((5 + Math.random() * 20) * 10) / 10
+          }
+        });
       }
 
       if (!user.active) {
         throw new UnauthorizedException('Account is deactivated. Please contact administrator.');
       }
 
-      user.lastLogin = Date.now();
-      await this.saveDb(db);
+      user = await this.prisma.user.update({
+        where: { email: googleEmail.toLowerCase() },
+        data: { lastLogin: Date.now() }
+      });
 
       const parentEmail = user.role === 'staff' ? user.parentEmail : user.email;
       const jwtPayload = { 
@@ -339,10 +322,9 @@ export class UsersService implements OnModuleInit {
 
       await this.logAction(user.email, user.name, user.role, `Logged in via Google`);
 
-      const { password: _, ...userWithoutPass } = user;
       return {
         access_token: token,
-        user: userWithoutPass
+        user: this.mapUser(user)
       };
     } catch (error: any) {
       console.error('Google Auth Error:', error.message);
@@ -351,183 +333,173 @@ export class UsersService implements OnModuleInit {
   }
 
   async findAllUsers(): Promise<Omit<User, 'password'>[]> {
-    const db = await this.getDb();
-    return db.map(({ password: _, ...u }) => u);
+    const list = await this.prisma.user.findMany();
+    return list.map((u: any) => this.mapUser(u));
   }
 
   async searchUsers(query: string): Promise<Omit<User, 'password'>[]> {
-    const db = await this.getDb();
     const q = query.toLowerCase();
-    return db
-      .filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
-      .map(({ password: _, ...u }) => u);
+    const list = await this.prisma.user.findMany({
+      where: {
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { email: { contains: q, mode: 'insensitive' } }
+        ]
+      }
+    });
+    return list.map((u: any) => this.mapUser(u));
   }
 
   async findUserByEmail(email: string): Promise<Omit<User, 'password'>> {
-    const db = await this.getDb();
-    const user = db.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
+    });
     if (!user) throw new NotFoundException('User not found');
-    const { password: _, ...userWithoutPass } = user;
-    return userWithoutPass;
+    return this.mapUser(user);
   }
 
   async softDeleteUser(email: string): Promise<{ success: boolean; active: boolean }> {
-    const db = await this.getDb();
-    const user = db.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (!user) throw new NotFoundException('User not found');
-    
-    // Soft delete / deactivate user
-    user.active = false;
-    user.updatedAt = Date.now();
-    await this.saveDb(db);
-    
+    await this.prisma.user.update({
+      where: { email: email.toLowerCase() },
+      data: {
+        active: false,
+        updatedAt: Date.now()
+      }
+    });
     return { success: true, active: false };
   }
 
   async deactivateUser(email: string): Promise<{ success: boolean; active: boolean }> {
-    const db = await this.getDb();
-    const user = db.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (!user) throw new NotFoundException('User not found');
-    
-    // Deactivate user
-    user.active = false;
-    user.updatedAt = Date.now();
-    await this.saveDb(db);
-    
+    await this.prisma.user.update({
+      where: { email: email.toLowerCase() },
+      data: {
+        active: false,
+        updatedAt: Date.now()
+      }
+    });
     return { success: true, active: false };
   }
 
   async activateUser(email: string): Promise<{ success: boolean; active: boolean }> {
-    const db = await this.getDb();
-    const user = db.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (!user) throw new NotFoundException('User not found');
-    
-    // Activate user
-    user.active = true;
-    user.updatedAt = Date.now();
-    await this.saveDb(db);
-    
+    await this.prisma.user.update({
+      where: { email: email.toLowerCase() },
+      data: {
+        active: true,
+        updatedAt: Date.now()
+      }
+    });
     return { success: true, active: true };
   }
 
   async hardDeleteUser(email: string): Promise<{ success: boolean }> {
     const targetEmail = email.toLowerCase();
-    const db = await this.getDb();
-    
-    // Find the user to ensure it exists
-    const idx = db.findIndex(u => u.email.toLowerCase() === targetEmail);
-    if (idx === -1) throw new NotFoundException('User not found');
 
-    // 1. Delete the user and their staff from users.json
-    const updatedDb = db.filter(u => 
-      u.email.toLowerCase() !== targetEmail && 
-      !(u.role === 'staff' && u.parentEmail?.toLowerCase() === targetEmail)
-    );
-    await this.saveDb(updatedDb);
+    // 1. Delete user and their staff
+    await this.prisma.user.deleteMany({
+      where: {
+        OR: [
+          { email: targetEmail },
+          { parentEmail: targetEmail }
+        ]
+      }
+    });
 
-    // 2. Delete all products in database.json
-    const dbPath = path.join(process.cwd(), 'database.json');
-    try {
-      const data = await fs.readFile(dbPath, 'utf8');
-      const products = JSON.parse(data);
-      const remainingProducts = products.filter((p: any) => !p.userId || p.userId.toLowerCase() !== targetEmail);
-      await fs.writeFile(dbPath, JSON.stringify(remainingProducts, null, 2), 'utf8');
-    } catch (e) {
-      console.error('Failed to clean database.json on user deletion:', e);
-    }
+    // 2. Delete products
+    await this.prisma.product.deleteMany({
+      where: { userId: targetEmail }
+    });
 
-    // 3. Delete all bills in bills.json
-    const billsPath = path.join(process.cwd(), 'bills.json');
-    try {
-      const data = await fs.readFile(billsPath, 'utf8');
-      const bills = JSON.parse(data);
-      const remainingBills = bills.filter((b: any) => !b.userId || b.userId.toLowerCase() !== targetEmail);
-      await fs.writeFile(billsPath, JSON.stringify(remainingBills, null, 2), 'utf8');
-    } catch (e) {
-      console.error('Failed to clean bills.json on user deletion:', e);
-    }
+    // 3. Delete bills
+    await this.prisma.bill.deleteMany({
+      where: { userId: targetEmail }
+    });
 
-    // 4. Delete all scans in scan_history.json
-    const scanHistoryPath = path.join(process.cwd(), 'scan_history.json');
-    try {
-      const data = await fs.readFile(scanHistoryPath, 'utf8');
-      const scans = JSON.parse(data);
-      const remainingScans = scans.filter((s: any) => !s.userId || s.userId.toLowerCase() !== targetEmail);
-      await fs.writeFile(scanHistoryPath, JSON.stringify(remainingScans, null, 2), 'utf8');
-    } catch (e) {
-      console.error('Failed to clean scan_history.json on user deletion:', e);
-    }
+    // 4. Delete scans
+    await this.prisma.scanHistory.deleteMany({
+      where: { userId: targetEmail }
+    });
 
     return { success: true };
   }
 
   async getStats(): Promise<any> {
-    const db = await this.getDb();
-    const ownerUsers = db.filter(u => u.role === 'user');
-    const totalUsers = ownerUsers.length;
-    const activeUsers = ownerUsers.filter(u => u.active).length;
-    const inactiveUsers = totalUsers - activeUsers;
-    
-    let totalProducts = 0;
-    const dbPath = path.join(process.cwd(), 'database.json');
-    try {
-      const data = await fs.readFile(dbPath, 'utf8');
-      const products = JSON.parse(data);
-      totalProducts = products.length;
-    } catch (e) {}
+    const ownerUsersCount = await this.prisma.user.count({
+      where: { role: 'user' }
+    });
+
+    const activeUsersCount = await this.prisma.user.count({
+      where: { role: 'user', active: true }
+    });
+
+    const totalProductsCount = await this.prisma.product.count();
 
     return {
-      totalUsers,
-      activeUsers,
-      inactiveUsers,
-      totalProducts
+      totalUsers: ownerUsersCount,
+      activeUsers: activeUsersCount,
+      inactiveUsers: ownerUsersCount - activeUsersCount,
+      totalProducts: totalProductsCount
     };
   }
 
   async getProfile(userId: string): Promise<Omit<User, 'password'>> {
-    const db = await this.getDb();
-    const user = db.find(u => u.id === userId);
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId }
+    });
     if (!user) throw new NotFoundException('User not found');
-    const { password: _, ...userWithoutPass } = user;
+
+    const mapped = this.mapUser(user);
 
     if (user.role === 'staff' && user.parentEmail) {
-      const parent = db.find(u => u.email.toLowerCase() === user.parentEmail!.toLowerCase());
+      const parent = await this.prisma.user.findUnique({
+        where: { email: user.parentEmail.toLowerCase() }
+      });
       if (parent) {
-        userWithoutPass.businessName = parent.businessName;
-        userWithoutPass.businessLogo = parent.businessLogo;
-        userWithoutPass.businessAddress = parent.businessAddress;
-        userWithoutPass.gstNumber = parent.gstNumber;
+        mapped.businessName = parent.businessName || undefined;
+        mapped.businessLogo = parent.businessLogo || undefined;
+        mapped.businessAddress = parent.businessAddress || undefined;
+        mapped.gstNumber = parent.gstNumber || undefined;
       }
     }
 
-    return userWithoutPass;
+    return mapped;
   }
 
   async updateProfile(userId: string, profileData: Partial<User>): Promise<Omit<User, 'password'>> {
-    const db = await this.getDb();
-    const user = db.find(u => u.id === userId);
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId }
+    });
     if (!user) throw new NotFoundException('User not found');
 
     const email = profileData.email?.toLowerCase();
     const phone = profileData.phone;
 
-    // Check if new email is taken
+    // Check if email taken
     if (email && email !== user.email) {
-      const taken = db.some(u => u.id !== userId && u.email.toLowerCase() === email);
+      const taken = await this.prisma.user.findFirst({
+        where: {
+          id: { not: userId },
+          email: email
+        }
+      });
       if (taken) {
         throw new UnauthorizedException('Email is already in use by another account');
       }
     }
 
-    // Check if new phone is taken
+    // Check if phone taken
     if (phone && phone !== user.phone) {
-      const taken = db.some(u => u.id !== userId && u.phone === phone);
+      const taken = await this.prisma.user.findFirst({
+        where: {
+          id: { not: userId },
+          phone: phone
+        }
+      });
       if (taken) {
         throw new UnauthorizedException('Phone number is already in use by another account');
       }
     }
 
-    // Validate required fields if profileCompleted is true
+    // Profile completion validation
     if (profileData.profileCompleted === true) {
       if (!profileData.businessName || !profileData.businessName.trim()) {
         throw new UnauthorizedException('Business name is required');
@@ -548,51 +520,40 @@ export class UsersService implements OnModuleInit {
 
     const oldEmail = user.email;
 
-    // Apply updates
-    if (profileData.name !== undefined) user.name = profileData.name;
-    if (email !== undefined) user.email = email;
-    if (phone !== undefined) user.phone = phone;
-    if (profileData.businessName !== undefined) user.businessName = profileData.businessName;
-    if (profileData.businessType !== undefined) user.businessType = profileData.businessType;
-    if (profileData.businessLogo !== undefined) user.businessLogo = profileData.businessLogo;
-    if (profileData.gstNumber !== undefined) user.gstNumber = profileData.gstNumber;
-    if (profileData.businessAddress !== undefined) user.businessAddress = profileData.businessAddress;
-    if (profileData.showPhoneOnBills !== undefined) user.showPhoneOnBills = profileData.showPhoneOnBills;
-    if (profileData.showEmailOnBills !== undefined) user.showEmailOnBills = profileData.showEmailOnBills;
-    if (profileData.profileCompleted !== undefined) user.profileCompleted = profileData.profileCompleted;
-
-    user.updatedAt = Date.now();
-    await this.saveDb(db);
-
-    // If email changed, migrate their products in database.json
-    if (email && email !== oldEmail) {
-      const dbPath = path.join(process.cwd(), 'database.json');
-      try {
-        const data = await fs.readFile(dbPath, 'utf8');
-        const products = JSON.parse(data);
-        let migrated = false;
-        products.forEach((p: any) => {
-          if (p.userId && p.userId.toLowerCase() === oldEmail.toLowerCase()) {
-            p.userId = email;
-            migrated = true;
-          }
-        });
-        if (migrated) {
-          await fs.writeFile(dbPath, JSON.stringify(products, null, 2), 'utf8');
-          console.log(`Migrated products owned by ${oldEmail} to ${email}`);
-        }
-      } catch (e) {
-        console.error('Failed to migrate user products:', e);
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: profileData.name !== undefined ? profileData.name : undefined,
+        email: email !== undefined ? email : undefined,
+        phone: phone !== undefined ? phone : undefined,
+        businessName: profileData.businessName !== undefined ? profileData.businessName : undefined,
+        businessType: profileData.businessType !== undefined ? profileData.businessType : undefined,
+        businessLogo: profileData.businessLogo !== undefined ? profileData.businessLogo : undefined,
+        gstNumber: profileData.gstNumber !== undefined ? profileData.gstNumber : undefined,
+        businessAddress: profileData.businessAddress !== undefined ? profileData.businessAddress : undefined,
+        showPhoneOnBills: profileData.showPhoneOnBills !== undefined ? !!profileData.showPhoneOnBills : undefined,
+        showEmailOnBills: profileData.showEmailOnBills !== undefined ? !!profileData.showEmailOnBills : undefined,
+        profileCompleted: profileData.profileCompleted !== undefined ? !!profileData.profileCompleted : undefined,
+        updatedAt: Date.now()
       }
+    });
+
+    // Migrate products if email changed
+    if (email && email !== oldEmail) {
+      await this.prisma.product.updateMany({
+        where: { userId: oldEmail },
+        data: { userId: email }
+      });
+      console.log(`Migrated products owned by ${oldEmail} to ${email}`);
     }
 
-    const { password: _, ...userWithoutPass } = user;
-    return userWithoutPass;
+    return this.mapUser(updated);
   }
 
   async changeUserPassword(userEmail: string, oldPass: string, newPass: string): Promise<{ success: boolean }> {
-    const db = await this.getDb();
-    const user = db.find(u => u.email.toLowerCase() === userEmail.toLowerCase());
+    const user = await this.prisma.user.findUnique({
+      where: { email: userEmail.toLowerCase() }
+    });
     if (!user || !user.password) {
       throw new UnauthorizedException('User account not found');
     }
@@ -602,15 +563,22 @@ export class UsersService implements OnModuleInit {
       throw new UnauthorizedException('Invalid old password');
     }
 
-    user.password = await bcrypt.hash(newPass, 10);
-    user.updatedAt = Date.now();
-    await this.saveDb(db);
+    const hashed = await bcrypt.hash(newPass, 10);
+    await this.prisma.user.update({
+      where: { email: userEmail.toLowerCase() },
+      data: {
+        password: hashed,
+        updatedAt: Date.now()
+      }
+    });
+
     return { success: true };
   }
 
   async createStaff(ownerEmail: string, staffData: { name: string; phone?: string; password?: string; picture?: string }): Promise<Omit<User, 'password'>> {
-    const db = await this.getDb();
-    const owner = db.find(u => u.email.toLowerCase() === ownerEmail.toLowerCase());
+    const owner = await this.prisma.user.findUnique({
+      where: { email: ownerEmail.toLowerCase() }
+    });
     if (!owner) {
       throw new NotFoundException('Owner account not found');
     }
@@ -624,13 +592,19 @@ export class UsersService implements OnModuleInit {
     
     let staffEmail = `${cleanedName}@${cleanedBiz}.ant`;
     let attempts = 0;
-    while (db.some(u => u.email.toLowerCase() === staffEmail.toLowerCase())) {
+    while (true) {
+      const exists = await this.prisma.user.findUnique({
+        where: { email: staffEmail.toLowerCase() }
+      });
+      if (!exists) break;
       attempts++;
       staffEmail = `${cleanedName}${attempts}@${cleanedBiz}.ant`;
     }
 
     if (staffData.phone) {
-      const phoneExists = db.some(u => u.phone === staffData.phone);
+      const phoneExists = await this.prisma.user.findFirst({
+        where: { phone: staffData.phone }
+      });
       if (phoneExists) {
         throw new UnauthorizedException('Phone number is already associated with another account');
       }
@@ -638,64 +612,82 @@ export class UsersService implements OnModuleInit {
 
     const hashedPassword = staffData.password ? await bcrypt.hash(staffData.password, 10) : await bcrypt.hash('staff123', 10);
 
-    const newStaff: User = {
-      id: 'staff-' + Math.random().toString(36).substring(2, 10),
-      email: staffEmail.toLowerCase(),
-      phone: staffData.phone,
-      password: hashedPassword,
-      name: staffData.name,
-      picture: staffData.picture || '',
-      role: 'staff',
-      active: true,
-      profileCompleted: true,
-      parentEmail: ownerEmail.toLowerCase(),
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
+    const newStaff = await this.prisma.user.create({
+      data: {
+        id: 'staff-' + Math.random().toString(36).substring(2, 10),
+        email: staffEmail.toLowerCase(),
+        phone: staffData.phone || null,
+        password: hashedPassword,
+        name: staffData.name,
+        picture: staffData.picture || '',
+        role: 'staff',
+        active: true,
+        profileCompleted: true,
+        parentEmail: ownerEmail.toLowerCase(),
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      }
+    });
 
-    db.push(newStaff);
-    await this.saveDb(db);
-
-    const { password: _, ...staffWithoutPass } = newStaff;
-    return staffWithoutPass;
+    return this.mapUser(newStaff);
   }
 
   async findStaffByOwner(ownerEmail: string): Promise<Omit<User, 'password'>[]> {
-    const db = await this.getDb();
-    return db
-      .filter(u => u.role === 'staff' && u.parentEmail?.toLowerCase() === ownerEmail.toLowerCase())
-      .map(({ password: _, ...u }) => u);
+    const list = await this.prisma.user.findMany({
+      where: {
+        role: 'staff',
+        parentEmail: ownerEmail.toLowerCase()
+      }
+    });
+    return list.map((u: any) => this.mapUser(u));
   }
 
   async updateStaff(ownerEmail: string, staffId: string, updateData: Partial<User>): Promise<Omit<User, 'password'>> {
-    const db = await this.getDb();
-    const staff = db.find(u => u.id === staffId && u.role === 'staff' && u.parentEmail?.toLowerCase() === ownerEmail.toLowerCase());
+    const staff = await this.prisma.user.findFirst({
+      where: {
+        id: staffId,
+        role: 'staff',
+        parentEmail: ownerEmail.toLowerCase()
+      }
+    });
     if (!staff) {
       throw new NotFoundException('Staff account not found or access denied');
     }
 
     if (updateData.phone && updateData.phone !== staff.phone) {
-      const taken = db.some(u => u.id !== staffId && u.phone === updateData.phone);
+      const taken = await this.prisma.user.findFirst({
+        where: {
+          id: { not: staffId },
+          phone: updateData.phone
+        }
+      });
       if (taken) {
         throw new UnauthorizedException('Phone number is already associated with another account');
       }
     }
 
-    if (updateData.name !== undefined) staff.name = updateData.name;
-    if (updateData.phone !== undefined) staff.phone = updateData.phone;
-    if (updateData.picture !== undefined) staff.picture = updateData.picture;
-    if (updateData.active !== undefined) staff.active = !!updateData.active;
+    const updated = await this.prisma.user.update({
+      where: { id: staffId },
+      data: {
+        name: updateData.name !== undefined ? updateData.name : undefined,
+        phone: updateData.phone !== undefined ? updateData.phone : undefined,
+        picture: updateData.picture !== undefined ? updateData.picture : undefined,
+        active: updateData.active !== undefined ? !!updateData.active : undefined,
+        updatedAt: Date.now()
+      }
+    });
 
-    staff.updatedAt = Date.now();
-    await this.saveDb(db);
-
-    const { password: _, ...staffWithoutPass } = staff;
-    return staffWithoutPass;
+    return this.mapUser(updated);
   }
 
   async updateStaffPassword(ownerEmail: string, staffId: string, newPass: string): Promise<{ success: boolean }> {
-    const db = await this.getDb();
-    const staff = db.find(u => u.id === staffId && u.role === 'staff' && u.parentEmail?.toLowerCase() === ownerEmail.toLowerCase());
+    const staff = await this.prisma.user.findFirst({
+      where: {
+        id: staffId,
+        role: 'staff',
+        parentEmail: ownerEmail.toLowerCase()
+      }
+    });
     if (!staff) {
       throw new NotFoundException('Staff account not found or access denied');
     }
@@ -704,71 +696,80 @@ export class UsersService implements OnModuleInit {
       throw new UnauthorizedException('Password must be at least 4 characters long');
     }
 
-    staff.password = await bcrypt.hash(newPass, 10);
-    staff.updatedAt = Date.now();
-    await this.saveDb(db);
+    const hashed = await bcrypt.hash(newPass, 10);
+    await this.prisma.user.update({
+      where: { id: staffId },
+      data: {
+        password: hashed,
+        updatedAt: Date.now()
+      }
+    });
+
     return { success: true };
   }
 
   async deleteStaff(ownerEmail: string, staffId: string): Promise<{ success: boolean }> {
-    const db = await this.getDb();
-    const idx = db.findIndex(u => u.id === staffId && u.role === 'staff' && u.parentEmail?.toLowerCase() === ownerEmail.toLowerCase());
-    if (idx === -1) {
+    const staff = await this.prisma.user.findFirst({
+      where: {
+        id: staffId,
+        role: 'staff',
+        parentEmail: ownerEmail.toLowerCase()
+      }
+    });
+    if (!staff) {
       throw new NotFoundException('Staff account not found or access denied');
     }
 
-    db.splice(idx, 1);
-    await this.saveDb(db);
+    await this.prisma.user.delete({
+      where: { id: staffId }
+    });
+
     return { success: true };
   }
 
-  // --- Audit / Activity Logs ---
-  private async getActivityLogsDb(): Promise<any[]> {
-    try {
-      const data = await fs.readFile(this.activityLogsPath, 'utf8');
-      if (!data || !data.trim()) return [];
-      return JSON.parse(data);
-    } catch (e: any) {
-      if (e.code === 'ENOENT') return [];
-      throw e;
-    }
-  }
-
-  private async saveActivityLogsDb(data: any[]): Promise<void> {
-    await fs.writeFile(this.activityLogsPath, JSON.stringify(data, null, 2), 'utf8');
-  }
-
   async getLogs(): Promise<any[]> {
-    return this.getActivityLogsDb();
+    return this.prisma.activityLog.findMany({
+      orderBy: { timestamp: 'desc' }
+    });
   }
 
   async logAction(email: string, userName: string, role: string, action: string, ip: string = '127.0.0.1', device: string = 'Desktop Web'): Promise<void> {
     try {
-      const logs = await this.getActivityLogsDb();
-      const newLog = {
-        id: 'LOG-' + Math.floor(100000 + Math.random() * 900000),
-        userId: email,
-        userName: userName || 'N/A',
-        role,
-        action,
-        ip,
-        device,
-        timestamp: Date.now()
-      };
-      logs.unshift(newLog);
-      if (logs.length > 500) {
-        logs.pop();
+      await this.prisma.activityLog.create({
+        data: {
+          id: 'LOG-' + Math.floor(100000 + Math.random() * 900000),
+          userId: email,
+          userName: userName || 'N/A',
+          role,
+          action,
+          ip,
+          device,
+          timestamp: Date.now()
+        }
+      });
+
+      // Keep under 500 logs
+      const logsCount = await this.prisma.activityLog.count();
+      if (logsCount > 500) {
+        const oldest = await this.prisma.activityLog.findMany({
+          orderBy: { timestamp: 'asc' },
+          take: logsCount - 500
+        });
+        if (oldest.length > 0) {
+          await this.prisma.activityLog.deleteMany({
+            where: { id: { in: oldest.map((o: any) => o.id) } }
+          });
+        }
       }
-      await this.saveActivityLogsDb(logs);
     } catch (err) {
       console.error('Failed to write activity log:', err);
     }
   }
 
-  // --- Impersonation ---
   async impersonateUser(email: string): Promise<{ access_token: string; user: Omit<User, 'password'> }> {
-    const db = await this.getDb();
-    const user = db.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
+    });
     if (!user) throw new NotFoundException('User not found');
     if (user.role !== 'user' && user.role !== 'staff') {
       throw new UnauthorizedException('Can only impersonate business owners or staff');
@@ -784,171 +785,143 @@ export class UsersService implements OnModuleInit {
     };
     const token = await this.jwtService.signAsync(payload);
     
-    // Log impersonation
     await this.logAction(user.email, user.name, user.role, `Impersonated by Administrator`);
 
-    const { password: _, ...userWithoutPass } = user;
     return {
       access_token: token,
-      user: userWithoutPass
+      user: this.mapUser(user)
     };
   }
 
-  // --- Plan updates ---
   async updateUserPlan(email: string, plan: 'free' | 'basic' | 'pro' | 'enterprise', validityInDays: number): Promise<Omit<User, 'password'>> {
-    const db = await this.getDb();
-    const user = db.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
+    });
     if (!user) throw new NotFoundException('User not found');
     if (user.role !== 'user') {
       throw new UnauthorizedException('Can only modify plans for business owners');
     }
-    user.plan = plan;
-    user.validUntil = Date.now() + validityInDays * 24 * 60 * 60 * 1000;
-    user.updatedAt = Date.now();
-    await this.saveDb(db);
+
+    const updated = await this.prisma.user.update({
+      where: { email: email.toLowerCase() },
+      data: {
+        plan,
+        validUntil: Date.now() + validityInDays * 24 * 60 * 60 * 1000,
+        updatedAt: Date.now()
+      }
+    });
 
     await this.logAction(email, user.name, user.role, `Plan updated to ${plan} (validity: ${validityInDays} days) by Administrator`);
 
-    const { password: _, ...userWithoutPass } = user;
-    return userWithoutPass;
+    return this.mapUser(updated);
   }
 
-  // --- Reset User Password by Admin ---
   async adminResetUserPassword(email: string, newPass: string): Promise<{ success: boolean }> {
-    const db = await this.getDb();
-    const user = db.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
+    });
     if (!user) throw new NotFoundException('User not found');
-    user.password = await bcrypt.hash(newPass, 10);
-    user.updatedAt = Date.now();
-    await this.saveDb(db);
+
+    const hashed = await bcrypt.hash(newPass, 10);
+    await this.prisma.user.update({
+      where: { email: email.toLowerCase() },
+      data: {
+        password: hashed,
+        updatedAt: Date.now()
+      }
+    });
 
     await this.logAction(email, user.name, user.role, `Password reset by Administrator`);
-
     return { success: true };
   }
 
-  // --- Support Tickets ---
-  private async getTicketsDb(): Promise<any[]> {
-    try {
-      const data = await fs.readFile(this.ticketsPath, 'utf8');
-      if (!data || !data.trim()) return [];
-      return JSON.parse(data);
-    } catch (e: any) {
-      if (e.code === 'ENOENT') return [];
-      throw e;
-    }
-  }
-
-  private async saveTicketsDb(data: any[]): Promise<void> {
-    await fs.writeFile(this.ticketsPath, JSON.stringify(data, null, 2), 'utf8');
-  }
-
   async getTickets(): Promise<any[]> {
-    return this.getTicketsDb();
+    return this.prisma.supportTicket.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
   }
 
   async getTicketsForUser(email: string): Promise<any[]> {
-    const tickets = await this.getTicketsDb();
-    return tickets.filter(t => t.userId.toLowerCase() === email.toLowerCase());
+    return this.prisma.supportTicket.findMany({
+      where: { userId: email.toLowerCase() },
+      orderBy: { createdAt: 'desc' }
+    });
   }
 
   async createTicket(email: string, subject: string, description: string, priority: 'low' | 'medium' | 'high'): Promise<any> {
-    const db = await this.getDb();
-    const user = db.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
+    });
     const businessName = user?.businessName || 'N/A';
-    const tickets = await this.getTicketsDb();
-    const newTicket = {
-      id: 'TCK-' + Math.floor(100 + Math.random() * 900),
-      userId: email.toLowerCase(),
-      businessName,
-      subject,
-      description,
-      priority,
-      status: 'open',
-      createdAt: Date.now(),
-      assignedAdmin: ''
-    };
-    tickets.push(newTicket);
-    await this.saveTicketsDb(tickets);
+    
+    const newTicket = await this.prisma.supportTicket.create({
+      data: {
+        id: 'TCK-' + Math.floor(100 + Math.random() * 900),
+        userId: email.toLowerCase(),
+        businessName,
+        subject,
+        description,
+        priority,
+        status: 'open',
+        createdAt: Date.now(),
+        assignedAdmin: ''
+      }
+    });
     
     await this.logAction(email, user?.name || email, user?.role || 'user', `Created support ticket: ${subject}`);
-    
     return newTicket;
   }
 
   async updateTicketStatus(ticketId: string, status: string): Promise<any> {
-    const tickets = await this.getTicketsDb();
-    const t = tickets.find(x => x.id === ticketId);
+    const t = await this.prisma.supportTicket.findUnique({
+      where: { id: ticketId }
+    });
     if (!t) throw new NotFoundException('Ticket not found');
-    t.status = status;
-    await this.saveTicketsDb(tickets);
-    return t;
+
+    return this.prisma.supportTicket.update({
+      where: { id: ticketId },
+      data: { status }
+    });
   }
 
   async assignTicket(ticketId: string, adminEmail: string): Promise<any> {
-    const tickets = await this.getTicketsDb();
-    const t = tickets.find(x => x.id === ticketId);
+    const t = await this.prisma.supportTicket.findUnique({
+      where: { id: ticketId }
+    });
     if (!t) throw new NotFoundException('Ticket not found');
-    t.assignedAdmin = adminEmail.toLowerCase();
-    t.status = 'in_progress';
-    await this.saveTicketsDb(tickets);
-    return t;
-  }
 
-  // --- Announcements/Notifications ---
-  private async getNotificationsDb(): Promise<any[]> {
-    try {
-      const data = await fs.readFile(this.notificationsPath, 'utf8');
-      if (!data || !data.trim()) return [];
-      return JSON.parse(data);
-    } catch (e: any) {
-      if (e.code === 'ENOENT') return [];
-      throw e;
-    }
-  }
-
-  private async saveNotificationsDb(data: any[]): Promise<void> {
-    await fs.writeFile(this.notificationsPath, JSON.stringify(data, null, 2), 'utf8');
+    return this.prisma.supportTicket.update({
+      where: { id: ticketId },
+      data: {
+        assignedAdmin: adminEmail.toLowerCase(),
+        status: 'in_progress'
+      }
+    });
   }
 
   async getNotifications(): Promise<any[]> {
-    return this.getNotificationsDb();
+    return this.prisma.notification.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
   }
 
   async createAnnouncement(target: string, title: string, message: string): Promise<any> {
-    const list = await this.getNotificationsDb();
-    const newNtf = {
-      id: 'NTF-' + Math.floor(100 + Math.random() * 900),
-      target, // 'all' | 'basic' | 'pro' | 'enterprise'
-      title,
-      message,
-      createdAt: Date.now()
-    };
-    list.push(newNtf);
-    await this.saveNotificationsDb(list);
-    return newNtf;
-  }
-
-  // --- Payments/Transactions ---
-  private async getPaymentsDb(): Promise<any[]> {
-    try {
-      const data = await fs.readFile(this.paymentsPath, 'utf8');
-      if (!data || !data.trim()) return [];
-      return JSON.parse(data);
-    } catch (e: any) {
-      if (e.code === 'ENOENT') return [];
-      throw e;
-    }
-  }
-
-  private async savePaymentsDb(data: any[]): Promise<void> {
-    await fs.writeFile(this.paymentsPath, JSON.stringify(data, null, 2), 'utf8');
+    return this.prisma.notification.create({
+      data: {
+        id: 'NTF-' + Math.floor(100 + Math.random() * 900),
+        target,
+        title,
+        message,
+        createdAt: Date.now()
+      }
+    });
   }
 
   async getPayments(): Promise<any[]> {
-    let list = await this.getPaymentsDb();
-    if (list.length === 0) {
-      list = [
+    const count = await this.prisma.payment.count();
+    if (count === 0) {
+      // Seed default transactions if empty
+      const list = [
         {
           id: 'TXN-881',
           userId: 'owner@biz.com',
@@ -980,40 +953,46 @@ export class UsersService implements OnModuleInit {
           invoiceId: 'INV-2026-003'
         }
       ];
-      await this.savePaymentsDb(list);
+      await this.prisma.payment.createMany({
+        data: list
+      });
     }
-    return list;
+    return this.prisma.payment.findMany({
+      orderBy: { timestamp: 'desc' }
+    });
   }
 
   async refundPayment(txnId: string): Promise<any> {
-    const list = await this.getPaymentsDb();
-    const txn = list.find(t => t.id === txnId);
+    const txn = await this.prisma.payment.findUnique({
+      where: { id: txnId }
+    });
     if (!txn) throw new NotFoundException('Transaction not found');
-    txn.status = 'refunded';
-    await this.savePaymentsDb(list);
+
+    const updated = await this.prisma.payment.update({
+      where: { id: txnId },
+      data: { status: 'refunded' }
+    });
 
     await this.logAction(txn.userId, txn.businessName, 'user', `Payment refunded for invoice ${txn.invoiceId} (${txn.amount} INR)`);
-
-    return txn;
+    return updated;
   }
 
   async addPayment(email: string, amount: number, plan: string): Promise<any> {
-    const db = await this.getDb();
-    const user = db.find(u => u.email.toLowerCase() === email.toLowerCase());
-    const list = await this.getPaymentsDb();
-    const newTxn = {
-      id: 'TXN-' + Math.floor(100 + Math.random() * 900),
-      userId: email.toLowerCase(),
-      businessName: user?.businessName || 'N/A',
-      amount,
-      plan,
-      status: 'success',
-      timestamp: Date.now(),
-      invoiceId: 'INV-2026-' + Math.floor(1000 + Math.random() * 9000)
-    };
-    list.push(newTxn);
-    await this.savePaymentsDb(list);
-    return newTxn;
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
+    });
+    return this.prisma.payment.create({
+      data: {
+        id: 'TXN-' + Math.floor(100 + Math.random() * 900),
+        userId: email.toLowerCase(),
+        businessName: user?.businessName || 'N/A',
+        amount,
+        plan,
+        status: 'success',
+        timestamp: Date.now(),
+        invoiceId: 'INV-2026-' + Math.floor(1000 + Math.random() * 9000)
+      }
+    });
   }
 
   async getSystemStatus(): Promise<any> {
@@ -1026,14 +1005,15 @@ export class UsersService implements OnModuleInit {
       }
     };
 
-    const usersSize = await getFileSize(this.usersPath);
-    const databaseSize = await getFileSize(path.join(process.cwd(), 'database.json'));
-    const billsSize = await getFileSize(path.join(process.cwd(), 'bills.json'));
-    const scanHistorySize = await getFileSize(path.join(process.cwd(), 'scan_history.json'));
-    const ticketsSize = await getFileSize(this.ticketsPath);
-    const logsSize = await getFileSize(this.activityLogsPath);
-    const paymentsSize = await getFileSize(this.paymentsPath);
-    const notificationsSize = await getFileSize(this.notificationsPath);
+    const cwd = process.cwd();
+    const usersSize = await getFileSize(path.join(cwd, 'users.json'));
+    const databaseSize = await getFileSize(path.join(cwd, 'database.json'));
+    const billsSize = await getFileSize(path.join(cwd, 'bills.json'));
+    const scanHistorySize = await getFileSize(path.join(cwd, 'scan_history.json'));
+    const ticketsSize = await getFileSize(path.join(cwd, 'support_tickets.json'));
+    const logsSize = await getFileSize(path.join(cwd, 'activity_logs.json'));
+    const paymentsSize = await getFileSize(path.join(cwd, 'payments.json'));
+    const notificationsSize = await getFileSize(path.join(cwd, 'notifications.json'));
 
     return {
       dbSizes: {

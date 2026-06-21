@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../utils/config';
 import React, { useState, useEffect } from 'react';
 import '../App.css';
 import { Search, ShoppingCart, Check, Plus, Minus, Printer, X, Receipt, Trash2, AlertTriangle, Download, Send, Share2 } from 'lucide-react';
@@ -65,7 +66,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
   const fetchBills = async () => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:3000/api/user/products/bills', {
+      const res = await fetch(`${API_BASE_URL}/api/user/products/bills`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -133,7 +134,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
   const handleCheckout = async () => {
      if (cart.length === 0) return;
      try {
-         const res = await fetch('http://localhost:3000/api/user/products/sell', {
+         const res = await fetch(`${API_BASE_URL}/api/user/products/sell`, {
              method: 'POST',
              headers: { 
                'Content-Type': 'application/json',

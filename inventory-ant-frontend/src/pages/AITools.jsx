@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../utils/config';
 import React, { useState, useEffect } from 'react';
 import '../App.css';
 import { CloudUpload, FileText, Clock, Layers, Flame, UploadCloud, Loader2, Eye, X, Printer, ClipboardList } from 'lucide-react';
@@ -15,7 +16,7 @@ function AITools({ userId, token, onScanResult, onOpenScanner, userProfile, them
     setHistoryLoading(true);
     setHistoryError('');
     try {
-      const res = await fetch('http://localhost:3000/api/user/products/scan-history', {
+      const res = await fetch(`${API_BASE_URL}/api/user/products/scan-history`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {

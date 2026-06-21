@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { PrismaService } from '../prisma.service';
 
 export interface Product {
   id: string;
@@ -35,40 +36,11 @@ export interface UserSession {
 
 @Injectable()
 export class ProductsService {
-  private readonly filePath = path.join(process.cwd(), 'database.json');
-  private readonly billsPath = path.join(process.cwd(), 'bills.json');
-  private readonly scanHistoryPath = path.join(process.cwd(), 'scan_history.json');
   private readonly userSessions = new Map<string, UserSession>();
 
-  private async getScanHistoryDb(): Promise<any[]> {
-    try {
-      const data = await fs.readFile(this.scanHistoryPath, 'utf8');
-      if (!data || !data.trim()) return [];
-      return JSON.parse(data);
-    } catch (e: any) {
-      if (e.code === 'ENOENT') return [];
-      throw e;
-    }
-  }
-
-  private async saveScanHistoryDb(data: any[]): Promise<void> {
-    await fs.writeFile(this.scanHistoryPath, JSON.stringify(data, null, 2), 'utf8');
-  }
-
-  private async getBillsDb(): Promise<any[]> {
-    try {
-      const data = await fs.readFile(this.billsPath, 'utf8');
-      if (!data || !data.trim()) return [];
-      return JSON.parse(data);
-    } catch (e: any) {
-      if (e.code === 'ENOENT') return [];
-      throw e;
-    }
-  }
-
-  private async saveBillsDb(data: any[]): Promise<void> {
-    await fs.writeFile(this.billsPath, JSON.stringify(data, null, 2), 'utf8');
-  }
+  constructor(
+    private readonly prisma: PrismaService
+  ) {}
 
   private getOrCreateSession(userId: string): UserSession {
     const cleanId = userId.trim().toLowerCase();
@@ -78,30 +50,18 @@ export class ProductsService {
     return this.userSessions.get(cleanId)!;
   }
 
-  private async getDb(): Promise<Product[]> {
-    try {
-      const data = await fs.readFile(this.filePath, 'utf8');
-      if (!data || !data.trim()) return [];
-      return JSON.parse(data);
-    } catch (e: any) {
-      if (e.code === 'ENOENT') return [];
-      throw e;
-    }
-  }
-
-  private async saveDb(data: Product[]): Promise<void> {
-    await fs.writeFile(this.filePath, JSON.stringify(data, null, 2), 'utf8');
-  }
-
   private generateId(index = 0): string {
     return Math.random().toString(36).substring(2, 10) + 
            Date.now().toString(36) + 
            index.toString(36);
   }
 
-  private async getNextNumericProductId(userId: string, db: Product[]): Promise<string> {
+  private async getNextNumericProductId(userId: string): Promise<string> {
+    const products = await this.prisma.product.findMany({
+      where: { userId }
+    });
     let maxId = 0;
-    db.filter(p => p.userId === userId).forEach(p => {
+    products.forEach(p => {
       const n = parseInt(p.productId || '0', 10);
       if (!isNaN(n) && n > maxId) maxId = n;
     });
@@ -110,28 +70,37 @@ export class ProductsService {
 
   async createBulk(userId: string, items: any[]): Promise<{ count: number }> {
     console.log(`🚀 [BULK START]: Received ${items.length} items for user "${userId}"`);
-    const db = await this.getDb();
     const cleanUserId = userId.trim().toLowerCase();
     
     let addedCount = 0;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      const newItem = { 
-        ...item,
-        id: this.generateId(i), 
-        userId: cleanUserId 
-      };
-      db.push(newItem);
+      const { id, userId: uId, productId, name, details, mrp, paket, quantity, _timestamp, ...extra } = item;
+      await this.prisma.product.create({
+        data: {
+          id: this.generateId(i),
+          userId: cleanUserId,
+          productId: productId ? String(productId) : null,
+          name: name || null,
+          details: details || null,
+          mrp: mrp ? String(mrp) : null,
+          paket: paket || null,
+          quantity: quantity ? String(quantity) : null,
+          timestamp: _timestamp || Date.now(),
+          extraAttributes: extra
+        }
+      });
       addedCount++;
     }
     
-    await this.saveDb(db);
-    console.log(`✅ [BULK SUCCESS]: Saved ${addedCount} items. Total DB size now: ${db.length}`);
+    console.log(`✅ [BULK SUCCESS]: Saved ${addedCount} items.`);
     return { count: addedCount };
   }
 
-  private async updateSingleItem(db: Product[], userId: string, item: any, actionType: 'IN' | 'OUT'): Promise<string> {
+  private async updateSingleItem(userId: string, item: any, actionType: 'IN' | 'OUT'): Promise<string> {
     console.log(`🔍 [PROCESS]: "${item.name}" qty=${item.qty} action=${actionType}`);
+
+    const userItems = await this.findAll(userId);
 
     const billName = (item.name || '').toLowerCase();
     const billDetails = (item.details || '').toLowerCase();
@@ -143,8 +112,7 @@ export class ProductsService {
     const sanitizeId = (id: any) => String(id || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     const incomingCleanId = sanitizeId(item.productId);
 
-    db.forEach((p, i) => {
-      if (p.userId !== userId) return;
+    userItems.forEach((p, i) => {
       let score = 0;
       
       const dbCleanId = sanitizeId(p.productId);
@@ -189,46 +157,67 @@ export class ProductsService {
     let bestIdx = bestIndices.length === 1 ? bestIndices[0] : -1;
 
     if (bestIdx !== -1) {
-      const p = db[bestIdx];
+      const p = userItems[bestIdx];
       const cur = parseInt(p.quantity || '0', 10);
       const display = p.productId ? `[${p.productId}] ${p.name}` : p.name;
       console.log(`✅ [MATCH]: "${item.name}" → "${p.name}" score=${high.toFixed(0)}`);
       
-      if (item.mrp && parseFloat(item.mrp) > 0) p.mrp = item.mrp.toString();
-      if (actionType === 'IN') {
-        p.quantity = (cur + qty).toString();
-        Object.keys(item).forEach(k => {
-           if (!['name', 'qty', 'productId', 'mrp'].includes(k) && item[k] !== undefined) {
-               p[k] = item[k];
-           }
-        });
-        return `SUCCESS: ${display} +${qty} (Total: ${cur + qty})`;
-      } else {
-        const newQty = Math.max(0, cur - qty);
-        p.quantity = newQty.toString();
-        return `SUCCESS: ${display} -${qty} (Total: ${newQty})`;
+      const updateData: any = {};
+      if (item.mrp && parseFloat(item.mrp) > 0) {
+        updateData.mrp = item.mrp.toString();
       }
+      
+      let newQtyStr: string;
+      if (actionType === 'IN') {
+        newQtyStr = (cur + qty).toString();
+      } else {
+        newQtyStr = Math.max(0, cur - qty).toString();
+      }
+      updateData.quantity = newQtyStr;
+
+      // Extract dynamic / extra fields
+      const extraAttributes = { ...(p.extraAttributes as any || {}) };
+      Object.keys(item).forEach(k => {
+         if (!['name', 'qty', 'productId', 'mrp'].includes(k) && item[k] !== undefined) {
+             extraAttributes[k] = item[k];
+         }
+      });
+      updateData.extraAttributes = extraAttributes;
+
+      await this.prisma.product.update({
+        where: { id: p.id },
+        data: updateData
+      });
+
+      return `SUCCESS: ${display} ${actionType === 'IN' ? '+' : '-'}${qty} (Total: ${newQtyStr})`;
     } else {
       console.log(`❌ [NO_MATCH]: "${item.name}"`);
+      const pid = incomingCleanId || item.productId || await this.getNextNumericProductId(userId);
+      const newQtyStr = actionType === 'IN' ? qty.toString() : '0';
+      
+      const extra: any = {};
+      Object.keys(item).forEach(k => {
+         if (!['name', 'qty', 'productId', 'mrp'].includes(k) && item[k] !== undefined) {
+             extra[k] = item[k];
+         }
+      });
+
+      const newItem = await this.prisma.product.create({
+        data: {
+          id: this.generateId(),
+          userId,
+          productId: pid,
+          name: item.name || 'Unknown Item',
+          quantity: newQtyStr,
+          mrp: item.mrp ? String(item.mrp) : '0',
+          timestamp: Date.now(),
+          extraAttributes: extra
+        }
+      });
+
       if (actionType === 'IN') {
-        const pid = incomingCleanId || item.productId || await this.getNextNumericProductId(userId, db);
-        const newItem: any = { id: this.generateId(), userId, productId: pid, name: item.name || 'Unknown Item', quantity: qty.toString(), mrp: item.mrp || '0', _timestamp: Date.now() };
-        Object.keys(item).forEach(k => {
-           if (!['name', 'qty', 'productId', 'mrp'].includes(k) && item[k] !== undefined) {
-               newItem[k] = item[k];
-           }
-        });
-        db.push(newItem);
         return `NEW: ${newItem.name} (qty: ${qty})`;
       } else {
-        const pid = incomingCleanId || item.productId || await this.getNextNumericProductId(userId, db);
-        const newItem: any = { id: this.generateId(), userId, productId: pid, name: item.name || 'Unknown Item', quantity: '0', mrp: item.mrp || '0', _timestamp: Date.now() };
-        Object.keys(item).forEach(k => {
-           if (!['name', 'qty', 'productId', 'mrp'].includes(k) && item[k] !== undefined) {
-               newItem[k] = item[k];
-           }
-        });
-        db.push(newItem);
         return `NEW_OUTBOUND: ${newItem.name} (qty deducted below 0, recorded as 0)`;
       }
     }
@@ -250,8 +239,7 @@ export class ProductsService {
     payload: { text: string; currentView?: string; role?: string; wakeWordActive?: boolean }
   ): Promise<any> {
     try {
-      const db = await this.getDb();
-      const userItems = db.filter(p => p.userId === userId);
+      const userItems = await this.findAll(userId);
       const session = this.getOrCreateSession(userId);
       const cleanText = payload.text.trim().toLowerCase();
 
@@ -277,8 +265,7 @@ export class ProductsService {
                 expiry: action.expiry, 
                 ...(action.dynamicData || {}) 
               };
-              const msg = await this.updateSingleItem(db, userId, itemPayload, action.action);
-              await this.saveDb(db);
+              const msg = await this.updateSingleItem(userId, itemPayload, action.action);
               
               // Resolve matching item for context sync
               let matchedP = userItems.find(p => p.productId === action.productId);
@@ -322,7 +309,7 @@ export class ProductsService {
 
       // --- 2. REGULAR INBOUND / OUTBOUND PROCESSING ---
       const dynamicKeys = userItems.length > 0 
-          ? Array.from(new Set(userItems.flatMap(p => Object.keys(p)))).filter(k => !['id', 'userId', 'quantity', 'mrp', 'productId', 'name', 'details'].includes(k))
+          ? Array.from(new Set(userItems.flatMap(p => Object.keys(p)))).filter(k => !['id', 'userId', 'quantity', 'mrp', 'productId', 'name', 'details', 'extraAttributes'].includes(k))
           : [];
       const totalItems = userItems.length;
       const lowStockItems = userItems.filter(p => parseInt(p.quantity || '0', 10) < 20).length;
@@ -364,24 +351,19 @@ export class ProductsService {
       Language: Natural Hinglish (Mix of Hindi & English, like a WhatsApp chat). 
       NO "Shuddh Hindi". NO symbols like * or #.
       CRITICAL: NEVER use the word "Boss". Address the user directly or as "Sir/Ma'am" if needed, but "Boss" is strictly forbidden.
-
+ 
       TONE & ROLE INSTRUCTIONS:
       ${roleStr}
-
+ 
       CRITICAL RULE:
       1. ALWAYS end every response with a follow-up question to keep the conversation alive. 
       2. If you navigate to a page, describe what the user can do on that page.
       3. Be proactive: Suggest the next logical step.
-
+ 
       CONTEXT MEMORY:
       ${lastProductContext}
       Note: If the user says "usmein", "iska", "ispe", or does not mention the product name/code but implies the last referenced item, please assume they are referring to this item and fill the "itemName" or "productId" accordingly.
-
-      IDENTITY & KNOWLEDGE:
-      - You are "Ant X", the AI assistant for Inventory Ant.
-      - The owner and creator of Inventory Ant is "Deepak Raj". CRITICAL: ONLY mention Deepak Raj if the user EXPLICITLY asks who made you, who the creator is, or who the owner is. Do NOT mention him in general summaries.
-      - Inventory Ant is a smart warehouse and inventory management system. Key features: Stock tracking, POS billing, AI-powered automation, and expiry/wastage reduction.
-
+ 
       APP KNOWLEDGE & PAGES:
       - dashboard: Stats, Low Stock alerts.
       - inventory: Product table.
@@ -391,13 +373,13 @@ export class ProductsService {
       - ant_x: AI Terminal.
       - guide: Help.
       - about: About Us page, Mission, and Vision.
-
+ 
       CONTEXT:
       - Page: "${payload.currentView || 'dashboard'}"
       - Stats: Total ${totalItems}, Low Stock ${lowStockItems}, Expired Items ${expiredCount}, Soon to Expire ${soonCount}.
-
+ 
       USER: "${payload.text}"
-
+ 
       Return JSON ONLY:
       {
         "speechText": "Natural Hinglish reply + proactive question",
@@ -601,8 +583,7 @@ export class ProductsService {
 
       if (data.action === 'IN' || data.action === 'OUT') {
         const itemPayload = { name: data.itemName, details: data.details, qty: data.qty, productId: data.productId, expiry: data.expiry, ...(data.dynamicData || {}) };
-        const msg = await this.updateSingleItem(db, userId, itemPayload, data.action);
-        await this.saveDb(db);
+        const msg = await this.updateSingleItem(userId, itemPayload, data.action);
         
         let finalSpeech = data.speechText;
         if (msg.startsWith('Maaf kijiye') || msg.startsWith('NOT_FOUND')) {
@@ -779,35 +760,30 @@ export class ProductsService {
       };
     }
 
-    const db = await this.getDb();
     const log: string[] = [];
     for (const i of items) {
       if (!i.qty || i.qty < 1) i.qty = 1;
-      log.push(await this.updateSingleItem(db, userId, i, payload.actionType));
+      log.push(await this.updateSingleItem(userId, i, payload.actionType));
     }
-    await this.saveDb(db);
 
-    // Save scan to scan_history.json
+    // Save scan to ScanHistory in database
     try {
-      const scanId = 'SCAN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
-      const newScanEntry = {
-        id: scanId,
-        userId,
-        timestamp: Date.now(),
-        actionType: payload.actionType,
-        operatorName,
-        items: items.map(it => ({
-          productId: it.productId || '',
-          name: it.name || 'Unknown Item',
-          qty: it.qty,
-          mrp: it.mrp || '0'
-        })),
-        auditLog: log
-      };
-
-      const scanHistoryDb = await this.getScanHistoryDb();
-      scanHistoryDb.push(newScanEntry);
-      await this.saveScanHistoryDb(scanHistoryDb);
+      await this.prisma.scanHistory.create({
+        data: {
+          id: 'SCAN-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+          userId,
+          timestamp: Date.now(),
+          actionType: payload.actionType,
+          operatorName,
+          items: items.map(it => ({
+            productId: it.productId || '',
+            name: it.name || 'Unknown Item',
+            qty: it.qty,
+            mrp: it.mrp || '0'
+          })),
+          auditLog: log
+        }
+      });
     } catch (err) {
       console.error('Failed to write scan history:', err);
     }
@@ -830,16 +806,22 @@ export class ProductsService {
       buyerAddress = payload.buyerAddress || '';
     }
 
-    const db = await this.getDb();
     const billedItems: any[] = [];
     let subtotal = 0;
 
     for (const c of cart) {
-      const idx = db.findIndex(p => p.userId === userId && p.id === c.id);
-      if (idx !== -1) {
-        const product = db[idx];
+      const product = await this.prisma.product.findFirst({
+        where: { userId, id: c.id }
+      });
+      if (product) {
         const qtyToSell = parseInt(c.quantity, 10) || 1;
-        product.quantity = Math.max(0, parseInt(product.quantity || '0', 10) - qtyToSell).toString();
+        const cur = parseInt(product.quantity || '0', 10);
+        const newQtyStr = Math.max(0, cur - qtyToSell).toString();
+
+        await this.prisma.product.update({
+          where: { id: product.id },
+          data: { quantity: newQtyStr }
+        });
 
         const rate = parseFloat(product.mrp || '0');
         subtotal += rate * qtyToSell;
@@ -853,88 +835,128 @@ export class ProductsService {
       }
     }
 
-    await this.saveDb(db);
-
-    // Save transaction to bills.json
     const hasGst = payload && payload.hasGst !== undefined ? !!payload.hasGst : true;
     const gstRate = 0.18;
     const gst = hasGst ? subtotal * gstRate : 0;
     const total = subtotal + gst;
     const billId = 'TXN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
 
-    const newBill = {
-      id: billId,
-      userId,
-      date: Date.now(),
-      items: billedItems,
-      subtotal,
-      gst,
-      total,
-      buyerName,
-      buyerPhone,
-      buyerAddress,
-      hasGst,
-      hasBuyerInfo: !!(buyerName || buyerPhone || buyerAddress),
-      operatorName
-    };
-
-    const billsDb = await this.getBillsDb();
-    billsDb.push(newBill);
-    await this.saveBillsDb(billsDb);
+    const newBill = await this.prisma.bill.create({
+      data: {
+        id: billId,
+        userId,
+        date: Date.now(),
+        items: billedItems,
+        subtotal,
+        gst,
+        total,
+        buyerName,
+        buyerPhone,
+        buyerAddress,
+        hasGst,
+        hasBuyerInfo: !!(buyerName || buyerPhone || buyerAddress),
+        operatorName
+      }
+    });
 
     return { success: true, bill: newBill };
   }
 
   async getBills(userId: string): Promise<any[]> {
-    const bills = await this.getBillsDb();
     const cleanUserId = userId.trim().toLowerCase();
-    return bills
-      .filter(b => (b.userId || '').trim().toLowerCase() === cleanUserId)
-      .sort((a, b) => b.date - a.date);
+    return this.prisma.bill.findMany({
+      where: { userId: cleanUserId },
+      orderBy: { date: 'desc' }
+    });
   }
 
   async findAll(userId: string): Promise<Product[]> {
     const cleanUserId = userId.trim().toLowerCase();
-    return (await this.getDb()).filter(p => (p.userId || '').trim().toLowerCase() === cleanUserId);
+    const list = await this.prisma.product.findMany({
+      where: { userId: cleanUserId }
+    });
+    return list.map(p => ({
+      ...p,
+      ...(p.extraAttributes as any || {})
+    }));
   }
 
   async findOne(userId: string, id: string): Promise<Product> {
     const cleanUserId = userId.trim().toLowerCase();
-    const p = (await this.getDb()).find(p => (p.userId || '').trim().toLowerCase() === cleanUserId && p.id === id);
+    const p = await this.prisma.product.findFirst({
+      where: { userId: cleanUserId, id }
+    });
     if (!p) throw new NotFoundException();
-    return p;
+    return {
+      ...p,
+      ...(p.extraAttributes as any || {})
+    };
   }
 
   async create(userId: string, data: any): Promise<Product> {
-    const db = await this.getDb();
-    const p: Product = { id: this.generateId(), userId, _timestamp: Date.now(), ...data };
-    db.push(p);
-    await this.saveDb(db);
-    return p;
+    const { id, userId: uId, productId, name, details, mrp, paket, quantity, _timestamp, ...extra } = data;
+    const p = await this.prisma.product.create({
+      data: {
+        id: this.generateId(),
+        userId,
+        productId: productId ? String(productId) : null,
+        name: name || null,
+        details: details || null,
+        mrp: mrp ? String(mrp) : null,
+        paket: paket || null,
+        quantity: quantity ? String(quantity) : null,
+        timestamp: Date.now(),
+        extraAttributes: extra
+      }
+    });
+    return {
+      ...p,
+      ...(p.extraAttributes as any || {})
+    };
   }
 
   async update(userId: string, id: string, data: any): Promise<Product> {
-    const db = await this.getDb();
-    const idx = db.findIndex(p => p.userId === userId && p.id === id);
-    if (idx === -1) throw new NotFoundException();
-    db[idx] = { ...db[idx], ...data, id, userId };
-    await this.saveDb(db);
-    return db[idx];
+    const existing = await this.prisma.product.findFirst({
+      where: { id, userId }
+    });
+    if (!existing) throw new NotFoundException();
+
+    const { id: dId, userId: uId, productId, name, details, mrp, paket, quantity, _timestamp, ...extra } = data;
+    const updated = await this.prisma.product.update({
+      where: { id },
+      data: {
+        productId: productId !== undefined ? (productId ? String(productId) : null) : undefined,
+        name: name !== undefined ? name : undefined,
+        details: details !== undefined ? details : undefined,
+        mrp: mrp !== undefined ? (mrp ? String(mrp) : null) : undefined,
+        paket: paket !== undefined ? paket : undefined,
+        quantity: quantity !== undefined ? (quantity ? String(quantity) : null) : undefined,
+        extraAttributes: Object.keys(extra).length > 0 ? { ...(existing.extraAttributes as any || {}), ...extra } : undefined
+      }
+    });
+    return {
+      ...updated,
+      ...(updated.extraAttributes as any || {})
+    };
   }
 
   async remove(userId: string, id: string): Promise<{ message: string }> {
-    const db = await this.getDb();
-    const idx = db.findIndex(p => p.userId === userId && p.id === id);
-    if (idx === -1) throw new NotFoundException();
-    db.splice(idx, 1);
-    await this.saveDb(db);
+    const existing = await this.prisma.product.findFirst({
+      where: { id, userId }
+    });
+    if (!existing) throw new NotFoundException();
+
+    await this.prisma.product.delete({
+      where: { id }
+    });
     return { message: 'Deleted' };
   }
 
   async removeAll(userId: string): Promise<{ message: string }> {
-    const db = await this.getDb();
     const cleanUserId = userId.trim().toLowerCase();
-    await this.saveDb(db.filter(p => (p.userId || '').trim().toLowerCase() !== cleanUserId));
+    await this.prisma.product.deleteMany({
+      where: { userId: cleanUserId }
+    });
     return { message: 'Wiped' };
   }
 
@@ -943,10 +965,10 @@ export class ProductsService {
   }
 
   async getScanHistory(userId: string): Promise<any[]> {
-    const list = await this.getScanHistoryDb();
     const cleanUserId = userId.trim().toLowerCase();
-    return list
-      .filter(s => (s.userId || '').trim().toLowerCase() === cleanUserId)
-      .sort((a, b) => b.timestamp - a.timestamp);
+    return this.prisma.scanHistory.findMany({
+      where: { userId: cleanUserId },
+      orderBy: { timestamp: 'desc' }
+    });
   }
 }
