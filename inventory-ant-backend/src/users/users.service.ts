@@ -761,7 +761,7 @@ export class UsersService implements OnModuleInit {
           });
         }
       }
-    } catch (err ) {
+    } catch (err) {
       console.error('Failed to write activity log:', err);
     }
   }
