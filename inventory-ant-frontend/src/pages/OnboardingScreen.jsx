@@ -5,6 +5,7 @@ import '../App.css';
 export default function OnboardingScreen({ token, userProfile, onProfileCompleted, onLogout, theme }) {
   const fileInputRef = useRef(null);
   const [businessName, setBusinessName] = useState('');
+  const [businessType, setBusinessType] = useState('');
   const [email, setEmail] = useState(userProfile.email || '');
   const [phone, setPhone] = useState(userProfile.phone || '');
   const [gstNumber, setGstNumber] = useState('');
@@ -51,6 +52,10 @@ export default function OnboardingScreen({ token, userProfile, onProfileComplete
       setError('Business Name is required.');
       return;
     }
+    if (!businessType.trim()) {
+      setError('Business Type is required.');
+      return;
+    }
     if (!email.trim()) {
       setError('Email Address is required.');
       return;
@@ -78,6 +83,7 @@ export default function OnboardingScreen({ token, userProfile, onProfileComplete
           email,
           phone,
           businessName,
+          businessType,
           businessLogo: logoBase64,
           gstNumber,
           businessAddress,
@@ -176,6 +182,21 @@ export default function OnboardingScreen({ token, userProfile, onProfileComplete
                 placeholder="e.g. Acme Warehouse Ltd" 
                 value={businessName}
                 onChange={e => setBusinessName(e.target.value)}
+                className="p-3.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 outline-none text-slate-800 dark:text-white focus:border-indigo-500 transition-colors text-sm"
+                required
+              />
+            </div>
+
+            {/* Business Type */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <Sparkles size={14} className="text-indigo-500" /> Business Type <span className="text-rose-500">*</span>
+              </label>
+              <input 
+                type="text" 
+                placeholder="e.g. Retail, Wholesale, Manufacturing" 
+                value={businessType}
+                onChange={e => setBusinessType(e.target.value)}
                 className="p-3.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 outline-none text-slate-800 dark:text-white focus:border-indigo-500 transition-colors text-sm"
                 required
               />

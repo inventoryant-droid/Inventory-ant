@@ -19,6 +19,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
   // Profile details states
   const [name, setName] = useState('');
   const [businessName, setBusinessName] = useState('');
+  const [businessType, setBusinessType] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [gstNumber, setGstNumber] = useState('');
@@ -46,6 +47,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
     if (userProfile) {
       setName(userProfile.name || '');
       setBusinessName(userProfile.businessName || '');
+      setBusinessType(userProfile.businessType || '');
       setEmail(userProfile.email || '');
       setPhone(userProfile.phone || '');
       setGstNumber(userProfile.gstNumber || '');
@@ -94,6 +96,10 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
       setProfileError('Business Name is required.');
       return;
     }
+    if (!businessType.trim()) {
+      setProfileError('Business Type is required.');
+      return;
+    }
     if (!email.trim()) {
       setProfileError('Email Address is required.');
       return;
@@ -121,6 +127,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
           email,
           phone,
           businessName,
+          businessType,
           businessLogo: logoBase64,
           gstNumber,
           businessAddress,
@@ -331,6 +338,20 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
                       type="text" 
                       value={businessName}
                       onChange={e => setBusinessName(e.target.value)}
+                      className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                      <Sparkles size={12} className="text-indigo-500" /> Business Type <span className="text-rose-500">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Retail, Wholesale, Manufacturing"
+                      value={businessType}
+                      onChange={e => setBusinessType(e.target.value)}
                       className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
                       required
                     />

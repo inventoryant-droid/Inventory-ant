@@ -60,7 +60,14 @@ export class UsersController {
   @Roles('admin')
   @Delete('admin/users/:email')
   async removeUser(@Param('email') email: string) {
-    return this.usersService.softDeleteUser(email);
+    return this.usersService.hardDeleteUser(email);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Put('admin/users/:email/deactivate')
+  async deactivateUser(@Param('email') email: string) {
+    return this.usersService.deactivateUser(email);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -130,5 +137,108 @@ export class UsersController {
   @Delete('user/staff/:id')
   async deleteStaff(@Req() req: any, @Param('id') staffId: string) {
     return this.usersService.deleteStaff(req.user.email, staffId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Post('admin/impersonate/:email')
+  async impersonate(@Param('email') email: string) {
+    return this.usersService.impersonateUser(email);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Put('admin/users/:email/plan')
+  async updatePlan(@Param('email') email: string, @Body() body: { plan: 'free' | 'basic' | 'pro' | 'enterprise'; validityInDays: number }) {
+    return this.usersService.updateUserPlan(email, body.plan, body.validityInDays);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Post('admin/users/:email/reset-password')
+  async resetPassword(@Param('email') email: string, @Body() body: { newPass: string }) {
+    return this.usersService.adminResetUserPassword(email, body.newPass);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('admin/tickets')
+  async getTickets() {
+    return this.usersService.getTickets();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Put('admin/tickets/:id/status')
+  async updateTicketStatus(@Param('id') ticketId: string, @Body() body: { status: string }) {
+    return this.usersService.updateTicketStatus(ticketId, body.status);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Put('admin/tickets/:id/assign')
+  async assignTicket(@Param('id') ticketId: string, @Req() req: any) {
+    return this.usersService.assignTicket(ticketId, req.user.email);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('admin/logs')
+  async getLogs() {
+    return this.usersService.getLogs();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('admin/payments')
+  async getPayments() {
+    return this.usersService.getPayments();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Post('admin/payments/refund')
+  async refundPayment(@Body('txnId') txnId: string) {
+    return this.usersService.refundPayment(txnId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('admin/notifications')
+  async getAdminNotifications() {
+    return this.usersService.getNotifications();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Post('admin/notifications')
+  async createAnnouncement(@Body() body: { target: string; title: string; message: string }) {
+    return this.usersService.createAnnouncement(body.target, body.title, body.message);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @Get('admin/system')
+  async getSystemStatus() {
+    return this.usersService.getSystemStatus();
+  }
+
+  // --- Endpoints for standard Users/Owners to create and see tickets, and see notifications ---
+  @UseGuards(JwtAuthGuard)
+  @Get('user/tickets')
+  async getUserTickets(@Req() req: any) {
+    return this.usersService.getTicketsForUser(req.user.email);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('user/tickets')
+  async createUserTicket(@Req() req: any, @Body() body: { subject: string; description: string; priority: 'low' | 'medium' | 'high' }) {
+    return this.usersService.createTicket(req.user.email, body.subject, body.description, body.priority);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('user/notifications')
+  async getUserNotifications() {
+    return this.usersService.getNotifications();
   }
 }

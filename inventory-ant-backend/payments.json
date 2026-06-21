@@ -1,0 +1,32 @@
+[
+  {
+    "id": "TXN-881",
+    "userId": "owner@biz.com",
+    "businessName": "Apex Groceries",
+    "amount": 2999,
+    "plan": "pro",
+    "status": "success",
+    "timestamp": 1781611665471,
+    "invoiceId": "INV-2026-001"
+  },
+  {
+    "id": "TXN-882",
+    "userId": "dk@warehouse.com",
+    "businessName": "DK Warehouses",
+    "amount": 999,
+    "plan": "basic",
+    "status": "success",
+    "timestamp": 1781870865471,
+    "invoiceId": "INV-2026-002"
+  },
+  {
+    "id": "TXN-883",
+    "userId": "owner@biz.com",
+    "businessName": "Apex Groceries",
+    "amount": 2999,
+    "plan": "pro",
+    "status": "refunded",
+    "timestamp": 1780747665471,
+    "invoiceId": "INV-2026-003"
+  }
+]

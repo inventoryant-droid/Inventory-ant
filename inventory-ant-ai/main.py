@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 from fastapi import FastAPI
 
 app = FastAPI(title="Inventory Ant AI Microservice")

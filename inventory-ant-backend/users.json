@@ -11,7 +11,10 @@
     "active": true,
     "createdAt": 1781857958313,
     "updatedAt": 1782040073568,
-    "profileCompleted": false
+    "profileCompleted": false,
+    "plan": "free",
+    "validUntil": 1784635467241,
+    "storageUsed": 21.2
   },
   {
     "id": "admin-icrunod6",
@@ -23,7 +26,8 @@
     "active": true,
     "createdAt": 1781864332169,
     "updatedAt": 1781864332169,
-    "profileCompleted": true
+    "profileCompleted": true,
+    "adminRole": "super_admin"
   },
   {
     "id": "th6d1xtm",
@@ -42,25 +46,10 @@
     "gstNumber": "",
     "businessAddress": "Baraula sector 49 ,  noida , UP",
     "showPhoneOnBills": true,
-    "showEmailOnBills": true
-  },
-  {
-    "id": "106001861789454061455",
-    "email": "sp453771@gmail.com",
-    "name": "Sahil Patel",
-    "picture": "https://lh3.googleusercontent.com/a/ACg8ocIXb_bsQXZ6xkpsZr80khufkyAUhbB9tIN5wWgUNOM-hbd7I99R=s96-c",
-    "role": "user",
-    "active": false,
-    "profileCompleted": true,
-    "createdAt": 1781884661264,
-    "updatedAt": 1782039602761,
-    "phone": "2584575858",
-    "businessName": "Sahil Patel",
-    "businessLogo": "",
-    "gstNumber": "",
-    "businessAddress": "Baraula",
-    "showPhoneOnBills": true,
-    "showEmailOnBills": true
+    "showEmailOnBills": true,
+    "plan": "free",
+    "validUntil": 1784635467241,
+    "storageUsed": 6.2
   },
   {
     "id": "staff-pq6mnmsy",
@@ -75,5 +64,44 @@
     "parentEmail": "dk@warehouse.com",
     "createdAt": 1782034333272,
     "updatedAt": 1782038427000
+  },
+  {
+    "id": "admin-nc6bh09p",
+    "email": "support@inventoryant.com",
+    "name": "Support Admin",
+    "password": "$2b$10$qHcF0grWLYMOBYhBccwCJeilDowrmXqZYwUEgerDAtyCf2cI3JPV.",
+    "picture": "",
+    "role": "admin",
+    "active": true,
+    "profileCompleted": true,
+    "createdAt": 1782043479772,
+    "updatedAt": 1782043479772,
+    "adminRole": "support_admin"
+  },
+  {
+    "id": "admin-ne0uxxab",
+    "email": "finance@inventoryant.com",
+    "name": "Finance Admin",
+    "password": "$2b$10$Aw3kMkGQ6RPaOqEqE5amg.AVULC2wv8PpCadT5M9/mYPTkwwR4CP6",
+    "picture": "",
+    "role": "admin",
+    "active": true,
+    "profileCompleted": true,
+    "createdAt": 1782043479856,
+    "updatedAt": 1782043479856,
+    "adminRole": "finance_admin"
+  },
+  {
+    "id": "admin-6le38j9p",
+    "email": "tech@inventoryant.com",
+    "name": "Technical Admin",
+    "password": "$2b$10$CMIQHs/MUp5aKwRhBy0V9O5M/9105CUrkJKQNwDvD8jxfKCd/b5ry",
+    "picture": "",
+    "role": "admin",
+    "active": true,
+    "profileCompleted": true,
+    "createdAt": 1782043479933,
+    "updatedAt": 1782043479933,
+    "adminRole": "tech_admin"
   }
 ]
