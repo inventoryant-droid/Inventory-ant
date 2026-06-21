@@ -1,22 +1,30 @@
 import { Controller, Get, Post, Body, Param, Put, Delete, Req, UseGuards, Query, Res } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { JwtAuthGuard } from '../users/jwt-auth.guard';
+import { RolesGuard } from '../users/roles.guard';
+import { Roles } from '../users/roles.decorator';
 
 @Controller('api/user/products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   private validateUser(req: any): string {
-    if (!req.user || !req.user.email) {
+    if (!req.user) {
       throw new Error("User context is missing in token payload");
     }
-    return req.user.email.toLowerCase();
+    const userEmail = req.user.tenantEmail || req.user.email;
+    if (!userEmail) {
+      throw new Error("Email context is missing in token payload");
+    }
+    return userEmail.toLowerCase();
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('scan-bill')
   async scanBill(@Req() req: any, @Body() scanPayload: any) {
-    return this.productsService.processBillWithGemini(this.validateUser(req), scanPayload);
+    const tenantEmail = this.validateUser(req);
+    const operatorName = req.user.role === 'staff' ? req.user.name || req.user.email : 'Owner';
+    return this.productsService.processBillWithGemini(tenantEmail, scanPayload, operatorName);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -39,7 +47,15 @@ export class ProductsController {
   @UseGuards(JwtAuthGuard)
   @Post('sell')
   async sellProducts(@Req() req: any, @Body() payload: any) {
-    return this.productsService.sellProducts(this.validateUser(req), payload);
+    const tenantEmail = this.validateUser(req);
+    const operatorName = req.user.role === 'staff' ? req.user.name || req.user.email : 'Owner';
+    return this.productsService.sellProducts(tenantEmail, payload, operatorName);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('scan-history')
+  async getScanHistory(@Req() req: any) {
+    return this.productsService.getScanHistory(this.validateUser(req));
   }
 
   @UseGuards(JwtAuthGuard)
@@ -66,7 +82,8 @@ export class ProductsController {
     return this.productsService.findOne(this.validateUser(req), id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user', 'admin')
   @Delete('all')
   async removeAll(@Req() req: any) {
     return this.productsService.removeAll(this.validateUser(req));
@@ -78,7 +95,8 @@ export class ProductsController {
     return this.productsService.update(this.validateUser(req), id, updateProductDto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user', 'admin')
   @Delete(':id')
   async remove(@Req() req: any, @Param('id') id: string) {
     return this.productsService.remove(this.validateUser(req), id);

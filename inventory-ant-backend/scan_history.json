@@ -465,5 +465,83 @@
       "Maaf kijiye, mujhe \"Page (s8gsm)\" ke 47 alag items mile hain. Kripya iska Item Code batayein ya details dein taaki main sahi item select kar saku.",
       "Maaf kijiye, mujhe \"page (Sigsm)\" ke 47 alag items mile hain. Kripya iska Item Code batayein ya details dein taaki main sahi item select kar saku."
     ]
+  },
+  {
+    "id": "SCAN-80GP8RHK",
+    "userId": "dk@warehouse.com",
+    "timestamp": 1782037906917,
+    "actionType": "IN",
+    "operatorName": "raj@testwarehouse.ant",
+    "items": [
+      {
+        "productId": "14",
+        "name": "Regular Register (Studymate), 176 Page (50gsm)",
+        "qty": 100,
+        "mrp": "105"
+      },
+      {
+        "productId": "17",
+        "name": "Regular Register (Studymate), 95 Page (58gsm)",
+        "qty": 100,
+        "mrp": "168"
+      },
+      {
+        "productId": "18",
+        "name": "Regular Register (Studymate), 115 Page (58gsm)",
+        "qty": 100,
+        "mrp": "208"
+      },
+      {
+        "productId": "23",
+        "name": "A4 NoteBook (Studymate), 200 Page (58gsm)",
+        "qty": 100,
+        "mrp": "135"
+      }
+    ],
+    "auditLog": [
+      "SUCCESS: [14] Regular Register (Studymate) +100 (Total: 315)",
+      "SUCCESS: [17] Regular Register (Studymate) +100 (Total: 310)",
+      "SUCCESS: [18] Regular Register (Studymate) +100 (Total: 308)",
+      "SUCCESS: [23] A4 NoteBook (Studymate) +100 (Total: 315)"
+    ]
+  },
+  {
+    "id": "SCAN-6VBJSA1Z",
+    "userId": "dk@warehouse.com",
+    "timestamp": 1782040146275,
+    "actionType": "IN",
+    "operatorName": "Raj ",
+    "items": [
+      {
+        "productId": "14",
+        "name": "Regular Register (Studymate), 176 Page (50gsm)",
+        "qty": 100,
+        "mrp": "105"
+      },
+      {
+        "productId": "17",
+        "name": "Regular Register (Studymate), 95 Page (58gsm)",
+        "qty": 100,
+        "mrp": "168"
+      },
+      {
+        "productId": "18",
+        "name": "Regular Register (Studymate), 115 Page (58gsm)",
+        "qty": 100,
+        "mrp": "208"
+      },
+      {
+        "productId": "23",
+        "name": "A4 NoteBook (Studymate), 200 Page (58gsm)",
+        "qty": 100,
+        "mrp": "135"
+      }
+    ],
+    "auditLog": [
+      "SUCCESS: [14] Regular Register (Studymate) +100 (Total: 415)",
+      "SUCCESS: [17] Regular Register (Studymate) +100 (Total: 410)",
+      "SUCCESS: [18] Regular Register (Studymate) +100 (Total: 408)",
+      "SUCCESS: [23] A4 NoteBook (Studymate) +100 (Total: 415)"
+    ]
   }
 ]

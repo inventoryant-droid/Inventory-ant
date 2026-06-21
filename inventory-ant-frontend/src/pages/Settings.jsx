@@ -3,8 +3,19 @@ import '../App.css';
 import Papa from 'papaparse';
 import { UploadCloud, Trash2, Database } from 'lucide-react';
 
-function Settings({ userId, token, onScanResult }) {
+function Settings({ userId, token, onScanResult, userRole }) {
   const fileInputRef = useRef(null);
+
+  if (userRole === 'staff') {
+    return (
+      <div className="p-4 md:p-8 flex-1 overflow-y-auto bg-[#F8FAFC]">
+        <div className="flex flex-col mb-8 text-left">
+          <h1 className="m-0 text-3xl font-extrabold tracking-tight text-[#ef4444]">Access Restricted</h1>
+          <p className="text-slate-500 mt-1 text-sm font-medium">Staff members are not authorized to view settings.</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];

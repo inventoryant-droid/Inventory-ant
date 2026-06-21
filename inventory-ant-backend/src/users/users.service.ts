@@ -12,10 +12,11 @@ export interface User {
   password?: string;
   name: string;
   picture: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'staff';
   active: boolean;
   createdAt: number;
   updatedAt: number;
+  parentEmail?: string;
   // Profile onboarding fields
   profileCompleted?: boolean;
   businessName?: string;
@@ -141,7 +142,14 @@ export class UsersService implements OnModuleInit {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const payload = { sub: user.id, email: user.email, role: user.role };
+    const parentEmail = user.role === 'staff' ? user.parentEmail : user.email;
+    const payload = { 
+      sub: user.id, 
+      email: user.email, 
+      name: user.name,
+      role: user.role, 
+      tenantEmail: (parentEmail || user.email).toLowerCase() 
+    };
     const token = await this.jwtService.signAsync(payload);
 
     const { password: _, ...userWithoutPass } = user;
@@ -179,7 +187,13 @@ export class UsersService implements OnModuleInit {
     db.push(newUser);
     await this.saveDb(db);
 
-    const payload = { sub: newUser.id, email: newUser.email, role: newUser.role };
+    const payload = { 
+      sub: newUser.id, 
+      email: newUser.email, 
+      name: newUser.name,
+      role: newUser.role,
+      tenantEmail: newUser.email.toLowerCase()
+    };
     const token = await this.jwtService.signAsync(payload);
 
     const { password: _, ...userWithoutPass } = newUser;
@@ -243,7 +257,14 @@ export class UsersService implements OnModuleInit {
         throw new UnauthorizedException('Account is deactivated. Please contact administrator.');
       }
 
-      const jwtPayload = { sub: user.id, email: user.email, role: user.role };
+      const parentEmail = user.role === 'staff' ? user.parentEmail : user.email;
+      const jwtPayload = { 
+        sub: user.id, 
+        email: user.email, 
+        name: user.name,
+        role: user.role, 
+        tenantEmail: (parentEmail || user.email).toLowerCase() 
+      };
       const token = await this.jwtService.signAsync(jwtPayload);
 
       const { password: _, ...userWithoutPass } = user;
@@ -291,6 +312,19 @@ export class UsersService implements OnModuleInit {
     return { success: true, active: false };
   }
 
+  async activateUser(email: string): Promise<{ success: boolean; active: boolean }> {
+    const db = await this.getDb();
+    const user = db.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (!user) throw new NotFoundException('User not found');
+    
+    // Activate user
+    user.active = true;
+    user.updatedAt = Date.now();
+    await this.saveDb(db);
+    
+    return { success: true, active: true };
+  }
+
   async getStats(): Promise<any> {
     const db = await this.getDb();
     const totalUsers = db.length;
@@ -318,6 +352,17 @@ export class UsersService implements OnModuleInit {
     const user = db.find(u => u.id === userId);
     if (!user) throw new NotFoundException('User not found');
     const { password: _, ...userWithoutPass } = user;
+
+    if (user.role === 'staff' && user.parentEmail) {
+      const parent = db.find(u => u.email.toLowerCase() === user.parentEmail!.toLowerCase());
+      if (parent) {
+        userWithoutPass.businessName = parent.businessName;
+        userWithoutPass.businessLogo = parent.businessLogo;
+        userWithoutPass.businessAddress = parent.businessAddress;
+        userWithoutPass.gstNumber = parent.gstNumber;
+      }
+    }
+
     return userWithoutPass;
   }
 
@@ -421,6 +466,120 @@ export class UsersService implements OnModuleInit {
 
     user.password = await bcrypt.hash(newPass, 10);
     user.updatedAt = Date.now();
+    await this.saveDb(db);
+    return { success: true };
+  }
+
+  async createStaff(ownerEmail: string, staffData: { name: string; phone?: string; password?: string; picture?: string }): Promise<Omit<User, 'password'>> {
+    const db = await this.getDb();
+    const owner = db.find(u => u.email.toLowerCase() === ownerEmail.toLowerCase());
+    if (!owner) {
+      throw new NotFoundException('Owner account not found');
+    }
+
+    if (!owner.businessName || !owner.businessName.trim()) {
+      throw new UnauthorizedException('Please complete your Business Profile onboarding first.');
+    }
+
+    const cleanedBiz = owner.businessName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    const cleanedName = staffData.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    
+    let staffEmail = `${cleanedName}@${cleanedBiz}.ant`;
+    let attempts = 0;
+    while (db.some(u => u.email.toLowerCase() === staffEmail.toLowerCase())) {
+      attempts++;
+      staffEmail = `${cleanedName}${attempts}@${cleanedBiz}.ant`;
+    }
+
+    if (staffData.phone) {
+      const phoneExists = db.some(u => u.phone === staffData.phone);
+      if (phoneExists) {
+        throw new UnauthorizedException('Phone number is already associated with another account');
+      }
+    }
+
+    const hashedPassword = staffData.password ? await bcrypt.hash(staffData.password, 10) : await bcrypt.hash('staff123', 10);
+
+    const newStaff: User = {
+      id: 'staff-' + Math.random().toString(36).substring(2, 10),
+      email: staffEmail.toLowerCase(),
+      phone: staffData.phone,
+      password: hashedPassword,
+      name: staffData.name,
+      picture: staffData.picture || '',
+      role: 'staff',
+      active: true,
+      profileCompleted: true,
+      parentEmail: ownerEmail.toLowerCase(),
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    db.push(newStaff);
+    await this.saveDb(db);
+
+    const { password: _, ...staffWithoutPass } = newStaff;
+    return staffWithoutPass;
+  }
+
+  async findStaffByOwner(ownerEmail: string): Promise<Omit<User, 'password'>[]> {
+    const db = await this.getDb();
+    return db
+      .filter(u => u.role === 'staff' && u.parentEmail?.toLowerCase() === ownerEmail.toLowerCase())
+      .map(({ password: _, ...u }) => u);
+  }
+
+  async updateStaff(ownerEmail: string, staffId: string, updateData: Partial<User>): Promise<Omit<User, 'password'>> {
+    const db = await this.getDb();
+    const staff = db.find(u => u.id === staffId && u.role === 'staff' && u.parentEmail?.toLowerCase() === ownerEmail.toLowerCase());
+    if (!staff) {
+      throw new NotFoundException('Staff account not found or access denied');
+    }
+
+    if (updateData.phone && updateData.phone !== staff.phone) {
+      const taken = db.some(u => u.id !== staffId && u.phone === updateData.phone);
+      if (taken) {
+        throw new UnauthorizedException('Phone number is already associated with another account');
+      }
+    }
+
+    if (updateData.name !== undefined) staff.name = updateData.name;
+    if (updateData.phone !== undefined) staff.phone = updateData.phone;
+    if (updateData.picture !== undefined) staff.picture = updateData.picture;
+    if (updateData.active !== undefined) staff.active = !!updateData.active;
+
+    staff.updatedAt = Date.now();
+    await this.saveDb(db);
+
+    const { password: _, ...staffWithoutPass } = staff;
+    return staffWithoutPass;
+  }
+
+  async updateStaffPassword(ownerEmail: string, staffId: string, newPass: string): Promise<{ success: boolean }> {
+    const db = await this.getDb();
+    const staff = db.find(u => u.id === staffId && u.role === 'staff' && u.parentEmail?.toLowerCase() === ownerEmail.toLowerCase());
+    if (!staff) {
+      throw new NotFoundException('Staff account not found or access denied');
+    }
+
+    if (!newPass || newPass.trim().length < 4) {
+      throw new UnauthorizedException('Password must be at least 4 characters long');
+    }
+
+    staff.password = await bcrypt.hash(newPass, 10);
+    staff.updatedAt = Date.now();
+    await this.saveDb(db);
+    return { success: true };
+  }
+
+  async deleteStaff(ownerEmail: string, staffId: string): Promise<{ success: boolean }> {
+    const db = await this.getDb();
+    const idx = db.findIndex(u => u.id === staffId && u.role === 'staff' && u.parentEmail?.toLowerCase() === ownerEmail.toLowerCase());
+    if (idx === -1) {
+      throw new NotFoundException('Staff account not found or access denied');
+    }
+
+    db.splice(idx, 1);
     await this.saveDb(db);
     return { success: true };
   }

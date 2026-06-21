@@ -65,18 +65,27 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
+  @Put('admin/users/:email/activate')
+  async activateUser(@Param('email') email: string) {
+    return this.usersService.activateUser(email);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   @Get('admin/stats')
   async getStats() {
     return this.usersService.getStats();
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user', 'admin', 'staff')
   @Get('user/profile')
   async getProfile(@Req() req: any) {
     return this.usersService.getProfile(req.user.sub);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user', 'admin')
   @Put('user/profile')
   async updateProfile(@Req() req: any, @Body() profileData: any) {
     return this.usersService.updateProfile(req.user.sub, profileData);
@@ -86,5 +95,40 @@ export class UsersController {
   @Post('user/change-password')
   async changeUserPassword(@Req() req: any, @Body() body: { oldPass: string; newPass: string }) {
     return this.usersService.changeUserPassword(req.user.email, body.oldPass, body.newPass);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user')
+  @Post('user/staff')
+  async createStaff(@Req() req: any, @Body() staffData: any) {
+    return this.usersService.createStaff(req.user.email, staffData);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user')
+  @Get('user/staff')
+  async getStaff(@Req() req: any) {
+    return this.usersService.findStaffByOwner(req.user.email);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user')
+  @Put('user/staff/:id')
+  async updateStaff(@Req() req: any, @Param('id') staffId: string, @Body() staffData: any) {
+    return this.usersService.updateStaff(req.user.email, staffId, staffData);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user')
+  @Put('user/staff/:id/password')
+  async updateStaffPassword(@Req() req: any, @Param('id') staffId: string, @Body() body: { newPass: string }) {
+    return this.usersService.updateStaffPassword(req.user.email, staffId, body.newPass);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user')
+  @Delete('user/staff/:id')
+  async deleteStaff(@Req() req: any, @Param('id') staffId: string) {
+    return this.usersService.deleteStaff(req.user.email, staffId);
   }
 }

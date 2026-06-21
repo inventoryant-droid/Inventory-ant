@@ -295,5 +295,48 @@
     "buyerAddress": "",
     "hasGst": false,
     "hasBuyerInfo": false
+  },
+  {
+    "id": "TXN-XS3AJY44",
+    "userId": "dk@warehouse.com",
+    "date": 1782035668099,
+    "items": [
+      {
+        "id": "p7a6rs3jmqmosz9l0",
+        "name": "Studymate Copy",
+        "mrp": "18",
+        "quantity": 1
+      }
+    ],
+    "subtotal": 18,
+    "gst": 0,
+    "total": 18,
+    "buyerName": "ww",
+    "buyerPhone": "w",
+    "buyerAddress": "w",
+    "hasGst": false,
+    "hasBuyerInfo": true
+  },
+  {
+    "id": "TXN-WWORNPFI",
+    "userId": "dk@warehouse.com",
+    "date": 1782036814300,
+    "items": [
+      {
+        "id": "trotn8iumqmosz9l1",
+        "name": "Studymate Copy",
+        "mrp": "30",
+        "quantity": 35
+      }
+    ],
+    "subtotal": 1050,
+    "gst": 0,
+    "total": 1050,
+    "buyerName": "",
+    "buyerPhone": "",
+    "buyerAddress": "",
+    "hasGst": false,
+    "hasBuyerInfo": false,
+    "operatorName": "raj@testwarehouse.ant"
   }
 ]

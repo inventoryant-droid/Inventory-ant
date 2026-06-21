@@ -79,6 +79,30 @@ export default function AdminPanel({ token, onLogout }) {
     }
   };
 
+  const handleActivate = async (email) => {
+    if (!window.confirm(`Are you sure you want to activate ${email}?`)) return;
+    try {
+      const res = await fetch(`http://localhost:3000/api/admin/users/${encodeURIComponent(email)}/activate`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage({ text: 'User activated successfully', type: 'success' });
+        setTimeout(() => setMessage({ text: '', type: '' }), 4000);
+        fetchUsers();
+        fetchStats();
+        if (selectedUser && selectedUser.email === email) {
+          setSelectedUser(prev => prev ? { ...prev, active: true } : null);
+        }
+      } else {
+        alert(data.message || 'Failed to activate user');
+      }
+    } catch (e) {
+      alert('Failed to activate user');
+    }
+  };
+
   const handleChangePassword = async (e) => {
     e.preventDefault();
     try {
@@ -251,6 +275,8 @@ export default function AdminPanel({ token, onLogout }) {
                         <td className="p-4 text-xs font-mono font-bold uppercase text-slate-500">
                           {user.role === 'admin' ? (
                             <span className="text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-100">ROLE_ADMIN</span>
+                          ) : user.role === 'staff' ? (
+                            <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">ROLE_STAFF</span>
                           ) : (
                             <span className="text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">ROLE_USER</span>
                           )}
@@ -270,6 +296,15 @@ export default function AdminPanel({ token, onLogout }) {
                               title="Deactivate Account"
                             >
                               <Trash2 size={16} />
+                            </button>
+                          )}
+                          {user.role !== 'admin' && !user.active && (
+                            <button 
+                              onClick={() => handleActivate(user.email)}
+                              className="p-1.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
+                              title="Activate Account"
+                            >
+                              <UserCheck size={16} />
                             </button>
                           )}
                         </td>
@@ -422,6 +457,79 @@ export default function AdminPanel({ token, onLogout }) {
                 </div>
               </div>
 
+              {/* Associated Staff Accounts for Owners */}
+              {selectedUser.role === 'user' && (
+                <div className="border-t border-slate-100 pt-4 mt-4">
+                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <Users size={12} className="text-indigo-500" />
+                    Associated Staff Accounts ({users.filter(u => u.role === 'staff' && u.parentEmail?.toLowerCase() === selectedUser.email.toLowerCase()).length})
+                  </div>
+                  {(() => {
+                    const associatedStaff = users.filter(u => u.role === 'staff' && u.parentEmail?.toLowerCase() === selectedUser.email.toLowerCase());
+                    return associatedStaff.length === 0 ? (
+                      <div className="text-xs text-slate-400 italic">No staff members created by this owner.</div>
+                    ) : (
+                      <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                        {associatedStaff.map(staff => (
+                          <div key={staff.id} className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            <div className="flex items-center gap-2">
+                              {staff.picture ? (
+                                <img src={staff.picture} alt={staff.name} className="w-6 h-6 rounded-full object-cover border border-slate-200" />
+                              ) : (
+                                <div className="w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-[10px] uppercase">
+                                  {staff.name.charAt(0)}
+                                </div>
+                              )}
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-xs text-slate-700">{staff.name}</span>
+                                <span className="text-[9px] text-slate-400 font-mono">{staff.email}</span>
+                              </div>
+                            </div>
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase border ${
+                              staff.active
+                                ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                                : 'bg-slate-100 border-slate-200 text-slate-500'
+                            }`}>
+                              {staff.active ? 'Active' : 'Deactivated'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Parent Owner Details for Staff */}
+              {selectedUser.role === 'staff' && selectedUser.parentEmail && (
+                <div className="border-t border-slate-100 pt-4 mt-4">
+                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <Users size={12} className="text-amber-500" />
+                    Parent Owner Account
+                  </div>
+                  {(() => {
+                    const parentOwner = users.find(u => u.email.toLowerCase() === selectedUser.parentEmail.toLowerCase());
+                    return parentOwner ? (
+                      <div className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        {parentOwner.picture ? (
+                          <img src={parentOwner.picture} alt={parentOwner.name} className="w-6 h-6 rounded-full object-cover border border-slate-200" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-[10px] uppercase">
+                            {parentOwner.name.charAt(0)}
+                          </div>
+                        )}
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-xs text-slate-700">{parentOwner.name}</span>
+                          <span className="text-[9px] text-slate-400 font-mono">{parentOwner.email}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-700 font-mono p-2 bg-slate-50 rounded-xl border border-slate-100">{selectedUser.parentEmail}</div>
+                    );
+                  })()}
+                </div>
+              )}
+
             </div>
 
             {/* Modal Actions */}
@@ -433,6 +541,15 @@ export default function AdminPanel({ token, onLogout }) {
                 >
                   <UserX size={14} />
                   Deactivate Account
+                </button>
+              )}
+              {selectedUser.role !== 'admin' && !selectedUser.active && (
+                <button
+                  onClick={() => handleActivate(selectedUser.email)}
+                  className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all border-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-500/10"
+                >
+                  <UserCheck size={14} />
+                  Activate Account
                 </button>
               )}
               <button

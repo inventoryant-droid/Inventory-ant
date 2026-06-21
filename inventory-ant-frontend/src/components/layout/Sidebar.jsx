@@ -1,12 +1,20 @@
 import React, { useState } from 'react';
 import '../../App.css';
-import { LayoutDashboard, TerminalSquare, Receipt, Package, Scan, Settings, BookOpen, Info, ArrowLeftRight, Sun, Moon, LogOut, Menu, X, Shield } from 'lucide-react';
+import { LayoutDashboard, TerminalSquare, Receipt, Package, Scan, Settings, BookOpen, Info, ArrowLeftRight, Sun, Moon, LogOut, Menu, X, Shield, Users } from 'lucide-react';
 
 function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, setInventoryFilter, theme, onToggleTheme, userProfile }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const navItems = [
-    ...(userRole !== 'admin' ? [
+    ...(userRole === 'user' ? [
+      { id: 'dashboard', label: 'Overview', icon: <LayoutDashboard size={18} /> },
+      { id: 'ant_x', label: 'Ant X Terminal', icon: <TerminalSquare size={18} /> },
+      { id: 'billing', label: 'Billing', icon: <Receipt size={18} /> },
+      { id: 'inventory', label: 'Master Inventory', icon: <Package size={18} /> },
+      { id: 'ai_lab', label: 'Smart Scanner', icon: <Scan size={18} /> },
+      { id: 'staff_management', label: 'Staff Management', icon: <Users size={18} /> },
+    ] : []),
+    ...(userRole === 'staff' ? [
       { id: 'dashboard', label: 'Overview', icon: <LayoutDashboard size={18} /> },
       { id: 'ant_x', label: 'Ant X Terminal', icon: <TerminalSquare size={18} /> },
       { id: 'billing', label: 'Billing', icon: <Receipt size={18} /> },
@@ -14,9 +22,11 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
       { id: 'ai_lab', label: 'Smart Scanner', icon: <Scan size={18} /> },
     ] : []),
     ...(userRole === 'admin' ? [{ id: 'admin_panel', label: 'Admin Panel', icon: <Shield size={18} /> }] : []),
-    { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
-    { id: 'guide', label: 'User Guide', icon: <BookOpen size={18} /> },
-    { id: 'about', label: 'About Us', icon: <Info size={18} /> },
+    ...(userRole !== 'staff' ? [
+      { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
+      { id: 'guide', label: 'User Guide', icon: <BookOpen size={18} /> },
+      { id: 'about', label: 'About Us', icon: <Info size={18} /> },
+    ] : []),
   ];
 
   const handleNavClick = (id) => {
@@ -62,14 +72,14 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
         {/* User Profile Badge */}
         <div 
           onClick={() => {
-            if (userRole !== 'admin') {
+            if (userRole !== 'admin' && userRole !== 'staff') {
               setView('profile');
             }
           }}
           className={`bg-slate-50 p-4 rounded-2xl border border-slate-100 shrink-0 flex items-center gap-3 shadow-sm relative mb-6
-            ${userRole !== 'admin' ? 'cursor-pointer hover:bg-slate-100 transition-colors' : ''}
+            ${(userRole !== 'admin' && userRole !== 'staff') ? 'cursor-pointer hover:bg-slate-100 transition-colors' : ''}
           `}
-          title={userRole !== 'admin' ? "Edit Business Profile" : ""}
+          title={(userRole !== 'admin' && userRole !== 'staff') ? "Edit Business Profile" : ""}
         >
            {userRole === 'admin' ? (
              <div className="w-10 h-10 rounded-full font-bold flex items-center justify-center text-sm border shrink-0 bg-indigo-600 text-white border-indigo-700">
@@ -89,7 +99,7 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
                 {userRole === 'admin' ? 'ADMINISTRATOR' : (userProfile?.businessName || userProfile?.name || userId)}
               </div>
               <div className="text-[9px] text-slate-400 font-mono mt-0.5 whitespace-nowrap">
-                {userRole === 'admin' ? 'ID: SYS-ROOT' : 'Edit Profile ➔'}
+                {userRole === 'admin' ? 'ID: SYS-ROOT' : (userRole === 'staff' ? 'Role: Staff' : 'Edit Profile ➔')}
               </div>
            </div>
            <div className="absolute bottom-3 right-4 w-2 h-2 rounded-full bg-emerald-500 border border-white"></div>

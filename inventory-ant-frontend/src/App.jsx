@@ -18,6 +18,7 @@ import AdminPanel from './pages/AdminPanel';
 import WelcomeModal from './components/ui/WelcomeModal';
 import OnboardingScreen from './pages/OnboardingScreen';
 import Profile from './pages/Profile';
+import StaffManagement from './pages/StaffManagement';
 
 export default function App() {
   const navigate = useNavigate();
@@ -121,7 +122,7 @@ export default function App() {
   }, [token]);
 
   useEffect(() => {
-    if (token && userRole === 'user') {
+    if (token && (userRole === 'user' || userRole === 'staff')) {
       fetchProducts();
     }
   }, [userId, token, userRole]);
@@ -217,8 +218,8 @@ export default function App() {
       <Route path="/login" element={<AuthScreen onLogin={handleLogin} defaultView="login" />} />
       <Route path="/signup" element={<AuthScreen onLogin={handleLogin} defaultView="signup" />} />
       <Route path="/dashboard" element={
-        token && userRole === 'user' ? (
-          userProfile && !userProfile.profileCompleted ? (
+        token && (userRole === 'user' || userRole === 'staff') ? (
+          userRole === 'user' && userProfile && !userProfile.profileCompleted ? (
             <OnboardingScreen 
               token={token} 
               userProfile={userProfile} 
@@ -250,10 +251,12 @@ export default function App() {
                 onGoToProfile={() => setView('profile')}
                 onGoToSettings={() => setView('settings')}
                 userProfile={userProfile}
+                userRole={userRole}
               />}
               {view === 'billing' && <Billing products={products} onSaleSuccess={fetchProducts} userId={userId} token={token} userProfile={userProfile} />}
-              {view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onEditProduct={handleEditProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} />}
-              {view === 'ai_lab' && <AITools userId={userId} token={token} onScanResult={fetchProducts} onOpenScanner={handleOpenScanner} />}
+              {view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onEditProduct={handleEditProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} userRole={userRole} />}
+              {view === 'ai_lab' && <AITools userId={userId} token={token} onScanResult={fetchProducts} onOpenScanner={handleOpenScanner} userProfile={userProfile} theme={theme} />}
+              {view === 'staff_management' && <StaffManagement token={token} userProfile={userProfile} userId={userId} />}
               {view === 'ant_x' && <AntXTerminal 
                 userId={userId} 
                 token={token}
@@ -265,8 +268,8 @@ export default function App() {
               />}
 
               {/* Shared Views */}
-              {view === 'settings' && <Settings userId={userId} token={token} onScanResult={fetchProducts} userProfile={userProfile} onProfileUpdate={handleProfileCompleted} />}
-              {view === 'profile' && <Profile token={token} userProfile={userProfile} onProfileUpdate={handleProfileCompleted} theme={theme} />}
+              {view === 'settings' && <Settings userId={userId} token={token} onScanResult={fetchProducts} userProfile={userProfile} onProfileUpdate={handleProfileCompleted} userRole={userRole} />}
+              {view === 'profile' && <Profile token={token} userProfile={userProfile} onProfileUpdate={handleProfileCompleted} theme={theme} userRole={userRole} />}
               {view === 'guide' && <UserGuide />}
               {view === 'about' && <About theme={theme} />}
 

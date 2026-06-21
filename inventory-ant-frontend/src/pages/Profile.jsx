@@ -2,8 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Building, Mail, Phone, MapPin, Check, ShieldCheck, Loader2, Sparkles, Key, User, Calendar, ShieldAlert } from 'lucide-react';
 import '../App.css';
 
-export default function Profile({ token, userProfile, onProfileUpdate, theme }) {
+export default function Profile({ token, userProfile, onProfileUpdate, theme, userRole }) {
   const logoInputRef = useRef(null);
+
+  if (userRole === 'staff') {
+    return (
+      <div className="p-4 md:p-8 flex-1 overflow-y-auto bg-[#F8FAFC]">
+        <div className="flex flex-col mb-8 text-left">
+          <h1 className="m-0 text-3xl font-extrabold tracking-tight text-[#ef4444]">Access Restricted</h1>
+          <p className="text-slate-500 mt-1 text-sm font-medium">Staff members are not authorized to view the profile.</p>
+        </div>
+      </div>
+    );
+  }
 
   // Profile details states
   const [name, setName] = useState('');

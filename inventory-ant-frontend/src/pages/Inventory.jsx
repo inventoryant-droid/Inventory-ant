@@ -3,7 +3,7 @@ import '../App.css';
 import { getExpiryInfo, getExpKey } from '../utils/expiryHelpers';
 import { Printer, Trash2, Edit3, Plus, Terminal, Check, X, CheckCircle } from 'lucide-react';
 
-function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProduct, filterMode, setFilterMode }) {
+function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProduct, filterMode, setFilterMode, userRole }) {
   const [formData, setFormData] = useState({});
   const [editingProductId, setEditingProductId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
@@ -122,20 +122,22 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
             <button onClick={() => window.print()} className="flex items-center gap-2 py-2 px-4 text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-full cursor-pointer transition-all shadow-sm">
                 <Printer size={14} /> Print Report
             </button>
-            <button 
-              onClick={async () => {
-                if(window.confirm("DANGER: This will delete ALL items from your account. Continue?")) {
-                  await fetch('http://localhost:3000/api/user/products/all', { 
-                    method: 'DELETE', 
-                    headers: { 'Authorization': `Bearer ${token}` } 
-                  });
-                  window.location.reload(); 
-                }
-              }}
-              className="flex items-center gap-2 py-2 px-4 text-xs font-bold bg-red-50 border border-red-100 text-red-600 hover:bg-red-100 rounded-full cursor-pointer transition-all shadow-sm"
-            >
-              <Trash2 size={14} /> Clear All Data
-            </button>
+            {userRole !== 'staff' && (
+              <button 
+                onClick={async () => {
+                  if(window.confirm("DANGER: This will delete ALL items from your account. Continue?")) {
+                    await fetch('http://localhost:3000/api/user/products/all', { 
+                      method: 'DELETE', 
+                      headers: { 'Authorization': `Bearer ${token}` } 
+                    });
+                    window.location.reload(); 
+                  }
+                }}
+                className="flex items-center gap-2 py-2 px-4 text-xs font-bold bg-red-50 border border-red-100 text-red-600 hover:bg-red-100 rounded-full cursor-pointer transition-all shadow-sm"
+              >
+                <Trash2 size={14} /> Clear All Data
+              </button>
+            )}
         </div>
       </div>
 
@@ -293,12 +295,14 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                         <button onClick={() => handleEditClick(p)} className="bg-transparent border-none text-indigo-500 hover:text-indigo-700 cursor-pointer p-1">
                            <Edit3 size={16} />
                         </button>
-                        <button 
-                          onClick={() => onDeleteProduct(p.id)} 
-                          className="bg-transparent border-none text-red-400 hover:text-red-600 cursor-pointer p-1"
-                        >
-                           <Trash2 size={16} />
-                        </button>
+                        {userRole !== 'staff' && (
+                          <button 
+                            onClick={() => onDeleteProduct(p.id)} 
+                            className="bg-transparent border-none text-red-400 hover:text-red-600 cursor-pointer p-1"
+                          >
+                             <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     )}
                   </td>

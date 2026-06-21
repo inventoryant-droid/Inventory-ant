@@ -3,7 +3,7 @@ import '../App.css';
 import { getExpiryInfo, getExpKey } from '../utils/expiryHelpers';
 import { Box, AlertTriangle, Layers, BarChart2, TrendingUp, Edit, MapPin, Building, ShieldCheck, XCircle } from 'lucide-react';
 
-function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner, onGoToProfile, onGoToSettings, userProfile }) {
+function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner, onGoToProfile, onGoToSettings, userProfile, userRole }) {
   const dynamicColumns = useMemo(() => {
     const cols = new Set();
     products.forEach(p => Object.keys(p).forEach(k => {
@@ -36,10 +36,20 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
 
   return (
     <div className="p-6 md:p-8 flex-1 overflow-y-auto bg-[#F8FAFC]">
-      {userProfile?.profileCompleted ? (
+      {userProfile?.profileCompleted || userRole === 'staff' ? (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 mb-8 shadow-[0_2px_10px_rgba(0,0,0,0.01)] transition-all">
           <div className="flex flex-col md:flex-row items-center gap-5 text-center md:text-left flex-1 min-w-0">
-            {userProfile?.businessLogo ? (
+            {userRole === 'staff' ? (
+              userProfile?.picture ? (
+                <div className="w-16 h-16 rounded-2xl border border-slate-200/60 overflow-hidden bg-slate-50 shadow-sm shrink-0 flex items-center justify-center">
+                  <img src={userProfile.picture} alt="Staff Avatar" className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 shrink-0 shadow-sm font-bold text-lg">
+                  {userProfile?.name ? userProfile.name.substring(0, 2).toUpperCase() : 'ST'}
+                </div>
+              )
+            ) : userProfile?.businessLogo ? (
               <div className="w-16 h-16 rounded-2xl border border-slate-200/60 overflow-hidden bg-slate-50 shadow-sm shrink-0 flex items-center justify-center">
                 <img src={userProfile.businessLogo} alt="Logo" className="w-full h-full object-cover" />
               </div>
@@ -49,9 +59,11 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-500">Warehouse Node Active</span>
+              <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-500">
+                {userRole === 'staff' ? `Staff Account • ${userProfile?.businessName || 'Warehouse'}` : 'Warehouse Node Active'}
+              </span>
               <h2 className="m-0 text-xl md:text-2xl font-black text-slate-800 truncate mt-1">
-                Welcome back, {userProfile?.businessName || 'Business Owner'}!
+                {userRole === 'staff' ? `Welcome, ${userProfile?.name || 'Staff Member'}!` : `Welcome back, ${userProfile?.businessName || 'Business Owner'}!`}
               </h2>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-1.5 mt-2 text-xs text-slate-500 font-medium">
                 {userProfile?.businessAddress && (
@@ -67,13 +79,15 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
               </div>
             </div>
           </div>
-          <button 
-            onClick={onGoToProfile}
-            className="py-2.5 px-5 bg-white hover:bg-slate-50 text-indigo-600 border border-slate-200 hover:border-indigo-200 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center gap-2 shrink-0 no-print-btn"
-          >
-            <Edit size={14} />
-            Edit Profile
-          </button>
+          {userRole !== 'staff' && (
+            <button 
+              onClick={onGoToProfile}
+              className="py-2.5 px-5 bg-white hover:bg-slate-50 text-indigo-600 border border-slate-200 hover:border-indigo-200 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center gap-2 shrink-0 no-print-btn"
+            >
+              <Edit size={14} />
+              Edit Profile
+            </button>
+          )}
         </div>
       ) : (
         <div className="flex flex-col mb-8">

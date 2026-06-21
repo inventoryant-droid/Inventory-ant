@@ -37,7 +37,23 @@ export interface UserSession {
 export class ProductsService {
   private readonly filePath = path.join(process.cwd(), 'database.json');
   private readonly billsPath = path.join(process.cwd(), 'bills.json');
+  private readonly scanHistoryPath = path.join(process.cwd(), 'scan_history.json');
   private readonly userSessions = new Map<string, UserSession>();
+
+  private async getScanHistoryDb(): Promise<any[]> {
+    try {
+      const data = await fs.readFile(this.scanHistoryPath, 'utf8');
+      if (!data || !data.trim()) return [];
+      return JSON.parse(data);
+    } catch (e: any) {
+      if (e.code === 'ENOENT') return [];
+      throw e;
+    }
+  }
+
+  private async saveScanHistoryDb(data: any[]): Promise<void> {
+    await fs.writeFile(this.scanHistoryPath, JSON.stringify(data, null, 2), 'utf8');
+  }
 
   private async getBillsDb(): Promise<any[]> {
     try {
@@ -628,7 +644,7 @@ export class ProductsService {
     }
   }
 
-  async processBillWithGemini(userId: string, payload: any): Promise<any> {
+  async processBillWithGemini(userId: string, payload: any, operatorName = 'Owner'): Promise<any> {
     let items: any[] = [];
     let ocrText = '';
 
@@ -770,10 +786,36 @@ export class ProductsService {
       log.push(await this.updateSingleItem(db, userId, i, payload.actionType));
     }
     await this.saveDb(db);
+
+    // Save scan to scan_history.json
+    try {
+      const scanId = 'SCAN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+      const newScanEntry = {
+        id: scanId,
+        userId,
+        timestamp: Date.now(),
+        actionType: payload.actionType,
+        operatorName,
+        items: items.map(it => ({
+          productId: it.productId || '',
+          name: it.name || 'Unknown Item',
+          qty: it.qty,
+          mrp: it.mrp || '0'
+        })),
+        auditLog: log
+      };
+
+      const scanHistoryDb = await this.getScanHistoryDb();
+      scanHistoryDb.push(newScanEntry);
+      await this.saveScanHistoryDb(scanHistoryDb);
+    } catch (err) {
+      console.error('Failed to write scan history:', err);
+    }
+
     return { success: true, action: payload.actionType, parsedItems: items, auditLog: log };
   }
 
-  async sellProducts(userId: string, payload: any): Promise<any> {
+  async sellProducts(userId: string, payload: any, operatorName = 'Owner'): Promise<any> {
     let cart: any[] = [];
     let buyerName = '';
     let buyerPhone = '';
@@ -832,7 +874,8 @@ export class ProductsService {
       buyerPhone,
       buyerAddress,
       hasGst,
-      hasBuyerInfo: !!(buyerName || buyerPhone || buyerAddress)
+      hasBuyerInfo: !!(buyerName || buyerPhone || buyerAddress),
+      operatorName
     };
 
     const billsDb = await this.getBillsDb();
@@ -897,5 +940,13 @@ export class ProductsService {
 
   async processBillMock(userId: string, payload: any): Promise<any> {
     return { success: true, parsedItems: [] };
+  }
+
+  async getScanHistory(userId: string): Promise<any[]> {
+    const list = await this.getScanHistoryDb();
+    const cleanUserId = userId.trim().toLowerCase();
+    return list
+      .filter(s => (s.userId || '').trim().toLowerCase() === cleanUserId)
+      .sort((a, b) => b.timestamp - a.timestamp);
   }
 }
