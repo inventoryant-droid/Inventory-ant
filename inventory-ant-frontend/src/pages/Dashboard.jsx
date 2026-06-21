@@ -7,7 +7,7 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
   const dynamicColumns = useMemo(() => {
     const cols = new Set();
     products.forEach(p => Object.keys(p).forEach(k => {
-      if (!['id', 'userId', 'quantity', 'mrp', 'productId', 'name', 'details'].includes(k)) {
+      if (!['id', 'userId', 'quantity', 'mrp', 'productId', 'name', 'details', '_headers', '_timestamp', 'timestamp', 'csv_row', 'extraAttributes'].includes(k)) {
           cols.add(k);
       }
     }));

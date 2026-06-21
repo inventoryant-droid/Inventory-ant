@@ -10,7 +10,7 @@ const getProductDetailsText = (p) => {
   if (p.details) {
     parts.push(p.details);
   }
-  const standardKeys = ['id', 'userId', 'quantity', 'mrp', 'productId', 'name', 'details', '_headers', '_timestamp', 'timestamp', 'csv_row'];
+  const standardKeys = ['id', 'userId', 'quantity', 'mrp', 'productId', 'name', 'details', '_headers', '_timestamp', 'timestamp', 'csv_row', 'extraAttributes'];
   Object.keys(p).forEach(k => {
     if (!standardKeys.includes(k) && p[k] !== undefined && p[k] !== null && String(p[k]).trim() !== '') {
       parts.push(`${k}: ${p[k]}`);

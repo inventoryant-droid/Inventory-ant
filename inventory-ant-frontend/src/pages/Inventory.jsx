@@ -46,7 +46,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
   const dynamicColumns = useMemo(() => {
     const cols = new Set();
     products.forEach(p => Object.keys(p).forEach(k => {
-      if (!['id', 'userId', 'quantity', 'mrp', 'productId', 'name', 'details', '_headers', '_timestamp', 'timestamp', 'csv_row'].includes(k)) {
+      if (!['id', 'userId', 'quantity', 'mrp', 'productId', 'name', 'details', '_headers', '_timestamp', 'timestamp', 'csv_row', 'extraAttributes'].includes(k)) {
           cols.add(k);
       }
     }));
