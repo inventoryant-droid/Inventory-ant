@@ -29,8 +29,10 @@ export class ProductsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('agent-command-v2')
-  async agentCommandV2(@Req() req: any, @Body() payload: { text: string }) {
-    return this.productsService.processAgentCommandV2(this.validateUser(req), payload);
+  async agentCommandV2(@Req() req: any, @Body() payload: any) {
+    const tenantEmail = this.validateUser(req);
+    const operatorName = req.user.role === 'staff' ? req.user.name || req.user.email : 'Owner';
+    return this.productsService.processAgentCommandV2(tenantEmail, payload, operatorName);
   }
 
   @Get('tts')
@@ -56,6 +58,12 @@ export class ProductsController {
   @Get('scan-history')
   async getScanHistory(@Req() req: any) {
     return this.productsService.getScanHistory(this.validateUser(req));
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('history')
+  async getInventoryHistory(@Req() req: any) {
+    return this.productsService.getInventoryHistory(this.validateUser(req));
   }
 
   @UseGuards(JwtAuthGuard)

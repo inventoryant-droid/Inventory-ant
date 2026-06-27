@@ -261,6 +261,43 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
             --inv-text-muted: #94a3b8;
           }
 
+          .invoice-items-container {
+            max-height: 280px;
+            overflow-y: auto;
+          }
+          .invoice-items-container::-webkit-scrollbar {
+            width: 6px;
+          }
+          .invoice-items-container::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .invoice-items-container::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 3px;
+          }
+          .invoice-items-container::-webkit-scrollbar-thumb:hover {
+            background-color: #94a3b8;
+          }
+
+          .cart-items-container {
+            max-height: 260px;
+            overflow-y: auto;
+            padding-right: 4px;
+          }
+          .cart-items-container::-webkit-scrollbar {
+            width: 6px;
+          }
+          .cart-items-container::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .cart-items-container::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 3px;
+          }
+          .cart-items-container::-webkit-scrollbar-thumb:hover {
+            background-color: #94a3b8;
+          }
+
           @media print {
             /* Hide everything by default */
             body * {
@@ -271,6 +308,10 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
             #printable-invoice, 
             #printable-invoice * {
               visibility: visible !important;
+            }
+            .invoice-items-container {
+              max-height: none !important;
+              overflow: visible !important;
             }
             /* Reset modal overlay positioning and background so it is transparent and fits page */
             .print-modal-overlay {
@@ -406,7 +447,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                     <h2 className="m-0 text-slate-800 text-lg font-bold mb-6 flex items-center gap-2 text-left">
                        <ShoppingCart size={20} className="text-indigo-500" /> Payload Batch
                     </h2>
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-3 cart-items-container">
                        {cart.length === 0 ? (
                          <p className="text-slate-500 text-sm italic bg-slate-50 p-4 rounded-xl text-center border border-slate-100">Cart is empty.</p>
                        ) : (
@@ -666,7 +707,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                 {/* Invoice Items Table */}
                 {showGst ? (
                   /* 7-column GST Invoice Table */
-                  <div style={{ border: '1px solid var(--inv-border)', borderRadius: '12px', overflow: 'hidden' }}>
+                  <div className="invoice-items-container" style={{ border: '1px solid var(--inv-border)', borderRadius: '12px', overflow: 'hidden' }}>
                      <table className="w-full text-left text-xs whitespace-nowrap" style={{ borderCollapse: 'collapse', margin: 0, backgroundColor: 'var(--inv-bg)' }}>
                         <thead>
                            <tr style={{ background: 'var(--inv-bg-alt)', borderBottom: '1px solid var(--inv-border)' }}>
@@ -735,7 +776,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                   </div>
                 ) : (
                   /* 5-column Standard Invoice Table */
-                  <div style={{ border: '1px solid var(--inv-border)', borderRadius: '12px', overflow: 'hidden' }}>
+                  <div className="invoice-items-container" style={{ border: '1px solid var(--inv-border)', borderRadius: '12px', overflow: 'hidden' }}>
                      <table className="w-full text-left text-xs whitespace-nowrap" style={{ borderCollapse: 'collapse', margin: 0, backgroundColor: 'var(--inv-bg)' }}>
                         <thead>
                            <tr style={{ background: 'var(--inv-bg-alt)', borderBottom: '1px solid var(--inv-border)' }}>

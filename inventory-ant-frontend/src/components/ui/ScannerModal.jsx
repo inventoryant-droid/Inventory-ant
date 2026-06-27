@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import '../../App.css';
 import { X, Inbox, Flame, FileText, CheckCircle2, Loader2, Circle } from 'lucide-react';
 
-function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess }) {
+function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess, onNavigate }) {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [scanResult, setScanResult] = useState(null);
@@ -153,9 +153,20 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess 
                        <div className="text-sm text-red-600 font-medium">{scanResult.message || "Unknown AI error occurred."}</div>
                    </div>
                 )}
-                <button className="bg-slate-800 hover:bg-slate-900 text-white rounded-xl py-4 px-6 w-full text-sm font-bold mt-6 cursor-pointer border-none shadow-sm transition-colors" onClick={onClose}>
-                   Return to Module
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3 mt-6">
+                   <button 
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none transition-colors" 
+                      onClick={() => onNavigate ? onNavigate('dashboard') : onClose()}
+                   >
+                      Go to Overview
+                   </button>
+                   <button 
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none shadow-sm transition-colors" 
+                      onClick={() => onNavigate ? onNavigate('inventory') : onClose()}
+                   >
+                      Go to Master Inventory
+                   </button>
+                </div>
              </div>
           )}
        </div>

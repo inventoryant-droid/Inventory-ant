@@ -23,6 +23,11 @@ export class UsersController {
     return this.usersService.login(body.email, body.password);
   }
 
+  @Post('auth/refresh')
+  async refresh(@Body('refresh_token') refreshToken: string) {
+    return this.usersService.refreshToken(refreshToken);
+  }
+
   @Post('admin/login')
   async adminLogin(@Body() body: { username: string; password?: string }) {
     return this.usersService.login(body.username, body.password);

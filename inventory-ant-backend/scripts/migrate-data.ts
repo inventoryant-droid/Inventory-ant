@@ -95,7 +95,7 @@ async function run() {
   console.log('📦 Migrating Products...');
   const products = await readJsonFile(databasePath);
   for (const p of products) {
-    const { id, userId, productId, name, details, mrp, paket, quantity, _timestamp, ...extra } = p;
+    const { id, userId, productId, name, details, mrp, quantity, _timestamp, ...extra } = p;
     if (!id || !userId) {
       console.warn(`⚠️ Skipping invalid product entry:`, p);
       continue;
@@ -108,7 +108,6 @@ async function run() {
         name: name || null,
         details: details || null,
         mrp: mrp || null,
-        paket: paket || null,
         quantity: quantity || null,
         timestamp: _timestamp || Date.now(),
         extraAttributes: extra,
@@ -120,7 +119,6 @@ async function run() {
         name: name || null,
         details: details || null,
         mrp: mrp || null,
-        paket: paket || null,
         quantity: quantity || null,
         timestamp: _timestamp || Date.now(),
         extraAttributes: extra,

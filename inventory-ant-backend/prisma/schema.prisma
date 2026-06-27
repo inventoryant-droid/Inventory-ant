@@ -114,3 +114,16 @@ model ActivityLog {
   device    String   @default("Desktop Web")
   timestamp Float
 }
+
+model InventoryHistory {
+  id           String   @id
+  userId       String
+  timestamp    Float
+  productId    String?
+  productName  String
+  actionType   String   // "CREATE" | "UPDATE" | "DELETE" | "STOCK_IN" | "STOCK_OUT" | "BULK_IMPORT"
+  operatorName String   @default("Owner")
+  beforeQty    String?
+  afterQty     String?
+  details      String?  // Description of changes
+}

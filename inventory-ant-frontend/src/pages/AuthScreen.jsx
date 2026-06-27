@@ -48,7 +48,7 @@ function AuthScreen({ onLogin }) {
         });
         const data = await res.json();
         if (data.access_token) {
-          onLogin(data.user.email, data.user.role, data.access_token);
+          onLogin(data.user.email, data.user.role, data.access_token, data.refresh_token);
         } else {
           alert(data.message || 'Invalid credentials');
         }
@@ -87,7 +87,7 @@ function AuthScreen({ onLogin }) {
       });
       const data = await res.json();
       if (data.access_token) {
-        onLogin(data.user.email, data.user.role, data.access_token);
+        onLogin(data.user.email, data.user.role, data.access_token, data.refresh_token);
       } else {
         alert(data.message || 'Signup failed');
       }
@@ -106,7 +106,7 @@ function AuthScreen({ onLogin }) {
       });
       const data = await res.json();
       if (data.access_token) {
-        onLogin(data.user.email, data.user.role, data.access_token);
+        onLogin(data.user.email, data.user.role, data.access_token, data.refresh_token);
       } else {
         alert(data.message || 'Invalid admin credentials');
       }
@@ -126,7 +126,7 @@ function AuthScreen({ onLogin }) {
         });
         const data = await res.json();
         if (data && data.access_token) {
-          onLogin(data.user.email, data.user.role, data.access_token);
+          onLogin(data.user.email, data.user.role, data.access_token, data.refresh_token);
         } else {
           alert('Failed to authenticate with Google');
         }

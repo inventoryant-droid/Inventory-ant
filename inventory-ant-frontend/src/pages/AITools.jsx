@@ -112,6 +112,24 @@ function AITools({ userId, token, onScanResult, onOpenScanner, userProfile, them
         <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 shadow-[0_2px_10px_rgba(0,0,0,0.01)] text-left mt-6">
           {/* Style injection to enable clean document printing for Scanner details */}
           <style>{`
+            .scan-items-container {
+              max-height: 280px;
+              overflow-y: auto;
+            }
+            .scan-items-container::-webkit-scrollbar {
+              width: 6px;
+            }
+            .scan-items-container::-webkit-scrollbar-track {
+              background: transparent;
+            }
+            .scan-items-container::-webkit-scrollbar-thumb {
+              background-color: #cbd5e1;
+              border-radius: 3px;
+            }
+            .scan-items-container::-webkit-scrollbar-thumb:hover {
+              background-color: #94a3b8;
+            }
+
             @media print {
               /* Hide everything by default */
               body * {
@@ -122,6 +140,10 @@ function AITools({ userId, token, onScanResult, onOpenScanner, userProfile, them
               #printable-scan-invoice, 
               #printable-scan-invoice * {
                 visibility: visible !important;
+              }
+              .scan-items-container {
+                max-height: none !important;
+                overflow: visible !important;
               }
               /* Reset modal overlay positioning and background so it is transparent and fits page */
               .print-modal-overlay {
@@ -267,7 +289,7 @@ function AITools({ userId, token, onScanResult, onOpenScanner, userProfile, them
             </div>
 
             {/* Items Table */}
-            <div className="border border-slate-100 rounded-xl overflow-hidden">
+            <div className="border border-slate-100 rounded-xl overflow-hidden scan-items-container">
               <table className="w-full text-left text-xs" style={{ borderCollapse: 'collapse', margin: 0 }}>
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100">

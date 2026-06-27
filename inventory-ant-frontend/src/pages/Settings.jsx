@@ -38,7 +38,7 @@ function Settings({ userId, token, onScanResult, userRole }) {
         }
 
         const firstRow = rawRows[0];
-        let idIdx = -1, nameIdx = -1, qtyIdx = -1, priceIdx = -1;
+        let idIdx = -1, nameIdx = -1, qtyIdx = -1, priceIdx = -1, detailsIdx = -1;
 
         firstRow.forEach((val, i) => {
           const v = String(val).toLowerCase();
@@ -46,6 +46,7 @@ function Settings({ userId, token, onScanResult, userRole }) {
           if (v.includes('name') || v.includes('product') || v.includes('item')) nameIdx = i;
           if (v.includes('qty') || v.includes('stock')) qtyIdx = i;
           if (v.includes('mrp') || v.includes('price') || v.includes('rate')) priceIdx = i;
+          if (v.includes('details') || v.includes('description') || v.includes('detail') || v.includes('desc')) detailsIdx = i;
         });
 
         if (nameIdx === -1) nameIdx = 1;
@@ -56,7 +57,8 @@ function Settings({ userId, token, onScanResult, userRole }) {
           productId: idIdx !== -1 && firstRow[idIdx] ? String(firstRow[idIdx]).trim() : 'Code',
           name: nameIdx !== -1 && firstRow[nameIdx] ? String(firstRow[nameIdx]).trim() : 'Item Name / Category',
           quantity: qtyIdx !== -1 && firstRow[qtyIdx] ? String(firstRow[qtyIdx]).trim() : 'Available Stock',
-          mrp: priceIdx !== -1 && firstRow[priceIdx] ? String(firstRow[priceIdx]).trim() : 'MRP'
+          mrp: priceIdx !== -1 && firstRow[priceIdx] ? String(firstRow[priceIdx]).trim() : 'MRP',
+          details: detailsIdx !== -1 && firstRow[detailsIdx] ? String(firstRow[detailsIdx]).trim() : 'Details'
         };
 
         const mappedData = [];
@@ -71,13 +73,14 @@ function Settings({ userId, token, onScanResult, userRole }) {
             name: row[nameIdx] || `Item-${i}`,
             quantity: row[qtyIdx] || '0',
             mrp: row[priceIdx] || '0',
+            details: detailsIdx !== -1 ? row[detailsIdx] || '' : '',
             csv_row: i + 1,
             _timestamp: Date.now(),
             _headers: headersMap
           };
 
           row.forEach((cell, idx) => {
-            if (![idIdx, nameIdx, qtyIdx, priceIdx].includes(idx)) {
+            if (![idIdx, nameIdx, qtyIdx, priceIdx, detailsIdx].includes(idx)) {
               let colName = firstRow[idx] ? String(firstRow[idx]).trim() : `col_${idx}`;
               if (!colName) colName = `col_${idx}`;
               obj[colName] = cell;

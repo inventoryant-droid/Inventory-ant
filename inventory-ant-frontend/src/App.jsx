@@ -48,7 +48,7 @@ export default function App() {
     localStorage.setItem('ant_theme', newTheme);
   };
 
-  const handleLogin = (id, role = 'user', accessToken = '') => {
+  const handleLogin = (id, role = 'user', accessToken = '', refreshToken = '') => {
      const normalized = id.trim().toLowerCase();
      setUserId(normalized);
      setUserRole(role);
@@ -56,6 +56,9 @@ export default function App() {
      localStorage.setItem('ant_user', normalized);
      localStorage.setItem('ant_role', role);
      localStorage.setItem('ant_token', accessToken);
+     if (refreshToken) {
+       localStorage.setItem('ant_refresh_token', refreshToken);
+     }
      
      if (role === 'admin') {
        navigate('/admin');
@@ -74,8 +77,24 @@ export default function App() {
      localStorage.removeItem('ant_user');
      localStorage.removeItem('ant_role');
      localStorage.removeItem('ant_token');
+     localStorage.removeItem('ant_refresh_token');
      navigate('/login');
   };
+
+  useEffect(() => {
+    const handleTokenRefreshed = (e) => {
+      setToken(e.detail.token);
+    };
+    const handleTokenExpired = () => {
+      handleLogout();
+    };
+    window.addEventListener('token-refreshed', handleTokenRefreshed);
+    window.addEventListener('token-expired', handleTokenExpired);
+    return () => {
+      window.removeEventListener('token-refreshed', handleTokenRefreshed);
+      window.removeEventListener('token-expired', handleTokenExpired);
+    };
+  }, []);
 
   const handleSwitchAccount = () => {
      handleLogout();
@@ -320,6 +339,7 @@ export default function App() {
                 userId={userId} 
                 token={token}
                 onScanSuccess={fetchProducts} 
+                onNavigate={(viewName) => { setView(viewName); setScannerOpen(false); }}
               />
 
               {/* ALWAYS MOUNTED VOICE CORE */}

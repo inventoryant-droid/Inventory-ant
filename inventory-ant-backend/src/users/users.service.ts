@@ -137,7 +137,7 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  async login(identifier: string, password?: string): Promise<{ access_token: string; user: Omit<User, 'password'> }> {
+  async login(identifier: string, password?: string): Promise<{ access_token: string; refresh_token: string; user: Omit<User, 'password'> }> {
     const user = await this.prisma.user.findFirst({
       where: {
         OR: [
@@ -178,17 +178,22 @@ export class UsersService implements OnModuleInit {
       tenantEmail: (parentEmail || updatedUser.email).toLowerCase(),
       adminRole: updatedUser.adminRole
     };
-    const token = await this.jwtService.signAsync(payload);
+    const token = await this.jwtService.signAsync(payload, { expiresIn: '15m' });
+    const refreshToken = await this.jwtService.signAsync({ sub: updatedUser.id }, {
+      secret: process.env.JWT_REFRESH_SECRET || 'inventory-ant-refresh-secret-key-2026',
+      expiresIn: '7d'
+    });
 
     await this.logAction(updatedUser.email, updatedUser.name, updatedUser.role, `Logged in successfully`);
 
     return {
       access_token: token,
+      refresh_token: refreshToken,
       user: this.mapUser(updatedUser)
     };
   }
 
-  async userSignup(name: string, email: string, password?: string, phone?: string): Promise<{ access_token: string; user: Omit<User, 'password'> }> {
+  async userSignup(name: string, email: string, password?: string, phone?: string): Promise<{ access_token: string; refresh_token: string; user: Omit<User, 'password'> }> {
     const existingUser = await this.prisma.user.findFirst({
       where: {
         OR: [
@@ -230,10 +235,15 @@ export class UsersService implements OnModuleInit {
       role: newUser.role,
       tenantEmail: newUser.email.toLowerCase()
     };
-    const token = await this.jwtService.signAsync(payload);
+    const token = await this.jwtService.signAsync(payload, { expiresIn: '15m' });
+    const refreshToken = await this.jwtService.signAsync({ sub: newUser.id }, {
+      secret: process.env.JWT_REFRESH_SECRET || 'inventory-ant-refresh-secret-key-2026',
+      expiresIn: '7d'
+    });
 
     return {
       access_token: token,
+      refresh_token: refreshToken,
       user: this.mapUser(newUser)
     };
   }
@@ -264,7 +274,7 @@ export class UsersService implements OnModuleInit {
     return { success: true };
   }
 
-  async handleGoogleLogin(code: string): Promise<{ access_token: string; user: Omit<User, 'password'> }> {
+  async handleGoogleLogin(code: string): Promise<{ access_token: string; refresh_token: string; user: Omit<User, 'password'> }> {
     try {
       const { tokens } = await this.oauth2Client.getToken(code);
       if (!tokens.id_token) throw new UnauthorizedException('No ID Token returned');
@@ -318,12 +328,17 @@ export class UsersService implements OnModuleInit {
         tenantEmail: (parentEmail || user.email).toLowerCase(),
         adminRole: user.adminRole
       };
-      const token = await this.jwtService.signAsync(jwtPayload);
+      const token = await this.jwtService.signAsync(jwtPayload, { expiresIn: '15m' });
+      const refreshToken = await this.jwtService.signAsync({ sub: user.id }, {
+        secret: process.env.JWT_REFRESH_SECRET || 'inventory-ant-refresh-secret-key-2026',
+        expiresIn: '7d'
+      });
 
       await this.logAction(user.email, user.name, user.role, `Logged in via Google`);
 
       return {
         access_token: token,
+        refresh_token: refreshToken,
         user: this.mapUser(user)
       };
     } catch (error: any) {
@@ -766,7 +781,7 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  async impersonateUser(email: string): Promise<{ access_token: string; user: Omit<User, 'password'> }> {
+  async impersonateUser(email: string): Promise<{ access_token: string; refresh_token: string; user: Omit<User, 'password'> }> {
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase() }
     });
@@ -783,14 +798,58 @@ export class UsersService implements OnModuleInit {
       tenantEmail: (parentEmail || user.email).toLowerCase(),
       impersonated: true
     };
-    const token = await this.jwtService.signAsync(payload);
+    const token = await this.jwtService.signAsync(payload, { expiresIn: '15m' });
+    const refreshToken = await this.jwtService.signAsync({ sub: user.id }, {
+      secret: process.env.JWT_REFRESH_SECRET || 'inventory-ant-refresh-secret-key-2026',
+      expiresIn: '7d'
+    });
     
     await this.logAction(user.email, user.name, user.role, `Impersonated by Administrator`);
 
     return {
       access_token: token,
+      refresh_token: refreshToken,
       user: this.mapUser(user)
     };
+  }
+
+  async refreshToken(token: string): Promise<{ access_token: string; refresh_token: string }> {
+    try {
+      const payload = await this.jwtService.verifyAsync(token, {
+        secret: process.env.JWT_REFRESH_SECRET || 'inventory-ant-refresh-secret-key-2026',
+      });
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub }
+      });
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+      if (!user.active) {
+        throw new UnauthorizedException('User account is deactivated');
+      }
+      
+      const parentEmail = user.role === 'staff' ? user.parentEmail : user.email;
+      const jwtPayload = { 
+        sub: user.id, 
+        email: user.email, 
+        name: user.name,
+        role: user.role, 
+        tenantEmail: (parentEmail || user.email).toLowerCase(),
+        adminRole: user.adminRole
+      };
+      const newAccessToken = await this.jwtService.signAsync(jwtPayload, { expiresIn: '15m' });
+      const newRefreshToken = await this.jwtService.signAsync({ sub: user.id }, {
+        secret: process.env.JWT_REFRESH_SECRET || 'inventory-ant-refresh-secret-key-2026',
+        expiresIn: '7d'
+      });
+      
+      return {
+        access_token: newAccessToken,
+        refresh_token: newRefreshToken
+      };
+    } catch (err) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
   }
 
   async updateUserPlan(email: string, plan: 'free' | 'basic' | 'pro' | 'enterprise', validityInDays: number): Promise<Omit<User, 'password'>> {

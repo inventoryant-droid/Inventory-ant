@@ -68,6 +68,56 @@ export class ProductsService {
     return (maxId + 1).toString();
   }
 
+  private async generateRandomNumericProductId(userId: string): Promise<string> {
+    const products = await this.prisma.product.findMany({
+      where: { userId }
+    });
+    const existingIds = new Set(products.map(p => p.productId));
+    let randomId = '';
+    while (true) {
+      randomId = Math.floor(100000 + Math.random() * 900000).toString();
+      if (!existingIds.has(randomId)) {
+        break;
+      }
+    }
+    return randomId;
+  }
+
+  private async logInventoryChange(
+    userId: string,
+    actionType: 'CREATE' | 'UPDATE' | 'DELETE' | 'STOCK_IN' | 'STOCK_OUT' | 'BULK_IMPORT',
+    productName: string,
+    productId: string | null,
+    beforeQty: string | null,
+    afterQty: string | null,
+    details: string | null,
+    operatorName = 'Owner'
+  ): Promise<void> {
+    try {
+      const id = 'HIST-' + Math.random().toString(36).substring(2, 10).toUpperCase() + Date.now().toString(36);
+      await (this.prisma as any).$executeRawUnsafe(
+        `INSERT INTO "InventoryHistory" (id, "userId", timestamp, "productId", "productName", "actionType", "operatorName", "beforeQty", "afterQty", details) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        id, userId, Date.now(), productId, productName, actionType, operatorName, beforeQty, afterQty, details
+      );
+    } catch (err) {
+      console.error('Failed to log inventory change:', err);
+    }
+  }
+
+  async getInventoryHistory(userId: string): Promise<any[]> {
+    const cleanUserId = userId.trim().toLowerCase();
+    try {
+      return await (this.prisma as any).$queryRawUnsafe(
+        `SELECT * FROM "InventoryHistory" WHERE "userId" = $1 ORDER BY timestamp DESC`,
+        cleanUserId
+      );
+    } catch (err) {
+      console.error('Failed to fetch inventory history:', err);
+      return [];
+    }
+  }
+
   async createBulk(userId: string, items: any[]): Promise<{ count: number }> {
     console.log(`🚀 [BULK START]: Received ${items.length} items for user "${userId}"`);
     const cleanUserId = userId.trim().toLowerCase();
@@ -75,7 +125,7 @@ export class ProductsService {
     let addedCount = 0;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      const { id, userId: uId, productId, name, details, mrp, paket, quantity, _timestamp, ...extra } = item;
+      const { id, userId: uId, productId, name, details, mrp, quantity, _timestamp, ...extra } = item;
       await this.prisma.product.create({
         data: {
           id: this.generateId(i),
@@ -84,12 +134,20 @@ export class ProductsService {
           name: name || null,
           details: details || null,
           mrp: mrp ? String(mrp) : null,
-          paket: paket || null,
           quantity: quantity ? String(quantity) : null,
           timestamp: _timestamp || Date.now(),
           extraAttributes: extra
         }
       });
+      await this.logInventoryChange(
+        cleanUserId,
+        'BULK_IMPORT',
+        name || 'Unknown Item',
+        productId ? String(productId) : null,
+        '0',
+        quantity ? String(quantity) : '0',
+        'Bulk imported via CSV file'
+      );
       addedCount++;
     }
     
@@ -97,8 +155,12 @@ export class ProductsService {
     return { count: addedCount };
   }
 
-  private async updateSingleItem(userId: string, item: any, actionType: 'IN' | 'OUT'): Promise<string> {
+  private async updateSingleItem(userId: string, item: any, actionType: 'IN' | 'OUT', source?: string, operatorName = 'Owner'): Promise<string> {
     console.log(`🔍 [PROCESS]: "${item.name}" qty=${item.qty} action=${actionType}`);
+
+    if (item.description && !item.details) {
+      item.details = item.description;
+    }
 
     const userItems = await this.findAll(userId);
 
@@ -113,10 +175,15 @@ export class ProductsService {
     const incomingCleanId = sanitizeId(item.productId);
 
     userItems.forEach((p, i) => {
-      let score = 0;
-      
       const dbCleanId = sanitizeId(p.productId);
 
+      // If both have product IDs and they do not match, they cannot be the same product
+      if (incomingCleanId && dbCleanId && dbCleanId !== incomingCleanId) {
+        return;
+      }
+
+      let score = 0;
+      
       // Strict Item Code Match
       if (incomingCleanId && dbCleanId === incomingCleanId) {
          score += 10000;
@@ -124,15 +191,37 @@ export class ProductsService {
       
       const dbName = (p.name || '').toLowerCase();
       const dbDetails = (p.details || '').toLowerCase();
-      const dbFullText = `${dbName} ${dbDetails} ${Object.values(p).join(' ')}`.toLowerCase();
-      
-      // Strict Name Match
-      if (item.name && dbName === billName) score += 100;
-      else if (item.name && dbName.includes(billName)) score += 50;
 
-      // Match extra details (like 80 page, 100ml) from the spoken text
-      const matchWords = billWords.filter(w => dbFullText.includes(w));
-      if (billWords.length > 0) score += (matchWords.length / billWords.length) * 80;
+      // Safely search extra/dynamic attributes instead of using Object.values(p)
+      let extraText = '';
+      if (p.extraAttributes && typeof p.extraAttributes === 'object') {
+        try {
+          extraText = Object.values(p.extraAttributes as object)
+            .map(v => String(v || ''))
+            .join(' ');
+        } catch (e) {
+          // ignore
+        }
+      }
+      const dbFullText = `${dbName} ${dbDetails} ${extraText}`.toLowerCase();
+      
+      // If no SKU code is provided, check for precise name and description match
+      if (!incomingCleanId) {
+        if (dbName === billName && (!billDetails || dbDetails === billDetails)) {
+          score += 5000; // Strong match based on name & description
+        } else {
+          // Name doesn't match exactly, or description differs. Do not match this item!
+          return;
+        }
+      } else {
+        // Strict Name Match (only for when SKU is provided or we are doing standard match)
+        if (item.name && dbName === billName) score += 100;
+        else if (item.name && dbName.includes(billName)) score += 50;
+
+        // Match extra details (like 80 page, 100ml) from the spoken text
+        const matchWords = billWords.filter(w => dbFullText.includes(w));
+        if (billWords.length > 0) score += (matchWords.length / billWords.length) * 80;
+      }
 
       if (score > 0) {
         if (score > high) {
@@ -189,15 +278,38 @@ export class ProductsService {
         data: updateData
       });
 
+      let detailsStr = '';
+      if (source === 'SCANNER_IN') {
+        detailsStr = `Stock added via Inbound Scanner`;
+      } else if (source === 'SCANNER_OUT') {
+        detailsStr = `Stock deducted via Outbound Scanner`;
+      } else if (source === 'VOICE') {
+        detailsStr = `Stock ${actionType === 'IN' ? 'added' : 'deducted'} via Voice Command`;
+      } else if (source === 'BILLING') {
+        detailsStr = `Stock sold via Sales Terminal`;
+      } else {
+        detailsStr = `Stock ${actionType === 'IN' ? 'added' : 'deducted'} via Smart Scanner / Voice Command`;
+      }
+
+      await this.logInventoryChange(
+        userId,
+        actionType === 'IN' ? 'STOCK_IN' : 'STOCK_OUT',
+        p.name || 'Unknown Item',
+        p.productId || null,
+        cur.toString(),
+        newQtyStr,
+        detailsStr,
+        operatorName
+      );
+
       return `SUCCESS: ${display} ${actionType === 'IN' ? '+' : '-'}${qty} (Total: ${newQtyStr})`;
     } else {
       console.log(`❌ [NO_MATCH]: "${item.name}"`);
-      const pid = incomingCleanId || item.productId || await this.getNextNumericProductId(userId);
+      const pid = incomingCleanId || item.productId || await this.generateRandomNumericProductId(userId);
       const newQtyStr = actionType === 'IN' ? qty.toString() : '0';
-      
-      const extra: any = {};
+       const extra: any = {};
       Object.keys(item).forEach(k => {
-         if (!['name', 'qty', 'productId', 'mrp'].includes(k) && item[k] !== undefined) {
+         if (!['name', 'qty', 'productId', 'mrp', 'details'].includes(k) && item[k] !== undefined) {
              extra[k] = item[k];
          }
       });
@@ -208,12 +320,35 @@ export class ProductsService {
           userId,
           productId: pid,
           name: item.name || 'Unknown Item',
+          details: item.details || null,
           quantity: newQtyStr,
           mrp: item.mrp ? String(item.mrp) : '0',
           timestamp: Date.now(),
           extraAttributes: extra
         }
       });
+
+      let detailsStr = '';
+      if (source === 'SCANNER_IN') {
+        detailsStr = `New item registered and stock initialized via Inbound Scanner`;
+      } else if (source === 'SCANNER_OUT') {
+        detailsStr = `New item registered and stock initialized via Outbound Scanner`;
+      } else if (source === 'VOICE') {
+        detailsStr = `New item registered and stock initialized via Voice Command`;
+      } else {
+        detailsStr = `New item registered and stock initialized via Smart Scanner / Voice Command`;
+      }
+
+      await this.logInventoryChange(
+        userId,
+        'CREATE',
+        newItem.name || 'Unknown Item',
+        newItem.productId,
+        '0',
+        newQtyStr,
+        detailsStr,
+        operatorName
+      );
 
       if (actionType === 'IN') {
         return `NEW: ${newItem.name} (qty: ${qty})`;
@@ -236,7 +371,8 @@ export class ProductsService {
 
   async processAgentCommandV2(
     userId: string, 
-    payload: { text: string; currentView?: string; role?: string; wakeWordActive?: boolean }
+    payload: { text: string; currentView?: string; role?: string; wakeWordActive?: boolean },
+    operatorName = 'Owner'
   ): Promise<any> {
     try {
       const userItems = await this.findAll(userId);
@@ -265,7 +401,7 @@ export class ProductsService {
                 expiry: action.expiry, 
                 ...(action.dynamicData || {}) 
               };
-              const msg = await this.updateSingleItem(userId, itemPayload, action.action);
+              const msg = await this.updateSingleItem(userId, itemPayload, action.action, 'VOICE', operatorName);
               
               // Resolve matching item for context sync
               let matchedP = userItems.find(p => p.productId === action.productId);
@@ -583,7 +719,7 @@ export class ProductsService {
 
       if (data.action === 'IN' || data.action === 'OUT') {
         const itemPayload = { name: data.itemName, details: data.details, qty: data.qty, productId: data.productId, expiry: data.expiry, ...(data.dynamicData || {}) };
-        const msg = await this.updateSingleItem(userId, itemPayload, data.action);
+        const msg = await this.updateSingleItem(userId, itemPayload, data.action, 'VOICE', operatorName);
         
         let finalSpeech = data.speechText;
         if (msg.startsWith('Maaf kijiye') || msg.startsWith('NOT_FOUND')) {
@@ -644,13 +780,14 @@ export class ProductsService {
       
       For each item, extract:
       1. productId: Extract ONLY the alphanumeric code. If it says "CODE: 14", extract ONLY "14". Strip all prefixes.
-      2. name: The full product name/description, including specific attributes like size, color, pages (e.g. "Regular Register (Studymate) 176 Page").
-      3. qty: The exact quantity count.
-      4. mrp: The unit price or rate per item (without currency symbols).
+      2. name: The core product name.
+      3. details: Any product description, attributes like size, color, weight, page count, or packaging details. If there is a separate description column in the invoice, extract its value into details.
+      4. qty: The exact quantity count.
+      5. mrp: The unit price or rate per item (without currency symbols).
 
       Return JSON ONLY as a list of objects:
       [
-        { "productId": "14", "name": "...", "qty": 100, "mrp": "105" }
+        { "productId": "14", "name": "...", "details": "...", "qty": 100, "mrp": "105" }
       ]
       Do not wrap in backticks or markdown formatting.
       `;
@@ -670,6 +807,7 @@ export class ProductsService {
         items = parsed.map(item => ({
           productId: item.productId ? String(item.productId) : '',
           name: item.name || 'Unknown Item',
+          details: item.details || item.description || '',
           qty: Math.max(1, parseInt(item.qty, 10) || 1),
           mrp: item.mrp ? String(item.mrp) : '0'
         }));
@@ -761,9 +899,10 @@ export class ProductsService {
     }
 
     const log: string[] = [];
+    const source = payload.actionType === 'IN' ? 'SCANNER_IN' : 'SCANNER_OUT';
     for (const i of items) {
       if (!i.qty || i.qty < 1) i.qty = 1;
-      log.push(await this.updateSingleItem(userId, i, payload.actionType));
+      log.push(await this.updateSingleItem(userId, i, payload.actionType, source, operatorName));
     }
 
     // Save scan to ScanHistory in database
@@ -808,6 +947,7 @@ export class ProductsService {
 
     const billedItems: any[] = [];
     let subtotal = 0;
+    const billId = 'TXN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
 
     for (const c of cart) {
       const product = await this.prisma.product.findFirst({
@@ -822,6 +962,17 @@ export class ProductsService {
           where: { id: product.id },
           data: { quantity: newQtyStr }
         });
+
+        await this.logInventoryChange(
+          userId,
+          'STOCK_OUT',
+          product.name || 'Unknown Item',
+          product.productId,
+          cur.toString(),
+          newQtyStr,
+          `Stock sold via Sales Terminal (Billing ID: ${billId})`,
+          operatorName
+        );
 
         const rate = parseFloat(product.mrp || '0');
         subtotal += rate * qtyToSell;
@@ -839,7 +990,6 @@ export class ProductsService {
     const gstRate = 0.18;
     const gst = hasGst ? subtotal * gstRate : 0;
     const total = subtotal + gst;
-    const billId = 'TXN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
 
     const newBill = await this.prisma.bill.create({
       data: {
@@ -875,10 +1025,13 @@ export class ProductsService {
     const list = await this.prisma.product.findMany({
       where: { userId: cleanUserId }
     });
-    return list.map(p => ({
-      ...p,
-      ...(p.extraAttributes as any || {})
-    }));
+    return list.map(p => {
+      const { paket, ...rest } = p as any;
+      return {
+        ...rest,
+        ...(rest.extraAttributes as any || {})
+      };
+    });
   }
 
   async findOne(userId: string, id: string): Promise<Product> {
@@ -887,14 +1040,15 @@ export class ProductsService {
       where: { userId: cleanUserId, id }
     });
     if (!p) throw new NotFoundException();
+    const { paket, ...rest } = p as any;
     return {
-      ...p,
-      ...(p.extraAttributes as any || {})
+      ...rest,
+      ...(rest.extraAttributes as any || {})
     };
   }
 
   async create(userId: string, data: any): Promise<Product> {
-    const { id, userId: uId, productId, name, details, mrp, paket, quantity, _timestamp, ...extra } = data;
+    const { id, userId: uId, productId, name, details, mrp, quantity, _timestamp, ...extra } = data;
     const p = await this.prisma.product.create({
       data: {
         id: this.generateId(),
@@ -903,15 +1057,26 @@ export class ProductsService {
         name: name || null,
         details: details || null,
         mrp: mrp ? String(mrp) : null,
-        paket: paket || null,
         quantity: quantity ? String(quantity) : null,
         timestamp: Date.now(),
         extraAttributes: extra
       }
     });
+
+    await this.logInventoryChange(
+      userId,
+      'CREATE',
+      p.name || 'Unknown Item',
+      p.productId,
+      '0',
+      p.quantity || '0',
+      'Manual registration via Quick Register'
+    );
+
+    const { paket, ...rest } = p as any;
     return {
-      ...p,
-      ...(p.extraAttributes as any || {})
+      ...rest,
+      ...(rest.extraAttributes as any || {})
     };
   }
 
@@ -921,7 +1086,7 @@ export class ProductsService {
     });
     if (!existing) throw new NotFoundException();
 
-    const { id: dId, userId: uId, productId, name, details, mrp, paket, quantity, _timestamp, ...extra } = data;
+    const { id: dId, userId: uId, productId, name, details, mrp, quantity, _timestamp, ...extra } = data;
     const updated = await this.prisma.product.update({
       where: { id },
       data: {
@@ -929,14 +1094,33 @@ export class ProductsService {
         name: name !== undefined ? name : undefined,
         details: details !== undefined ? details : undefined,
         mrp: mrp !== undefined ? (mrp ? String(mrp) : null) : undefined,
-        paket: paket !== undefined ? paket : undefined,
         quantity: quantity !== undefined ? (quantity ? String(quantity) : null) : undefined,
         extraAttributes: Object.keys(extra).length > 0 ? { ...(existing.extraAttributes as any || {}), ...extra } : undefined
       }
     });
+
+    const changes: string[] = [];
+    if (name !== undefined && name !== existing.name) changes.push(`Name: "${existing.name || ''}" -> "${name}"`);
+    if (details !== undefined && details !== existing.details) changes.push(`Details: "${existing.details || ''}" -> "${details}"`);
+    if (mrp !== undefined && mrp !== existing.mrp) changes.push(`MRP: "${existing.mrp || ''}" -> "${mrp}"`);
+    if (quantity !== undefined && quantity !== existing.quantity) changes.push(`Stock: "${existing.quantity || '0'}" -> "${quantity}"`);
+    
+    const detailsStr = changes.length > 0 ? changes.join(', ') : 'Manual update details';
+
+    await this.logInventoryChange(
+      userId,
+      'UPDATE',
+      updated.name || 'Unknown Item',
+      updated.productId,
+      existing.quantity || '0',
+      updated.quantity || '0',
+      detailsStr
+    );
+
+    const { paket, ...rest } = updated as any;
     return {
-      ...updated,
-      ...(updated.extraAttributes as any || {})
+      ...rest,
+      ...(rest.extraAttributes as any || {})
     };
   }
 
@@ -949,6 +1133,17 @@ export class ProductsService {
     await this.prisma.product.delete({
       where: { id }
     });
+
+    await this.logInventoryChange(
+      userId,
+      'DELETE',
+      existing.name || 'Unknown Item',
+      existing.productId,
+      existing.quantity || '0',
+      '0',
+      `Manual delete (deleted item with stock ${existing.quantity || '0'})`
+    );
+
     return { message: 'Deleted' };
   }
 
