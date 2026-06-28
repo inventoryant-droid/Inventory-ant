@@ -2,7 +2,7 @@ import './utils/fetchInterceptor';
 import { StrictMode, Component } from 'react'
 import { createRoot } from 'react-dom/client'
 import { GoogleOAuthProvider } from '@react-oauth/google'
-import { BrowserRouter } from 'react-router-dom'
+import { HashRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 
@@ -31,11 +31,11 @@ class ErrorBoundary extends Component {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-      <BrowserRouter>
+      <HashRouter>
         <ErrorBoundary>
           <App />
         </ErrorBoundary>
-      </BrowserRouter>
+      </HashRouter>
     </GoogleOAuthProvider>
   </StrictMode>,
 )
