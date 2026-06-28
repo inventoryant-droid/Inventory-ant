@@ -49,13 +49,20 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
     setHistoryLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/user/products/history`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store'
       });
       if (res.ok) {
         const data = await res.json();
+        console.log("HISTORY API RESPONSE DATA:", data);
         if (Array.isArray(data)) {
+          console.log("HISTORY API SETTING LOGS, length:", data.length);
           setHistoryLogs(data);
+        } else {
+          console.log("HISTORY API DATA IS NOT ARRAY");
         }
+      } else {
+        console.log("HISTORY API FAILED", res.status);
       }
     } catch (e) {
       console.error('Failed to fetch history logs:', e);
@@ -106,23 +113,27 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
   const dynamicColumns = useMemo(() => {
     const cols = new Set();
     products.forEach(p => Object.keys(p).forEach(k => {
-      if (!['id', 'userId', 'quantity', 'mrp', 'productId', 'name', 'details', '_headers', '_timestamp', 'timestamp', 'csv_row', 'extraAttributes'].includes(k)) {
+      if (!['id', 'userId', 'quantity', 'mrp', 'costPrice', 'productId', 'name', 'details', '_headers', '_timestamp', 'timestamp', 'csv_row', 'extraAttributes'].includes(k)) {
           cols.add(k);
       }
     }));
     return Array.from(cols);
   }, [products]);
 
+  const [searchTerm, setSearchTerm] = useState('');
+
   const displayProducts = useMemo(() => {
+    // filter out the headers sentinel item first
+    const realProds = products.filter(p => !p._headers);
     if (filterMode === 'lowStock') {
-      return products.filter(p => {
+      return realProds.filter(p => {
         const q = parseInt(p.quantity || '0', 10);
         return !isNaN(q) && q > 0 && q < 20;
       });
     }
     
     if (filterMode === 'outOfStock') {
-      return products.filter(p => {
+      return realProds.filter(p => {
         const q = parseInt(p.quantity || '0', 10);
         return !isNaN(q) && q === 0;
       });
@@ -130,15 +141,39 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
     
     if (filterMode === 'expired' || filterMode === 'expiringSoon') {
       const expKey = getExpKey(dynamicColumns);
-      if (!expKey) return products;
+      if (!expKey) return realProds;
 
-      return products.filter(p => {
+      return realProds.filter(p => {
         const info = getExpiryInfo(p[expKey]);
         return filterMode === 'expired' ? info.status === 'EXPIRED' : info.status === 'EXPIRING SOON';
       });
     }
-    return products;
+    return realProds;
   }, [products, filterMode, dynamicColumns]);
+
+  // Filter by searchTerm (SKU & Name only) & Sort by SKU code ascending
+  const sortedDisplayProducts = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    const matched = term
+      ? displayProducts.filter(p =>
+          (p.name || '').toLowerCase().includes(term) ||
+          (p.productId || '').toLowerCase().includes(term)
+        )
+      : displayProducts;
+
+    return [...matched].sort((a, b) => {
+      const skuA = (a.productId || '').toString().trim();
+      const skuB = (b.productId || '').toString().trim();
+      if (!skuA && !skuB) return 0;
+      if (!skuA) return 1;
+      if (!skuB) return -1;
+      // Natural sort: numeric SKUs sort numerically
+      const numA = parseFloat(skuA);
+      const numB = parseFloat(skuB);
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+      return skuA.localeCompare(skuB, undefined, { sensitivity: 'base' });
+    });
+  }, [displayProducts, searchTerm]);
 
   const isFiltered = filterMode && filterMode !== 'all';
 
@@ -156,7 +191,6 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
     { key: 'productId', placeholder: headers.productId.toUpperCase(), className: 'w-24' },
     { key: 'name', placeholder: headers.name.toUpperCase(), className: 'w-48' },
     { key: 'quantity', placeholder: headers.quantity.toUpperCase(), className: 'w-24' },
-    { key: 'mrp', placeholder: headers.mrp.toUpperCase(), className: 'w-24' },
     { key: 'details', placeholder: 'DETAILS', className: 'w-40' },
   ];
 
@@ -240,8 +274,18 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100">
+        <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
            <h3 className="m-0 text-[15px] font-bold text-slate-800">Registered Catalog</h3>
+           <div className="relative w-full sm:w-72">
+             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={14} />
+             <input
+               type="text"
+               placeholder="Search SKU or Name..."
+               value={searchTerm}
+               onChange={e => setSearchTerm(e.target.value)}
+               className="w-full pl-9 pr-4 py-2 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 rounded-lg outline-none transition-all placeholder-slate-400"
+             />
+           </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
@@ -255,12 +299,11 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                   <th key={col} className="px-6 py-4 text-[10px] tracking-wider font-bold text-slate-400 uppercase">{col}</th>
                 ))}
                 <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-32">AVAILABLE STOCK</th>
-                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-24">MRP (₹)</th>
                 <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase text-right w-24">ACTIONS</th>
               </tr>
             </thead>
             <tbody>
-              {displayProducts.map((p, i) => (
+              {sortedDisplayProducts.map((p, i) => (
                 <tr key={p.id} className="border-t border-slate-50 hover:bg-slate-50 transition-colors group">
                   <td className="px-6 py-5 text-slate-400 text-xs font-medium">{i + 1}</td>
                   
@@ -336,19 +379,6 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                       />
                     ) : (
                       <div className="font-bold text-slate-700 text-sm">{p.quantity}</div>
-                    )}
-                  </td>
-                  
-                  <td className="px-6 py-5">
-                    {editingProductId === p.id ? (
-                      <input 
-                        type="number" 
-                        value={editFormData.mrp || ''} 
-                        onChange={(e) => setEditFormData({...editFormData, mrp: e.target.value})}
-                        className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
-                      />
-                    ) : (
-                      <div className="font-bold text-slate-700 text-sm">₹{Number(p.mrp || 0).toFixed(2)}</div>
                     )}
                   </td>
                   

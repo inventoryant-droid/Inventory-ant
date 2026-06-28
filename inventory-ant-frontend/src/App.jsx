@@ -20,6 +20,7 @@ import WelcomeModal from './components/ui/WelcomeModal';
 import OnboardingScreen from './pages/OnboardingScreen';
 import Profile from './pages/Profile';
 import StaffManagement from './pages/StaffManagement';
+import ItemDetails from './pages/ItemDetails';
 
 export default function App() {
   const navigate = useNavigate();
@@ -308,6 +309,7 @@ export default function App() {
               {view === 'billing' && <Billing products={products} onSaleSuccess={fetchProducts} userId={userId} token={token} userProfile={userProfile} />}
               {view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onEditProduct={handleEditProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} userRole={userRole} />}
               {view === 'ai_lab' && <AITools userId={userId} token={token} onScanResult={fetchProducts} onOpenScanner={handleOpenScanner} userProfile={userProfile} theme={theme} />}
+              {view === 'item_details' && <ItemDetails products={products} token={token} onEditProduct={handleEditProduct} />}
               {view === 'staff_management' && <StaffManagement token={token} userProfile={userProfile} userId={userId} />}
               {view === 'ant_x' && <AntXTerminal 
                 userId={userId} 

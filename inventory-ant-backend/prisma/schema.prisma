@@ -40,7 +40,8 @@ model Product {
   productId        String?  // SKU
   name             String?
   details          String?
-  mrp              String?
+  mrp              String?  // Sale price (shown on bills, billing terminal)
+  costPrice        String?  // Purchase price (what owner paid, shown in Item Details)
   paket            String?
   quantity         String?
   timestamp        Float    @map("_timestamp")

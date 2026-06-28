@@ -1,12 +1,16 @@
 import { Controller, Get, Post, Body, Param, Put, Delete, Req, UseGuards, Query, Res } from '@nestjs/common';
 import { ProductsService } from './products.service';
+import { AiService } from './ai.service';
 import { JwtAuthGuard } from '../users/jwt-auth.guard';
 import { RolesGuard } from '../users/roles.guard';
 import { Roles } from '../users/roles.decorator';
 
 @Controller('api/user/products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly aiService: AiService
+  ) {}
 
   private validateUser(req: any): string {
     if (!req.user) {
@@ -24,7 +28,7 @@ export class ProductsController {
   async scanBill(@Req() req: any, @Body() scanPayload: any) {
     const tenantEmail = this.validateUser(req);
     const operatorName = req.user.role === 'staff' ? req.user.name || req.user.email : 'Owner';
-    return this.productsService.processBillWithGemini(tenantEmail, scanPayload, operatorName);
+    return this.aiService.processBillWithGemini(tenantEmail, scanPayload, operatorName);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -32,12 +36,12 @@ export class ProductsController {
   async agentCommandV2(@Req() req: any, @Body() payload: any) {
     const tenantEmail = this.validateUser(req);
     const operatorName = req.user.role === 'staff' ? req.user.name || req.user.email : 'Owner';
-    return this.productsService.processAgentCommandV2(tenantEmail, payload, operatorName);
+    return this.aiService.processAgentCommandV2(tenantEmail, payload, operatorName);
   }
 
   @Get('tts')
   async getTTS(@Query('text') text: string, @Res() res: any) {
-    return this.productsService.getGoogleTTS(text, res);
+    return this.aiService.getGoogleTTS(text, res);
   }
 
   @UseGuards(JwtAuthGuard)

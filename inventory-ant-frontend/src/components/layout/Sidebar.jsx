@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import '../../App.css';
-import { LayoutDashboard, TerminalSquare, Receipt, Package, Scan, Settings, BookOpen, Info, ArrowLeftRight, Sun, Moon, LogOut, Menu, X, Shield, Users } from 'lucide-react';
+import { LayoutDashboard, TerminalSquare, Receipt, Package, Scan, Settings, BookOpen, Info, ArrowLeftRight, Sun, Moon, LogOut, Menu, X, Shield, Users, Tag } from 'lucide-react';
 
 function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, setInventoryFilter, theme, onToggleTheme, userProfile }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -11,6 +11,7 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
       { id: 'ant_x', label: 'Ant X Terminal', icon: <TerminalSquare size={18} /> },
       { id: 'billing', label: 'Billing', icon: <Receipt size={18} /> },
       { id: 'inventory', label: 'Master Inventory', icon: <Package size={18} /> },
+      { id: 'item_details', label: 'Item Details', icon: <Tag size={18} /> },
       { id: 'ai_lab', label: 'Smart Scanner', icon: <Scan size={18} /> },
       { id: 'staff_management', label: 'Staff Management', icon: <Users size={18} /> },
     ] : []),
@@ -19,6 +20,7 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
       { id: 'ant_x', label: 'Ant X Terminal', icon: <TerminalSquare size={18} /> },
       { id: 'billing', label: 'Billing', icon: <Receipt size={18} /> },
       { id: 'inventory', label: 'Master Inventory', icon: <Package size={18} /> },
+      { id: 'item_details', label: 'Item Details', icon: <Tag size={18} /> },
       { id: 'ai_lab', label: 'Smart Scanner', icon: <Scan size={18} /> },
     ] : []),
     ...(userRole === 'admin' ? [{ id: 'admin_panel', label: 'Admin Panel', icon: <Shield size={18} /> }] : []),
