@@ -439,17 +439,21 @@ export class AiService {
       - ONLY extract actual product items from the main table rows.
       - DO NOT extract table headers (like "STOCK CODE", "ITEM DESCRIPTION").
       - DO NOT extract subtotal, tax, or total lines.
+      - Each unique product variant (different color, size, type) MUST be a separate item.
       
       For each item, extract:
-      1. productId: Extract ONLY the alphanumeric code. If it says "CODE: 14", extract ONLY "14". Strip all prefixes.
-      2. name: The core product name.
-      3. details: Any product description, attributes like size, color, weight, page count, or packaging details. If there is a separate description column in the invoice, extract its value into details.
-      4. qty: The exact quantity count.
-      5. mrp: The unit price or rate per item (without currency symbols).
+      1. productId: Extract ONLY the alphanumeric code/SKU from a dedicated code column. If the only numbers visible are row serial numbers (1, 2, 3...), set productId to empty string "". Strip all prefixes.
+      2. hsnSac: Extract HSN or SAC code (usually a 4 to 8 digit number column, e.g. "96081019"). If not present, return "".
+      3. name: The FULL product description including the base name AND all variant details (color, size, type, packaging). 
+         Example: if the bill says "Hauser Xo Ballpen" with detail "10pcs Card -Blue", the name should be "Hauser Xo Ballpen 10pcs Card -Blue".
+         Combine all description fields into one complete name.
+      4. details: Any additional product attributes not captured in name (leave empty if already merged into name).
+      5. qty: The exact shipped/billed quantity count (look for "Shipped", "Billed", or "Quantity" column).
+      6. mrp: The unit price or rate per item (without currency symbols).
 
       Return JSON ONLY as a list of objects:
       [
-        { "productId": "14", "name": "...", "details": "...", "qty": 100, "mrp": "105" }
+        { "productId": "", "hsnSac": "96081019", "name": "Hauser Xo Ballpen 10pcs Card -Blue", "details": "", "qty": 600, "mrp": "5.60" }
       ]
       Do not wrap in backticks or markdown formatting.
       `;
@@ -468,6 +472,7 @@ export class AiService {
       if (Array.isArray(parsed)) {
         items = parsed.map(item => ({
           productId: item.productId ? String(item.productId) : '',
+          hsnSac: item.hsnSac ? String(item.hsnSac) : '',
           name: item.name || 'Unknown Item',
           details: item.details || item.description || '',
           qty: Math.max(1, parseInt(item.qty, 10) || 1),
@@ -560,6 +565,10 @@ export class AiService {
       };
     }
 
+    if (payload.parseOnly) {
+      return { success: true, action: payload.actionType, parsedItems: items };
+    }
+
     const log: string[] = [];
     const source = payload.actionType === 'IN' ? 'SCANNER_IN' : 'SCANNER_OUT';
     for (const i of items) {
@@ -590,5 +599,46 @@ export class AiService {
     }
 
     return { success: true, action: payload.actionType, parsedItems: items, auditLog: log };
+  }
+
+  async confirmBillScan(userId: string, payload: any, operatorName = 'Owner'): Promise<any> {
+    const { actionType, items } = payload;
+    const log: string[] = [];
+    const source = actionType === 'IN' ? 'SCANNER_IN' : 'SCANNER_OUT';
+
+    for (const i of items) {
+      const mappedItem = {
+        productId: i.productId || '',
+        hsnSac: i.hsnSac || '',
+        name: i.name || 'Unknown Item',
+        details: i.details || '',
+        qty: Math.max(1, parseInt(i.qty, 10) || 1),
+        mrp: i.mrp ? String(i.mrp) : '0'
+      };
+      log.push(await this.productsService.updateSingleItem(userId, mappedItem, actionType, source, operatorName));
+    }
+
+    try {
+      await this.prisma.scanHistory.create({
+        data: {
+          id: 'SCAN-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+          userId,
+          timestamp: Date.now(),
+          actionType: actionType,
+          operatorName,
+          items: items.map((it: any) => ({
+            productId: it.productId || '',
+            name: it.name || 'Unknown Item',
+            qty: Math.max(1, parseInt(it.qty, 10) || 1),
+            mrp: it.mrp || '0'
+          })),
+          auditLog: log
+        }
+      });
+    } catch (err) {
+      console.error('Failed to write scan history:', err);
+    }
+
+    return { success: true, action: actionType, parsedItems: items, auditLog: log };
   }
 }

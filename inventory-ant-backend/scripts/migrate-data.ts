@@ -95,16 +95,18 @@ async function run() {
   console.log('📦 Migrating Products...');
   const products = await readJsonFile(databasePath);
   for (const p of products) {
-    const { id, userId, productId, name, details, mrp, quantity, _timestamp, ...extra } = p;
+    const { id, userId, productId, hsnSac, hsn, sac, name, details, mrp, quantity, _timestamp, ...extra } = p;
     if (!id || !userId) {
       console.warn(`⚠️ Skipping invalid product entry:`, p);
       continue;
     }
+    const resolvedHsn = hsnSac || hsn || sac || null;
     await prisma.product.upsert({
       where: { id },
       update: {
         userId,
         productId: productId || null,
+        hsnSac: resolvedHsn ? String(resolvedHsn) : null,
         name: name || null,
         details: details || null,
         mrp: mrp || null,
@@ -116,6 +118,7 @@ async function run() {
         id,
         userId,
         productId: productId || null,
+        hsnSac: resolvedHsn ? String(resolvedHsn) : null,
         name: name || null,
         details: details || null,
         mrp: mrp || null,

@@ -1,23 +1,26 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { PrismaService } from '../prisma.service';
+import * as bcrypt from 'bcryptjs';
 
 export interface Product {
   id: string;
   userId: string;
   productId?: string;
+  hsnSac?: string;
   name?: string;
   details?: string;
   mrp?: string;
   paket?: string;
   quantity?: string;
-  [key: string]: any;
+  [key: string]: any; 
 }
 
 export interface PendingAction {
   action: 'IN' | 'OUT' | 'WIPE' | 'BULK';
   productId?: string;
+  hsnSac?: string;
   itemName?: string;
   qty: number;
   mrp?: string;
@@ -123,12 +126,13 @@ export class ProductsService {
     let addedCount = 0;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      const { id, userId: uId, productId, name, details, mrp, costPrice, quantity, _timestamp, _headers, csv_row, ...extra } = item;
+      const { id, userId: uId, productId, hsnSac, name, details, mrp, costPrice, quantity, _timestamp, _headers, csv_row, ...extra } = item;
       await this.prisma.product.create({
         data: {
           id: this.generateId(i),
           userId: cleanUserId,
           productId: productId ? String(productId) : null,
+          hsnSac: hsnSac ? String(hsnSac) : null,
           name: name || null,
           details: details || null,
           mrp: mrp ? String(mrp) : null,
@@ -163,86 +167,83 @@ export class ProductsService {
 
     const userItems = await this.findAll(userId);
 
-    const billName = (item.name || '').toLowerCase();
-    const billDetails = (item.details || '').toLowerCase();
-    const billWords = `${billName} ${billDetails}`.split(/\s+/).filter(w => w.length >= 2);
+    const sanitizeId = (id: any) => String(id || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase().trim();
+    const isSerialNumber = (id: string) => /^\d{1,2}$/.test(id);
 
-    let bestIndices: number[] = [];
+    const incomingRawId = sanitizeId(item.productId);
+    const isIncomingSerial = isSerialNumber(incomingRawId);
+    // Never use short serial numbers (1-99) as real SKUs during matching
+    const incomingCleanId = isIncomingSerial ? '' : incomingRawId;
+    const incomingCleanHsn = sanitizeId(item.hsnSac);
+
+    const billName = (item.name || '').toLowerCase().trim();
+    const billDetails = (item.details || '').toLowerCase().trim();
+    // Full description = name + details combined (primary matching surface)
+    const billFullDesc = billDetails ? `${billName} ${billDetails}` : billName;
+    const billWords = billFullDesc.split(/\s+/).filter((w: string) => w.length >= 2);
+
+    let bestIdx = -1;
     let high = 0;
-
-    const sanitizeId = (id: any) => String(id || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-    const incomingCleanId = sanitizeId(item.productId);
 
     userItems.forEach((p, i) => {
       const dbCleanId = sanitizeId(p.productId);
+      const dbCleanHsn = sanitizeId(p.hsnSac);
+      const dbName = (p.name || '').toLowerCase().trim();
+      const dbDetails = (p.details || '').toLowerCase().trim();
+      const dbFullDesc = dbDetails ? `${dbName} ${dbDetails}` : dbName;
+      const dbWords = dbFullDesc.split(/\s+/).filter((w: string) => w.length >= 2);
 
-      // If both have product IDs and they do not match, they cannot be the same product
-      if (incomingCleanId && dbCleanId && dbCleanId !== incomingCleanId) {
+      // --- Hard exclusion: non-serial SKU present on BOTH sides but they differ → skip ---
+      if (incomingCleanId && dbCleanId && !isSerialNumber(dbCleanId) && dbCleanId !== incomingCleanId) {
+        return;
+      }
+      // Hard exclusion: HSN present on BOTH sides but different → skip
+      if (incomingCleanHsn && dbCleanHsn && dbCleanHsn !== incomingCleanHsn) {
         return;
       }
 
       let score = 0;
-      
-      // Strict Item Code Match
-      if (incomingCleanId && dbCleanId === incomingCleanId) {
-         score += 10000;
-      }
-      
-      const dbName = (p.name || '').toLowerCase();
-      const dbDetails = (p.details || '').toLowerCase();
 
-      // Safely search extra/dynamic attributes instead of using Object.values(p)
-      let extraText = '';
-      if (p.extraAttributes && typeof p.extraAttributes === 'object') {
-        try {
-          extraText = Object.values(p.extraAttributes as object)
-            .map(v => String(v || ''))
-            .join(' ');
-        } catch (e) {
-          // ignore
-        }
-      }
-      const dbFullText = `${dbName} ${dbDetails} ${extraText}`.toLowerCase();
-      
-      // If no SKU code is provided, check for precise name and description match
-      if (!incomingCleanId) {
-        if (dbName === billName && (!billDetails || dbDetails === billDetails)) {
-          score += 5000; // Strong match based on name & description
-        } else {
-          // Name doesn't match exactly, or description differs. Do not match this item!
-          return;
-        }
+      // ── Exact full description match (highest priority) ──
+      if (dbFullDesc === billFullDesc) {
+        score += 50000;
       } else {
-        // Strict Name Match (only for when SKU is provided or we are doing standard match)
-        if (item.name && dbName === billName) score += 100;
-        else if (item.name && dbName.includes(billName)) score += 50;
+        // Word-level Jaccard similarity across the full description
+        const overlapWords = dbWords.filter((w: string) => billWords.includes(w));
+        const unionWords = Array.from(new Set([...dbWords, ...billWords]));
+        const jaccard = unionWords.length > 0 ? overlapWords.length / unionWords.length : 0;
 
-        // Match extra details (like 80 page, 100ml) from the spoken text
-        const matchWords = billWords.filter(w => dbFullText.includes(w));
-        if (billWords.length > 0) score += (matchWords.length / billWords.length) * 80;
+        // Require at least 30% Jaccard overlap to be a candidate
+        if (jaccard < 0.3) return;
+        score += jaccard * 30000;
+
+        // Bonus: bill name is a substring of db description or vice-versa
+        if (dbFullDesc.includes(billName) || billFullDesc.includes(dbName)) {
+          score += 8000;
+        }
       }
 
-      if (score > 0) {
-        if (score > high) {
-          high = score;
-          bestIndices = [i];
-        } else if (score === high && score < 10000) {
-          bestIndices.push(i);
-        }
+      // Secondary boost: real (non-serial) SKU match
+      if (incomingCleanId && dbCleanId && dbCleanId === incomingCleanId) {
+        score += 10000;
+      }
+      // Secondary boost: HSN match
+      if (incomingCleanHsn && dbCleanHsn && dbCleanHsn === incomingCleanHsn) {
+        score += 3000;
+      }
+
+      if (score > high) {
+        high = score;
+        bestIdx = i;
       }
     });
 
-    if (high < 30) bestIndices = [];
+    // Minimum threshold: must have at least 30% word overlap (score >= 9000)
+    if (high < 9000) bestIdx = -1;
 
     const qty = parseInt(item.qty, 10) || 1;
 
-    // AMBIGUITY CHECK
-    if (bestIndices.length > 1) {
-       console.log(`⚠️ [AMBIGUOUS]: Found ${bestIndices.length} items for "${item.name}"`);
-       return `Maaf kijiye, mujhe "${item.name}" ke ${bestIndices.length} alag items mile hain. Kripya iska Item Code batayein ya details dein taaki main sahi item select kar saku.`;
-    }
-
-    let bestIdx = bestIndices.length === 1 ? bestIndices[0] : -1;
+    // No ambiguity check needed – we always pick the single best match
 
     if (bestIdx !== -1) {
       const p = userItems[bestIdx];
@@ -268,10 +269,19 @@ export class ProductsService {
       }
       updateData.quantity = newQtyStr;
 
+      // Keep the item details section updated if the DB doesn't have it or has less descriptive text
+      if (item.details && (!p.details || p.details.trim().length < item.details.trim().length)) {
+        updateData.details = item.details;
+      }
+      // Update HSN/SAC if database is missing it but scanned item has it
+      if (item.hsnSac && !p.hsnSac) {
+        updateData.hsnSac = item.hsnSac;
+      }
+
       // Extract dynamic / extra fields
       const extraAttributes = { ...(p.extraAttributes as any || {}) };
       Object.keys(item).forEach(k => {
-         if (!['name', 'qty', 'productId', 'mrp'].includes(k) && item[k] !== undefined) {
+         if (!['name', 'qty', 'productId', 'hsnSac', 'mrp', 'details'].includes(k) && item[k] !== undefined) {
              extraAttributes[k] = item[k];
          }
       });
@@ -309,11 +319,12 @@ export class ProductsService {
       return `SUCCESS: ${display} ${actionType === 'IN' ? '+' : '-'}${qty} (Total: ${newQtyStr})`;
     } else {
       console.log(`❌ [NO_MATCH]: "${item.name}"`);
-      const pid = incomingCleanId || item.productId || await this.generateRandomNumericProductId(userId);
+      const isRawSerial = isSerialNumber(incomingRawId);
+      const pid = (!isRawSerial && incomingRawId) ? incomingRawId : await this.generateRandomNumericProductId(userId);
       const newQtyStr = actionType === 'IN' ? qty.toString() : '0';
-       const extra: any = {};
+      const extra: any = {};
       Object.keys(item).forEach(k => {
-         if (!['name', 'qty', 'productId', 'mrp', 'details'].includes(k) && item[k] !== undefined) {
+         if (!['name', 'qty', 'productId', 'hsnSac', 'mrp', 'details'].includes(k) && item[k] !== undefined) {
              extra[k] = item[k];
          }
       });
@@ -323,6 +334,7 @@ export class ProductsService {
           id: this.generateId(),
           userId,
           productId: pid,
+          hsnSac: item.hsnSac || null,
           name: item.name || 'Unknown Item',
           details: item.details || null,
           quantity: newQtyStr,
@@ -422,8 +434,8 @@ export class ProductsService {
     }
 
     const hasGst = payload && payload.hasGst !== undefined ? !!payload.hasGst : true;
-    const gstRate = 0.18;
-    const gst = hasGst ? subtotal * gstRate : 0;
+    const gstRatePct = payload && payload.gstRate !== undefined ? parseFloat(payload.gstRate) : 18;
+    const gst = hasGst ? subtotal * (gstRatePct / 100) : 0;
     const total = subtotal + gst;
 
     const newBill = await this.prisma.bill.create({
@@ -488,12 +500,13 @@ export class ProductsService {
   }
 
   async create(userId: string, data: any): Promise<Product> {
-    const { id, userId: uId, productId, name, details, mrp, costPrice, quantity, _timestamp, ...extra } = data;
+    const { id, userId: uId, productId, hsnSac, name, details, mrp, costPrice, quantity, _timestamp, ...extra } = data;
     const p = await this.prisma.product.create({
       data: {
         id: this.generateId(),
         userId,
         productId: productId ? String(productId) : null,
+        hsnSac: hsnSac ? String(hsnSac) : null,
         name: name || null,
         details: details || null,
         mrp: mrp ? String(mrp) : null,
@@ -527,11 +540,12 @@ export class ProductsService {
     });
     if (!existing) throw new NotFoundException();
 
-    const { id: dId, userId: uId, productId, name, details, mrp, costPrice, quantity, _timestamp, ...extra } = data;
+    const { id: dId, userId: uId, productId, hsnSac, name, details, mrp, costPrice, quantity, _timestamp, ...extra } = data;
     const updated = await this.prisma.product.update({
       where: { id },
       data: {
         productId: productId !== undefined ? (productId ? String(productId) : null) : undefined,
+        hsnSac: hsnSac !== undefined ? (hsnSac ? String(hsnSac) : null) : undefined,
         name: name !== undefined ? name : undefined,
         details: details !== undefined ? details : undefined,
         mrp: mrp !== undefined ? (mrp ? String(mrp) : null) : undefined,
@@ -543,6 +557,7 @@ export class ProductsService {
 
     const changes: string[] = [];
     if (name !== undefined && name !== existing.name) changes.push(`Name: "${existing.name || ''}" -> "${name}"`);
+    if (hsnSac !== undefined && hsnSac !== (existing as any).hsnSac) changes.push(`HSN/SAC: "${(existing as any).hsnSac || ''}" -> "${hsnSac}"`);
     if (details !== undefined && details !== existing.details) changes.push(`Details: "${existing.details || ''}" -> "${details}"`);
     if (mrp !== undefined && mrp !== existing.mrp) changes.push(`Sale Price (MRP): "${existing.mrp || ''}" -> "${mrp}"`);
     if (costPrice !== undefined && costPrice !== (existing as any).costPrice) changes.push(`Cost Price: "${(existing as any).costPrice || ''}" -> "${costPrice}"`);
@@ -590,8 +605,25 @@ export class ProductsService {
     return { message: 'Deleted' };
   }
 
-  async removeAll(userId: string): Promise<{ message: string }> {
+  async removeAll(userId: string, password?: string): Promise<{ message: string }> {
     const cleanUserId = userId.trim().toLowerCase();
+    
+    const user = await this.prisma.user.findUnique({
+      where: { email: cleanUserId }
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    
+    if (!password) {
+      throw new BadRequestException('Password is required to delete the catalog');
+    }
+    
+    const passMatch = await bcrypt.compare(password, user.password || '');
+    if (!passMatch) {
+      throw new UnauthorizedException('Incorrect password. Access denied.');
+    }
+
     await this.prisma.product.deleteMany({
       where: { userId: cleanUserId }
     });

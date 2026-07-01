@@ -23,6 +23,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
   const [passError, setPassError] = useState('');
   const [passSuccess, setPassSuccess] = useState('');
   const [passLoading, setPassLoading] = useState(false);
+  const [confirmDeleteStaff, setConfirmDeleteStaff] = useState(null);
 
   // Compute generated username live
   const cleanedBiz = (userProfile?.businessName || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
@@ -137,10 +138,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
     }
   };
 
-  const handleDeleteStaff = async (staff) => {
-    if (!window.confirm(`DANGER: Are you sure you want to permanently delete staff member "${staff.name}"?`)) {
-      return;
-    }
+  const executeDeleteStaff = async (staff) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/user/staff/${staff.id}`, {
         method: 'DELETE',
@@ -154,6 +152,10 @@ export default function StaffManagement({ token, userProfile, userId }) {
     } catch (e) {
       setError('Failed to delete staff member.');
     }
+  };
+
+  const handleDeleteStaff = (staff) => {
+    setConfirmDeleteStaff(staff);
   };
 
   const handleResetPassword = async (e) => {
@@ -474,6 +476,36 @@ export default function StaffManagement({ token, userProfile, userId }) {
             >
               <X size={18} />
             </button>
+          </div>
+        </div>
+      )}
+      {confirmDeleteStaff && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[1000] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 border border-slate-200 text-left shadow-2xl flex flex-col gap-5 relative animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="m-0 text-base font-bold text-slate-800 flex items-center gap-2">
+              <ShieldAlert className="text-red-500" size={18} /> Delete Staff Member
+            </h3>
+            <p className="text-slate-500 text-xs m-0">
+              DANGER: Are you sure you want to permanently delete staff member <strong className="text-slate-800">"{confirmDeleteStaff.name}"</strong>?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setConfirmDeleteStaff(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  const staff = confirmDeleteStaff;
+                  setConfirmDeleteStaff(null);
+                  executeDeleteStaff(staff);
+                }}
+                className="px-4 py-2 bg-[#EF4444] hover:bg-red-700 text-white font-bold text-xs rounded-xl cursor-pointer transition-colors shadow-sm"
+              >
+                Yes, Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

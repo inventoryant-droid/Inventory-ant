@@ -35,45 +35,45 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
   }, [products]);
 
   return (
-    <div className="p-6 md:p-8 flex-1 overflow-y-auto bg-[#F8FAFC]">
+    <div className="p-4 md:p-8 flex-1 overflow-y-auto bg-[#F8FAFC]">
       {userProfile?.profileCompleted || userRole === 'staff' ? (
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 mb-8 shadow-[0_2px_10px_rgba(0,0,0,0.01)] transition-all">
-          <div className="flex flex-col md:flex-row items-center gap-5 text-center md:text-left flex-1 min-w-0">
+        <div className="bg-white border border-slate-200 rounded-3xl p-4 md:p-6 flex flex-col md:flex-row items-center justify-between gap-5 mb-6 shadow-[0_2px_10px_rgba(0,0,0,0.01)] transition-all animate-scale-in">
+          <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left flex-1 min-w-0 w-full">
             {userRole === 'staff' ? (
               userProfile?.picture ? (
-                <div className="w-16 h-16 rounded-2xl border border-slate-200/60 overflow-hidden bg-slate-50 shadow-sm shrink-0 flex items-center justify-center">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border border-slate-200/60 overflow-hidden bg-slate-50 shadow-sm shrink-0 flex items-center justify-center">
                   <img src={userProfile.picture} alt="Staff Avatar" className="w-full h-full object-cover" />
                 </div>
               ) : (
-                <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 shrink-0 shadow-sm font-bold text-lg">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 shrink-0 shadow-sm font-bold text-base sm:text-lg">
                   {userProfile?.name ? userProfile.name.substring(0, 2).toUpperCase() : 'ST'}
                 </div>
               )
             ) : userProfile?.businessLogo ? (
-              <div className="w-16 h-16 rounded-2xl border border-slate-200/60 overflow-hidden bg-slate-50 shadow-sm shrink-0 flex items-center justify-center">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border border-slate-200/60 overflow-hidden bg-slate-50 shadow-sm shrink-0 flex items-center justify-center">
                 <img src={userProfile.businessLogo} alt="Logo" className="w-full h-full object-cover" />
               </div>
             ) : (
-              <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shrink-0 shadow-sm">
-                <Building size={28} />
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shrink-0 shadow-sm">
+                <Building size={24} className="sm:w-7 sm:h-7" />
               </div>
             )}
-            <div className="flex-1 min-w-0">
-              <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-500">
+            <div className="flex-1 min-w-0 w-full">
+              <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-widest text-indigo-500">
                 {userRole === 'staff' ? `Staff Account • ${userProfile?.businessName || 'Warehouse'}` : 'Warehouse Node Active'}
               </span>
-              <h2 className="m-0 text-xl md:text-2xl font-black text-slate-800 truncate mt-1">
+              <h2 className="m-0 text-lg sm:text-xl md:text-2xl font-black text-slate-800 mt-1 leading-tight whitespace-normal">
                 {userRole === 'staff' ? `Welcome, ${userProfile?.name || 'Staff Member'}!` : `Welcome back, ${userProfile?.businessName || 'Business Owner'}!`}
               </h2>
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-1.5 mt-2 text-xs text-slate-500 font-medium">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1.5 mt-2 text-xs text-slate-500 font-medium">
                 {userProfile?.businessAddress && (
-                  <span className="flex items-center gap-1">
-                    <MapPin size={12} className="text-slate-400" /> {userProfile.businessAddress.split(',').slice(0, 2).join(',')}
+                  <span className="flex items-center gap-1 text-center sm:text-left">
+                    <MapPin size={12} className="text-slate-400 shrink-0" /> {userProfile.businessAddress.split(',').slice(0, 2).join(',')}
                   </span>
                 )}
                 {userProfile?.gstNumber && (
                   <span className="flex items-center gap-1 font-mono">
-                    <ShieldCheck size={12} className="text-slate-400" /> GSTIN: {userProfile.gstNumber}
+                    <ShieldCheck size={12} className="text-slate-400 shrink-0" /> GSTIN: {userProfile.gstNumber}
                   </span>
                 )}
               </div>
@@ -82,7 +82,7 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
           {userRole !== 'staff' && (
             <button 
               onClick={onGoToProfile}
-              className="py-2.5 px-5 bg-white hover:bg-slate-50 text-indigo-600 border border-slate-200 hover:border-indigo-200 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center gap-2 shrink-0 no-print-btn"
+              className="py-2 px-4 sm:py-2.5 sm:px-5 bg-white hover:bg-slate-50 text-indigo-600 border border-slate-200 hover:border-indigo-200 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2 w-full sm:w-auto shrink-0 no-print-btn"
             >
               <Edit size={14} />
               Edit Profile
@@ -90,8 +90,8 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
           )}
         </div>
       ) : (
-        <div className="flex flex-col mb-8">
-          <h1 className="m-0 text-3xl font-extrabold tracking-tight text-indigo-600">
+        <div className="flex flex-col mb-6">
+          <h1 className="m-0 text-2xl sm:text-3xl font-extrabold tracking-tight text-indigo-600">
             System Overview
           </h1>
           <p className="text-slate-500 mt-1 text-sm font-medium">Warehouse status updates and real-time analytical graphs.</p>
@@ -99,9 +99,9 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
       )}
       
       {products.length === 0 && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-8 md:p-12 mt-8 flex flex-col items-center text-center max-w-4xl mx-auto shadow-sm">
-           <div className="text-6xl mb-4 animate-bounce drop-shadow-sm">👋</div>
-           <h2 className="m-0 text-indigo-600 text-2xl font-bold">Welcome to Inventory Ant!</h2>
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-12 mt-4 flex flex-col items-center text-center max-w-4xl mx-auto shadow-sm">
+           <div className="text-5xl md:text-6xl mb-4 animate-bounce drop-shadow-sm">👋</div>
+           <h2 className="m-0 text-indigo-600 text-xl md:text-2xl font-bold">Welcome to Inventory Ant!</h2>
            <p className="text-slate-500 max-w-[600px] leading-relaxed text-sm mt-3">
              Aapka warehouse abhi khali hai. System ko start karne aur AI ko data dene ke liye, sabse pehle apni Master CSV (Inventory List) file upload karein.
            </p>
@@ -114,79 +114,75 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
         </div>
       )}
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
-        {/* Total SKU Card */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
         <div 
-          className="bg-white border border-slate-100 rounded-2xl p-6 flex items-start justify-between cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow" 
+          className="bg-white border border-slate-100 rounded-2xl p-4 md:p-6 flex items-start justify-between cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow card-hover" 
           onClick={onTotalClick}
         >
            <div className="flex flex-col">
-             <h3 className="text-slate-400 m-0 uppercase text-[10px] tracking-wider font-bold">Total SKU Inventory</h3>
-             <p className="text-4xl my-3 font-extrabold text-slate-800">{products.length}</p>
+             <h3 className="text-slate-400 m-0 uppercase text-[9px] sm:text-[10px] tracking-wider font-bold">Total SKU Inventory</h3>
+             <p className="text-3xl md:text-4xl my-2 md:my-3 font-extrabold text-slate-800">{products.length}</p>
              <span className="text-xs text-indigo-600 font-semibold flex items-center gap-1 hover:underline">
                View all items ➔
              </span>
            </div>
-           <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500">
-              <Box size={24} strokeWidth={2} />
+           <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500 shrink-0">
+              <Box size={20} className="md:w-6 md:h-6" strokeWidth={2} />
            </div>
         </div>
         
-        {/* Low Stock Card */}
         <div 
-          className={`bg-white border ${lowStockCount > 0 ? 'border-amber-200' : 'border-slate-100'} rounded-2xl p-6 flex items-start justify-between cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow`} 
+          className={`bg-white border ${lowStockCount > 0 ? 'border-amber-200 bg-amber-50/10' : 'border-slate-100'} rounded-2xl p-4 md:p-6 flex items-start justify-between cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow card-hover`} 
           onClick={() => onAlertClick('lowStock')}
         >
            <div className="flex flex-col">
              <div className="flex items-center gap-3">
-               <h3 className="text-slate-400 m-0 uppercase text-[10px] tracking-wider font-bold">Low Stock Filter</h3>
+               <h3 className="text-slate-400 m-0 uppercase text-[9px] sm:text-[10px] tracking-wider font-bold">Low Stock Filter</h3>
              </div>
-             <div className="flex items-center gap-3 my-3">
-                <p className="text-4xl m-0 font-extrabold text-slate-800">{lowStockCount}</p>
-                {lowStockCount > 0 && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded uppercase font-bold tracking-wider">Attention</span>}
+             <div className="flex items-center gap-2 my-2 md:my-3">
+                <p className="text-3xl md:text-4xl m-0 font-extrabold text-slate-800">{lowStockCount}</p>
+                {lowStockCount > 0 && <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Attention</span>}
              </div>
              <span className="text-xs text-slate-500 font-medium">
-               Stocks requiring immediate replenishment.
+               Items requiring replenishment.
              </span>
            </div>
-           <div className={`w-12 h-12 rounded-2xl ${lowStockCount > 0 ? 'bg-amber-50 text-amber-500' : 'bg-slate-50 text-slate-400'} flex items-center justify-center`}>
-              <AlertTriangle size={24} strokeWidth={2} />
+           <div className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl shrink-0 ${lowStockCount > 0 ? 'bg-amber-50 text-amber-500' : 'bg-slate-50 text-slate-400'} flex items-center justify-center`}>
+              <AlertTriangle size={20} className="md:w-6 md:h-6" strokeWidth={2} />
            </div>
         </div>
-
-        {/* Out of Stock Card */}
+ 
         <div 
-          className={`bg-white border ${outOfStockCount > 0 ? 'border-red-200' : 'border-slate-100'} rounded-2xl p-6 flex items-start justify-between cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow`} 
+          className={`bg-white border ${outOfStockCount > 0 ? 'border-red-200 bg-rose-50/10' : 'border-slate-100'} rounded-2xl p-4 md:p-6 flex items-start justify-between cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow card-hover`} 
           onClick={() => onAlertClick('outOfStock')}
         >
            <div className="flex flex-col">
              <div className="flex items-center gap-3">
-               <h3 className="text-slate-400 m-0 uppercase text-[10px] tracking-wider font-bold">Out of Stock</h3>
+               <h3 className="text-slate-400 m-0 uppercase text-[9px] sm:text-[10px] tracking-wider font-bold">Out of Stock</h3>
              </div>
-             <div className="flex items-center gap-3 my-3">
-                <p className="text-4xl m-0 font-extrabold text-slate-800">{outOfStockCount}</p>
-                {outOfStockCount > 0 && <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded uppercase font-bold tracking-wider">Critical</span>}
+             <div className="flex items-center gap-2 my-2 md:my-3">
+                <p className="text-3xl md:text-4xl m-0 font-extrabold text-slate-800">{outOfStockCount}</p>
+                {outOfStockCount > 0 && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Critical</span>}
              </div>
              <span className="text-xs text-slate-500 font-medium">
                 Items with zero units remaining.
              </span>
            </div>
-           <div className={`w-12 h-12 rounded-2xl ${outOfStockCount > 0 ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-400'} flex items-center justify-center`}>
-              <XCircle size={24} strokeWidth={2} />
+           <div className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl shrink-0 ${outOfStockCount > 0 ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-400'} flex items-center justify-center`}>
+              <XCircle size={20} className="md:w-6 md:h-6" strokeWidth={2} />
            </div>
         </div>
-
-        {/* Total Stock Sum Card */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-6 flex items-start justify-between shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow">
+ 
+        <div className="bg-white border border-slate-100 rounded-2xl p-4 md:p-6 flex items-start justify-between shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow card-hover">
           <div className="flex flex-col">
-            <h3 className="text-slate-400 m-0 uppercase text-[10px] tracking-wider font-bold">Total Stock Sum</h3>
-            <p className="text-4xl my-3 font-extrabold text-slate-800">{totalStock}</p>
+            <h3 className="text-slate-400 m-0 uppercase text-[9px] sm:text-[10px] tracking-wider font-bold">Total Stock Sum</h3>
+            <p className="text-3xl md:text-4xl my-2 md:my-3 font-extrabold text-slate-800">{totalStock}</p>
             <span className="text-xs text-slate-500 font-medium">
-              Total aggregated physical items.
+              Total physical items.
             </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-fuchsia-50 flex items-center justify-center text-fuchsia-500">
-              <Layers size={24} strokeWidth={2} />
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-fuchsia-50 flex items-center justify-center text-fuchsia-500 shrink-0">
+              <Layers size={20} className="md:w-6 md:h-6" strokeWidth={2} />
           </div>
         </div>
       </div>

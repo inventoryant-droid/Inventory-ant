@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '../utils/config';
 import React, { useState, useRef, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 
 // A helper to clean text so TTS engines don't spell out weird characters or JSON
 function sanitizeTextForSpeech(text) {
@@ -202,7 +203,7 @@ export default function AntAgentV2({ userId, token, onUpdate, onNavigate, onLogi
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Aapka browser voice recognition support nahi karta. Kripya type karein.");
+      toast.error("Aapka browser voice recognition support nahi karta. Kripya type karein.");
       setShowInput(true);
       return;
     }

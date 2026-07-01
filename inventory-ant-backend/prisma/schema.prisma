@@ -38,6 +38,7 @@ model Product {
   id               String   @id
   userId           String   // references user email
   productId        String?  // SKU
+  hsnSac           String?  // HSN/SAC Code
   name             String?
   details          String?
   mrp              String?  // Sale price (shown on bills, billing terminal)

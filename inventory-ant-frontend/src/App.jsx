@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import './App.css';
 import AntAgentV2 from './components/AntAgentV2';
 import AntXTerminal from './components/AntXTerminal';
@@ -234,10 +235,12 @@ export default function App() {
   };
 
   return (
-    <Routes>
-      <Route path="/" element={<AuthScreen onLogin={handleLogin} defaultView="landing" />} />
-      <Route path="/login" element={<AuthScreen onLogin={handleLogin} defaultView="login" />} />
-      <Route path="/signup" element={<AuthScreen onLogin={handleLogin} defaultView="signup" />} />
+    <>
+      <Toaster position="top-center" reverseOrder={false} />
+      <Routes>
+        <Route path="/" element={<AuthScreen onLogin={handleLogin} defaultView="landing" />} />
+        <Route path="/login" element={<AuthScreen onLogin={handleLogin} defaultView="login" />} />
+        <Route path="/signup" element={<AuthScreen onLogin={handleLogin} defaultView="signup" />} />
       <Route path="/dashboard" element={
         token && (userRole === 'user' || userRole === 'staff') ? (
           userRole === 'user' && userProfile && !userProfile.profileCompleted ? (
@@ -281,7 +284,7 @@ export default function App() {
                   </button>
                 </div>
               )}
-              <div className="flex flex-col md:flex-row w-full flex-1">
+              <div className="flex flex-col md:flex-row w-full flex-1 h-[100dvh] md:h-screen overflow-hidden">
                 <Sidebar 
                 setView={setView} 
                 view={view} 
@@ -383,5 +386,6 @@ export default function App() {
       } />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
+    </>
   );
 }

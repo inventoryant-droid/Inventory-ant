@@ -1,11 +1,14 @@
 import { API_BASE_URL } from '../utils/config';
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
+import { toast } from 'react-hot-toast';
 import '../App.css';
 import Papa from 'papaparse';
+import PasswordInput from '../components/ui/PasswordInput';
 import { UploadCloud, Trash2, Database } from 'lucide-react';
-
 function Settings({ userId, token, onScanResult, userRole }) {
   const fileInputRef = useRef(null);
+  const [showConfirmPopup, setShowConfirmPopup] = useState(false);
+  const [password, setPassword] = useState('');
 
   if (userRole === 'staff') {
     return (
@@ -33,32 +36,52 @@ function Settings({ userId, token, onScanResult, userRole }) {
         
         const rawRows = results.data;
         if (rawRows.length === 0) {
-          alert("Error: File is empty!");
+          toast.error("Error: File is empty!");
           return;
         }
 
         const firstRow = rawRows[0];
-        let idIdx = -1, nameIdx = -1, qtyIdx = -1, priceIdx = -1, detailsIdx = -1;
+        let idIdx = -1, nameIdx = -1, qtyIdx = -1, priceIdx = -1, detailsIdx = -1, hsnIdx = -1;
 
         firstRow.forEach((val, i) => {
-          const v = String(val).toLowerCase();
-          if (v.includes('id') || v.includes('code') || v.includes('s.no') || v.includes('no.')) idIdx = i;
-          if (v.includes('name') || v.includes('product') || v.includes('item')) nameIdx = i;
-          if (v.includes('qty') || v.includes('stock')) qtyIdx = i;
+          const v = String(val).toLowerCase().trim();
+          // Sl No / Code / SKU — must NOT match "product" columns
+          if (v === 'sl no.' || v === 's.no' || v === 'sl no' || v === 'sl.no.' || v === 'sno'
+              || v === 'code' || v === 'sku' || v === 'item code' || v === 'stock code'
+              || v.includes('s.no') || v.includes('sl no')) idIdx = i;
+          // Name: "product description" / "item name" / "name" / "product"
+          if (v.includes('name') || v.includes('product') || v.includes('item description') || v.includes('item name')) nameIdx = i;
+          // Quantity / Stock
+          if (v.includes('qty') || v.includes('stock') || v.includes('quantity') || v.includes('total qty')) qtyIdx = i;
+          // Price / MRP / Rate
           if (v.includes('mrp') || v.includes('price') || v.includes('rate')) priceIdx = i;
-          if (v.includes('details') || v.includes('description') || v.includes('detail') || v.includes('desc')) detailsIdx = i;
+          // Details: ONLY match if it says "details" or "desc" but NOT "product" or "item"
+          if ((v.includes('details') || v === 'desc' || v === 'description') && !v.includes('product') && !v.includes('item')) detailsIdx = i;
+          if (v.includes('hsn') || v.includes('sac')) hsnIdx = i;
         });
+
+        // Priority fix: if name and details landed on the same column, details wins only for
+        // dedicated "details" columns. Here name takes priority so clear details collision.
+        if (detailsIdx !== -1 && detailsIdx === nameIdx) detailsIdx = -1;
 
         if (nameIdx === -1) nameIdx = 1;
         if (qtyIdx === -1) qtyIdx = 2;
         if (priceIdx === -1) priceIdx = 3;
 
+        // If idIdx still not found check col 0 for serial/sl no pattern
+        if (idIdx === -1) {
+          const v0 = String(firstRow[0] || '').toLowerCase().trim();
+          if (v0 === 'sl no.' || v0 === 's.no' || v0 === 'no.' || v0 === '#' || v0 === 'sno' || v0 === 'sr no') {
+            idIdx = 0;
+          }
+        }
+
         const headersMap = {
           productId: idIdx !== -1 && firstRow[idIdx] ? String(firstRow[idIdx]).trim() : 'Code',
-          name: nameIdx !== -1 && firstRow[nameIdx] ? String(firstRow[nameIdx]).trim() : 'Item Name / Category',
+          hsnSac: hsnIdx !== -1 && firstRow[hsnIdx] ? String(firstRow[hsnIdx]).trim() : 'HSN/SAC',
+          name: nameIdx !== -1 && firstRow[nameIdx] ? String(firstRow[nameIdx]).trim() : 'Product Description',
           quantity: qtyIdx !== -1 && firstRow[qtyIdx] ? String(firstRow[qtyIdx]).trim() : 'Available Stock',
-          mrp: priceIdx !== -1 && firstRow[priceIdx] ? String(firstRow[priceIdx]).trim() : 'MRP',
-          details: detailsIdx !== -1 && firstRow[detailsIdx] ? String(firstRow[detailsIdx]).trim() : 'Details'
+          mrp: priceIdx !== -1 && firstRow[priceIdx] ? String(firstRow[priceIdx]).trim() : 'MRP'
         };
 
         const mappedData = [];
@@ -68,19 +91,28 @@ function Settings({ userId, token, onScanResult, userRole }) {
           const row = rawRows[i];
           if (!row || row.length < 2) continue;
 
+          const rawName = nameIdx !== -1 ? String(row[nameIdx] || '').trim() : '';
+          // Only use rawDesc if it's a DIFFERENT column from name
+          const rawDesc = (detailsIdx !== -1 && detailsIdx !== nameIdx) ? String(row[detailsIdx] || '').trim() : '';
+          // Merge only if rawDesc is non-empty AND genuinely different text
+          const mergedDesc = (rawDesc && rawDesc.toLowerCase() !== rawName.toLowerCase())
+            ? `${rawName} - ${rawDesc}`
+            : rawName;
+
           const obj = {
-            productId: row[idIdx] || '',
-            name: row[nameIdx] || `Item-${i}`,
+            productId: idIdx !== -1 ? String(row[idIdx] || '').trim() : '',
+            hsnSac: hsnIdx !== -1 ? String(row[hsnIdx] || '').trim() : '',
+            name: mergedDesc || `Item-${i}`,
             quantity: row[qtyIdx] || '0',
             mrp: row[priceIdx] || '0',
-            details: detailsIdx !== -1 ? row[detailsIdx] || '' : '',
+            details: rawDesc && rawDesc.toLowerCase() !== rawName.toLowerCase() ? rawDesc : '',
             csv_row: i + 1,
             _timestamp: Date.now(),
             _headers: headersMap
           };
 
           row.forEach((cell, idx) => {
-            if (![idIdx, nameIdx, qtyIdx, priceIdx, detailsIdx].includes(idx)) {
+            if (![idIdx, nameIdx, qtyIdx, priceIdx, detailsIdx, hsnIdx].includes(idx)) {
               let colName = firstRow[idx] ? String(firstRow[idx]).trim() : `col_${idx}`;
               if (!colName) colName = `col_${idx}`;
               obj[colName] = cell;
@@ -91,7 +123,7 @@ function Settings({ userId, token, onScanResult, userRole }) {
         }
 
         console.log("✅ Mapped Data for Upload:", mappedData);
-        alert(`ATTENTION: Found ${mappedData.length} valid rows. Sending to server...`);
+        toast(`Found ${mappedData.length} valid rows. Sending to server...`, { icon: '📦' });
 
         try {
           const res = await fetch(`${API_BASE_URL}/api/user/products/bulk`, {
@@ -104,36 +136,46 @@ function Settings({ userId, token, onScanResult, userRole }) {
           });
           if (res.ok) {
             const finalData = await res.json();
-            alert(`SUCCESS: ${finalData.count} items saved.`);
+            toast.success(`SUCCESS: ${finalData.count} items saved.`);
             onScanResult();
           } else {
-            alert('Upload Error: Server rejected the data.');
+            toast.error('Upload Error: Server rejected the data.');
           }
         } catch (err) {
           console.error(err);
-          alert('Network Error.');
+          toast.error('Network Error.');
         }
       }
     });
   };
 
-  const handleWipeCatalog = async () => {
-    if(window.confirm("Kya aap sach me apna saara data delete karna chahte hain?")) {
-        try {
-             const res = await fetch(`${API_BASE_URL}/api/user/products/all`, { 
-               method: 'DELETE', 
-               headers: { 'Authorization': `Bearer ${token}` } 
-             });
-            if (res.ok) {
-                alert('Aapka saara data delete ho gaya hai.');
-                onScanResult();
-            } else {
-                alert('Error: Data delete nahi ho paya.');
-            }
-        } catch(e) {
-            alert('Network Error');
-        }
+   const executeWipeCatalog = async () => {
+    if (!password) {
+      toast.error('Kripya apna password darz karein.');
+      return;
     }
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/user/products/all?password=${encodeURIComponent(password)}`, { 
+        method: 'DELETE', 
+        headers: { 'Authorization': `Bearer ${token}` } 
+      });
+      if (res.ok) {
+        toast.success('Aapka saara data delete ho gaya hai.');
+        setShowConfirmPopup(false);
+        setPassword('');
+        onScanResult();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        toast.error(errorData.message || 'Incorrect password. Data delete nahi ho paya.');
+      }
+    } catch(e) {
+      toast.error('Network Error');
+    }
+  };
+
+  const handleWipeCatalog = () => {
+    setPassword('');
+    setShowConfirmPopup(true);
   };
 
   return (
@@ -177,6 +219,38 @@ function Settings({ userId, token, onScanResult, userRole }) {
             </button>
          </div>
       </div>
+      
+      {showConfirmPopup && (
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 max-w-md w-full shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-base font-bold text-slate-800 mb-2">Delete Catalog Confirmation</h3>
+            <p className="text-xs text-slate-500 font-medium mb-4 leading-relaxed">
+              Kya aap sach me apna saara data delete karna chahte hain? This action cannot be undone. Please enter your password to confirm:
+            </p>
+            <div className="mb-6">
+              <PasswordInput
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password..."
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setShowConfirmPopup(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={executeWipeCatalog}
+                className="px-4 py-2 bg-[#EF4444] hover:bg-red-700 text-white font-bold text-xs rounded-xl cursor-pointer transition-colors shadow-sm"
+              >
+                Yes, Clear All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

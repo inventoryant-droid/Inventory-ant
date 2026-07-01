@@ -32,6 +32,14 @@ export class ProductsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('confirm-bill')
+  async confirmBill(@Req() req: any, @Body() confirmPayload: any) {
+    const tenantEmail = this.validateUser(req);
+    const operatorName = req.user.role === 'staff' ? req.user.name || req.user.email : 'Owner';
+    return this.aiService.confirmBillScan(tenantEmail, confirmPayload, operatorName);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('agent-command-v2')
   async agentCommandV2(@Req() req: any, @Body() payload: any) {
     const tenantEmail = this.validateUser(req);
@@ -97,8 +105,8 @@ export class ProductsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('user', 'admin')
   @Delete('all')
-  async removeAll(@Req() req: any) {
-    return this.productsService.removeAll(this.validateUser(req));
+  async removeAll(@Req() req: any, @Query('password') password?: string) {
+    return this.productsService.removeAll(this.validateUser(req), password);
   }
 
   @UseGuards(JwtAuthGuard)

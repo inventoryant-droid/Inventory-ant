@@ -102,18 +102,17 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
       return typeof found._headers === 'string' ? JSON.parse(found._headers) : found._headers;
     }
     return {
-      productId: 'Code',
-      name: 'Item Name / Category',
+      productId: 'SKU Code',
+      name: 'Product Description',
       quantity: 'Available Stock',
-      mrp: 'MRP',
-      details: 'Details'
+      mrp: 'MRP'
     };
   }, [products]);
 
   const dynamicColumns = useMemo(() => {
     const cols = new Set();
     products.forEach(p => Object.keys(p).forEach(k => {
-      if (!['id', 'userId', 'quantity', 'mrp', 'costPrice', 'productId', 'name', 'details', '_headers', '_timestamp', 'timestamp', 'csv_row', 'extraAttributes'].includes(k)) {
+      if (!['id', 'userId', 'quantity', 'mrp', 'costPrice', 'productId', 'hsnSac', 'name', 'details', '_headers', '_timestamp', 'timestamp', 'csv_row', 'extraAttributes'].includes(k)) {
           cols.add(k);
       }
     }));
@@ -151,7 +150,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
     return realProds;
   }, [products, filterMode, dynamicColumns]);
 
-  // Filter by searchTerm (SKU & Name only) & Sort by SKU code ascending
+  // Filter by searchTerm (SKU, Name) & Sort by SKU code ascending
   const sortedDisplayProducts = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     const matched = term
@@ -188,10 +187,9 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
   };
 
   const standardFields = [
-    { key: 'productId', placeholder: headers.productId.toUpperCase(), className: 'w-24' },
-    { key: 'name', placeholder: headers.name.toUpperCase(), className: 'w-48' },
-    { key: 'quantity', placeholder: headers.quantity.toUpperCase(), className: 'w-24' },
-    { key: 'details', placeholder: 'DETAILS', className: 'w-40' },
+    { key: 'productId', placeholder: 'SKU CODE', className: 'w-24' },
+    { key: 'name', placeholder: 'PRODUCT DESCRIPTION', className: 'w-48' },
+    { key: 'quantity', placeholder: 'AVAILABLE STOCK', className: 'w-24' },
   ];
 
   return (
@@ -280,7 +278,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={14} />
              <input
                type="text"
-               placeholder="Search SKU or Name..."
+               placeholder="Search SKU or Description..."
                value={searchTerm}
                onChange={e => setSearchTerm(e.target.value)}
                className="w-full pl-9 pr-4 py-2 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 rounded-lg outline-none transition-all placeholder-slate-400"
@@ -293,8 +291,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
               <tr>
                 <th className="px-6 py-4 text-slate-400 text-[10px] tracking-wider uppercase font-bold w-16">ROW</th>
                 <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-24">SKU CODE</th>
-                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase">{headers.name}</th>
-                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase">{headers.details || 'DETAILS'}</th>
+                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase">PRODUCT DESCRIPTION</th>
                 {dynamicColumns.map(col => (
                   <th key={col} className="px-6 py-4 text-[10px] tracking-wider font-bold text-slate-400 uppercase">{col}</th>
                 ))}
@@ -307,6 +304,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                 <tr key={p.id} className="border-t border-slate-50 hover:bg-slate-50 transition-colors group">
                   <td className="px-6 py-5 text-slate-400 text-xs font-medium">{i + 1}</td>
                   
+                  {/* SKU CODE */}
                   <td className="px-6 py-5 text-slate-700 text-sm font-bold">
                     {editingProductId === p.id ? (
                       <input 
@@ -317,32 +315,21 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                       />
                     ) : (p.productId || '-')}
                   </td>
+
+
                   
-                  <td className="px-6 py-5 font-bold text-slate-800 text-sm">
+                  {/* PRODUCT DESCRIPTION */}
+                  <td className="px-6 py-5 font-bold text-slate-800 text-sm whitespace-normal max-w-md">
                     {editingProductId === p.id ? (
                       <input 
                         type="text" 
                         value={editFormData.name || ''} 
                         onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
                         className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-full"
-                        placeholder="Name"
+                        placeholder="Product Description"
                       />
                     ) : (
                       p.name
-                    )}
-                  </td>
-
-                  <td className="px-6 py-5 text-slate-600 text-xs font-semibold">
-                    {editingProductId === p.id ? (
-                      <input 
-                        type="text" 
-                        value={editFormData.details || ''} 
-                        onChange={(e) => setEditFormData({...editFormData, details: e.target.value})}
-                        className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-full"
-                        placeholder="Details"
-                      />
-                    ) : (
-                      p.details || <span className="text-slate-300">-</span>
                     )}
                   </td>
                   
@@ -393,7 +380,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                         </button>
                       </div>
                     ) : (
-                      <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex justify-end gap-3 md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity">
                         <button onClick={() => handleEditClick(p)} className="bg-transparent border-none text-indigo-500 hover:text-indigo-700 cursor-pointer p-1">
                            <Edit3 size={16} />
                         </button>

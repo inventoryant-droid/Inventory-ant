@@ -21,15 +21,15 @@ function ItemDetails({ products, token, onEditProduct }) {
   const handleEditClick = (p) => {
     setEditingId(p.id);
     setEditPrice(p.costPrice || '');
-    setEditDetails(p.details || '');
+    setEditDetails(p.name || '');
   };
 
   const handleSave = async (p) => {
     if (onEditProduct) {
-      await onEditProduct(p.id, { ...p, costPrice: editPrice, details: editDetails });
+      await onEditProduct(p.id, { ...p, costPrice: editPrice, name: editDetails });
     }
     setEditingId(null);
-    showSuccessToast(`${p.name || 'Item'} updated successfully!`);
+    showSuccessToast(`${editDetails || 'Item'} updated successfully!`);
   };
 
   const handleCancel = () => {
@@ -49,7 +49,7 @@ function ItemDetails({ products, token, onEditProduct }) {
   const filteredProducts = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     
-    // 1. Search term match (SKU and Name only - no details/description matching)
+    // 1. Search term match (SKU, Name)
     let matched = term 
       ? realProducts.filter(p =>
           (p.name || '').toLowerCase().includes(term) ||
@@ -160,7 +160,7 @@ function ItemDetails({ products, token, onEditProduct }) {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={14} />
             <input
               type="text"
-              placeholder="Search by SKU or Name..."
+              placeholder="Search by SKU or Description..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-2.5 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 rounded-lg outline-none transition-all placeholder-slate-400"
@@ -174,8 +174,7 @@ function ItemDetails({ products, token, onEditProduct }) {
               <tr className="bg-slate-50 border-b border-slate-100">
                 <th className="px-6 py-4 text-slate-400 text-[10px] tracking-wider uppercase font-bold w-12">#</th>
                 <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-28">SKU Code</th>
-                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase">Product Name</th>
-                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase">Details / Description</th>
+                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase">Product Description</th>
                 <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-36">Cost Price (₹)</th>
                 <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase text-right w-24">Actions</th>
               </tr>
@@ -196,23 +195,20 @@ function ItemDetails({ products, token, onEditProduct }) {
                     )}
                   </td>
 
-                  {/* Name */}
-                  <td className="px-6 py-4">
-                    <div className="font-bold text-slate-800 text-sm">{p.name || '—'}</div>
-                  </td>
 
-                  {/* Details */}
-                  <td className="px-6 py-4 text-slate-500 text-xs font-medium max-w-xs">
+
+                  {/* Product Description */}
+                  <td className="px-6 py-4 text-slate-800 text-sm max-w-md whitespace-normal leading-relaxed font-bold">
                     {editingId === p.id ? (
                       <input
                         type="text"
                         value={editDetails}
                         onChange={e => setEditDetails(e.target.value)}
-                        className="bg-white border border-indigo-200 text-slate-800 text-xs rounded-lg px-3 py-2 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 outline-none w-full"
-                        placeholder="Item details..."
+                        className="bg-white border border-indigo-200 text-slate-800 text-xs rounded-lg px-3 py-2 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 outline-none w-full font-normal"
+                        placeholder="Product Description..."
                       />
                     ) : (
-                      <span className="whitespace-normal leading-relaxed">{p.details || <span className="text-slate-300">—</span>}</span>
+                      p.name || '—'
                     )}
                   </td>
 
@@ -263,7 +259,7 @@ function ItemDetails({ products, token, onEditProduct }) {
                         </button>
                       </div>
                     ) : (
-                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex justify-end gap-2 md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity">
                         <button
                           onClick={() => handleEditClick(p)}
                           className="bg-transparent border-none text-indigo-500 hover:text-indigo-700 cursor-pointer p-1"

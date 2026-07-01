@@ -7,6 +7,7 @@ import {
   Activity, Cpu, Bell, Shield, ArrowUpRight, CheckCircle2, 
   UserCog, Ban, RefreshCw, Layers, Edit2, Check
 } from 'lucide-react';
+import PasswordInput from '../components/ui/PasswordInput';
 
 // Custom SVG Chart Components for Tab 1
 function RevenueChart({ data }) {
@@ -220,6 +221,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
 
   const [selectedUserReset, setSelectedUserReset] = useState(null);
   const [resetPassVal, setResetPassVal] = useState('tempPassword123');
+  const [adminConfirm, setAdminConfirm] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
 
   // Pricing & Limits configuration settings
   const [plansConfig, setPlansConfig] = useState({
@@ -347,68 +349,86 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
   }, [token, searchQuery, activeTab]);
 
   // Actions handlers
-  const handleDeactivate = async (email) => {
-    if (!window.confirm(`Are you sure you want to deactivate ${email}?`)) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/users/${encodeURIComponent(email)}/deactivate`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast('Account deactivated successfully', 'success');
-        fetchAllData();
-        if (selectedUser && selectedUser.email === email) {
-          setSelectedUser(prev => prev ? { ...prev, active: false } : null);
+  const handleDeactivate = (email) => {
+    setAdminConfirm({
+      isOpen: true,
+      title: 'Deactivate Account',
+      message: `Are you sure you want to deactivate ${email}?`,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/admin/users/${encodeURIComponent(email)}/deactivate`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (data.success) {
+            showToast('Account deactivated successfully', 'success');
+            fetchAllData();
+            if (selectedUser && selectedUser.email === email) {
+              setSelectedUser(prev => prev ? { ...prev, active: false } : null);
+            }
+          } else {
+            showToast(data.message || 'Failed to deactivate account', 'error');
+          }
+        } catch (e) {
+          showToast('API Request failure', 'error');
         }
-      } else {
-        alert(data.message || 'Failed to deactivate account');
       }
-    } catch (e) {
-      alert('API Request failure');
-    }
+    });
   };
 
-  const handleActivate = async (email) => {
-    if (!window.confirm(`Activate account ${email}?`)) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/users/${encodeURIComponent(email)}/activate`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast('Account activated successfully', 'success');
-        fetchAllData();
-        if (selectedUser && selectedUser.email === email) {
-          setSelectedUser(prev => prev ? { ...prev, active: true } : null);
+  const handleActivate = (email) => {
+    setAdminConfirm({
+      isOpen: true,
+      title: 'Activate Account',
+      message: `Are you sure you want to activate account ${email}?`,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/admin/users/${encodeURIComponent(email)}/activate`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (data.success) {
+            showToast('Account activated successfully', 'success');
+            fetchAllData();
+            if (selectedUser && selectedUser.email === email) {
+              setSelectedUser(prev => prev ? { ...prev, active: true } : null);
+            }
+          } else {
+            showToast(data.message || 'Failed to activate account', 'error');
+          }
+        } catch (e) {
+          showToast('API Request failure', 'error');
         }
-      } else {
-        alert(data.message || 'Failed to activate account');
       }
-    } catch (e) {
-      alert('API Request failure');
-    }
+    });
   };
 
-  const handleHardDelete = async (email) => {
-    if (!window.confirm(`CRITICAL WARNING:\nAre you sure you want to hard delete ${email}?\n\nThis will strip all matching user parameters, staff logs, inventories, billing transaction files, and scans across ALL databases. This process cannot be undone.`)) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/users/${encodeURIComponent(email)}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast('Account & associated records hard deleted', 'success');
-        setSelectedUser(null);
-        fetchAllData();
-      } else {
-        alert(data.message || 'Deletion error');
+  const handleHardDelete = (email) => {
+    setAdminConfirm({
+      isOpen: true,
+      title: 'CRITICAL: Hard Delete Account',
+      message: `Are you sure you want to hard delete ${email}? This will strip all matching user parameters, staff logs, inventories, billing transaction files, and scans across ALL databases. This process cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/admin/users/${encodeURIComponent(email)}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (data.success) {
+            showToast('Account & associated records hard deleted', 'success');
+            setSelectedUser(null);
+            fetchAllData();
+          } else {
+            showToast(data.message || 'Deletion error', 'error');
+          }
+        } catch (e) {
+          showToast('API Request failure', 'error');
+        }
       }
-    } catch (e) {
-      alert('API Request failure');
-    }
+    });
   };
 
   const handlePlanUpdate = async (e) => {
@@ -429,10 +449,10 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
         setSelectedUserPlan(null);
         fetchAllData();
       } else {
-        alert('Failed to modify plan');
+        showToast('Failed to modify plan', 'error');
       }
     } catch (e) {
-      alert('Plan API Failure');
+      showToast('Plan API Failure', 'error');
     }
   };
 
@@ -454,10 +474,10 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
         setSelectedUserReset(null);
         setResetPassVal('tempPassword123');
       } else {
-        alert('Reset password failed');
+        showToast('Reset password failed', 'error');
       }
     } catch (e) {
-      alert('API Failure');
+      showToast('API Failure', 'error');
     }
   };
 
@@ -484,10 +504,10 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
           window.location.href = '/dashboard';
         }, 800);
       } else {
-        alert('Identity override reject by server');
+        showToast('Identity override reject by server', 'error');
       }
     } catch (e) {
-      alert('Impersonate failure');
+      showToast('Impersonate failure', 'error');
     }
   };
 
@@ -523,23 +543,29 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
   };
 
   // Payments / Transaction refunds
-  const handleRefundTransaction = async (txnId) => {
-    if (!window.confirm('Trigger instant refund for this invoice?')) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/payments/refund`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify({ txnId })
-      });
-      const data = await res.json();
-      if (data.status === 'refunded') {
-        showToast('Payment refunded successfully', 'success');
-        fetchAllData();
+  const handleRefundTransaction = (txnId) => {
+    setAdminConfirm({
+      isOpen: true,
+      title: 'Refund Transaction',
+      message: 'Trigger instant refund for this invoice?',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/admin/payments/refund`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ txnId })
+          });
+          const data = await res.json();
+          if (data.status === 'refunded') {
+            showToast('Payment refunded successfully', 'success');
+            fetchAllData();
+          }
+        } catch (e) {}
       }
-    } catch (e) {}
+    });
   };
 
   // Announcements Broadcast
@@ -580,10 +606,10 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
         setOldPass('');
         setNewPass('');
       } else {
-        alert(data.message || 'Credentials failure');
+        showToast(data.message || 'Credentials failure', 'error');
       }
     } catch (err) {
-      alert('Reset console API error');
+      showToast('Reset console API error', 'error');
     }
   };
 
@@ -1565,24 +1591,20 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
                 <form onSubmit={handleChangeConsolePassword} className="space-y-4">
                   <div>
                     <label className="block text-[8px] font-bold text-slate-500 uppercase tracking-wider mb-1">Old Credentials</label>
-                    <input 
-                      type="password" 
+                    <PasswordInput
                       value={oldPass}
                       onChange={e => setOldPass(e.target.value)}
                       placeholder="Current password"
                       required
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none"
                     />
                   </div>
                   <div>
                     <label className="block text-[8px] font-bold text-slate-500 uppercase tracking-wider mb-1">New password</label>
-                    <input 
-                      type="password" 
+                    <PasswordInput
                       value={newPass}
                       onChange={e => setNewPass(e.target.value)}
                       placeholder="Min 4 characters"
                       required
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none"
                     />
                   </div>
                   <button 
@@ -1860,6 +1882,37 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {adminConfirm.isOpen && (
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 max-w-md w-full shadow-2xl animate-in fade-in zoom-in-95 duration-200 text-left">
+            <h3 className="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
+              <ShieldAlert className="text-red-500" size={18} /> {adminConfirm.title}
+            </h3>
+            <p className="text-xs text-slate-500 font-medium mb-6 leading-relaxed">
+              {adminConfirm.message}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setAdminConfirm({ isOpen: false, title: '', message: '', onConfirm: null })}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  const onConf = adminConfirm.onConfirm;
+                  setAdminConfirm({ isOpen: false, title: '', message: '', onConfirm: null });
+                  if (onConf) onConf();
+                }}
+                className="px-4 py-2 bg-[#EF4444] hover:bg-red-700 text-white font-bold text-xs rounded-xl cursor-pointer transition-colors shadow-sm"
+              >
+                Confirm
+              </button>
+            </div>
           </div>
         </div>
       )}

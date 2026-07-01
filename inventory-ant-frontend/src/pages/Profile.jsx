@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '../utils/config';
 import React, { useState, useEffect, useRef } from 'react';
 import { Building, Mail, Phone, MapPin, Check, ShieldCheck, Loader2, Sparkles, Key, User, Calendar, ShieldAlert } from 'lucide-react';
+import PasswordInput from '../components/ui/PasswordInput';
 import '../App.css';
 
 export default function Profile({ token, userProfile, onProfileUpdate, theme, userRole }) {
@@ -489,37 +490,34 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
               <form onSubmit={handlePasswordSave} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Current Password</label>
-                  <input 
-                    type="password" 
-                    placeholder="Enter current password"
+                  <PasswordInput
                     value={oldPass}
                     onChange={e => setOldPass(e.target.value)}
-                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
+                    placeholder="Enter current password"
                     required
+                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">New Password</label>
-                  <input 
-                    type="password" 
-                    placeholder="Enter new password"
+                  <PasswordInput
                     value={newPass}
                     onChange={e => setNewPass(e.target.value)}
-                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
+                    placeholder="Enter new password"
                     required
+                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Confirm Password</label>
-                  <input 
-                    type="password" 
-                    placeholder="Repeat new password"
+                  <PasswordInput
                     value={confirmPass}
                     onChange={e => setConfirmPass(e.target.value)}
-                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
+                    placeholder="Repeat new password"
                     required
+                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
                   />
                 </div>
 

@@ -1,7 +1,9 @@
 import { API_BASE_URL } from '../utils/config';
 import React, { useState } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
+import { toast } from 'react-hot-toast';
 import { Mail, Lock, Phone, User, ArrowRight, Eye, EyeOff, CheckCircle2, ShieldCheck, RefreshCw, ShieldAlert, Cpu, Sparkles } from 'lucide-react';
+import PasswordInput from '../components/ui/PasswordInput';
 import '../App.css';
 
 function AuthScreen({ onLogin }) {
@@ -18,7 +20,7 @@ function AuthScreen({ onLogin }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [generatedOtp, setGeneratedOtp] = useState('');
   const [enteredOtp, setEnteredOtp] = useState(['', '', '', '', '', '']);
-  const [toast, setToast] = useState({ show: false, message: '' });
+
 
   const savedId = localStorage.getItem('ant_user');
   const savedToken = localStorage.getItem('ant_token');
@@ -28,15 +30,13 @@ function AuthScreen({ onLogin }) {
     e.preventDefault();
     if (view === 'signup') {
       if (password !== confirmPassword) {
-        alert('Passwords do not match. Please try again.');
+        toast.error('Passwords do not match. Please try again.');
         return;
       }
       
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedOtp(otp);
-      setToast({ show: true, message: `OTP sent successfully to mobile! (Default Code: ${otp})` });
-      
-      setTimeout(() => setToast({ show: false, message: '' }), 5000);
+      toast.success(`OTP sent successfully to mobile! (Default Code: ${otp})`);
       
       setView('verify-otp');
     } else if (view === 'login') {
@@ -50,13 +50,13 @@ function AuthScreen({ onLogin }) {
         if (data.access_token) {
           onLogin(data.user.email, data.user.role, data.access_token, data.refresh_token);
         } else {
-          alert(data.message || 'Invalid credentials');
+          toast.error(data.message || 'Invalid credentials');
         }
       } catch (err) {
-        alert('Network error');
+        toast.error('Network error');
       }
     } else if (view === 'otp') {
-      alert(`OTP sent to ${mobile}! (Mocked)`);
+      toast.success(`OTP sent to ${mobile}! (Mocked)`);
     }
   };
 
@@ -75,7 +75,7 @@ function AuthScreen({ onLogin }) {
     e.preventDefault();
     const code = enteredOtp.join('');
     if (code !== generatedOtp) {
-      alert('Invalid OTP. Please try again.');
+      toast.error('Invalid OTP. Please try again.');
       return;
     }
     
@@ -89,10 +89,10 @@ function AuthScreen({ onLogin }) {
       if (data.access_token) {
         onLogin(data.user.email, data.user.role, data.access_token, data.refresh_token);
       } else {
-        alert(data.message || 'Signup failed');
+        toast.error(data.message || 'Signup failed');
       }
     } catch (err) {
-      alert('Network error');
+      toast.error('Network error');
     }
   };
 
@@ -108,10 +108,10 @@ function AuthScreen({ onLogin }) {
       if (data.access_token) {
         onLogin(data.user.email, data.user.role, data.access_token, data.refresh_token);
       } else {
-        alert(data.message || 'Invalid admin credentials');
+        toast.error(data.message || 'Invalid admin credentials');
       }
     } catch (err) {
-      alert('Network error');
+      toast.error('Network error');
     }
   };
 
@@ -128,10 +128,10 @@ function AuthScreen({ onLogin }) {
         if (data && data.access_token) {
           onLogin(data.user.email, data.user.role, data.access_token, data.refresh_token);
         } else {
-          alert('Failed to authenticate with Google');
+          toast.error('Failed to authenticate with Google');
         }
       } catch(e) {
-        alert('Google Login failed');
+        toast.error('Google Login failed');
       }
     }
   });
@@ -163,12 +163,7 @@ function AuthScreen({ onLogin }) {
         backgroundSize: '24px 24px'
       }}
     >
-      {toast.show && (
-        <div className="fixed top-4 right-4 bg-white shadow-xl rounded-xl p-4 flex items-center gap-3 z-50 border border-slate-100 max-w-sm">
-          <CheckCircle2 className="text-green-500" size={24} />
-          <span className="text-sm font-bold text-slate-700">{toast.message}</span>
-        </div>
-      )}
+
 
       {view === 'landing' && (
         <div className="w-full flex flex-col m-0 p-0 overflow-x-hidden relative">
@@ -336,17 +331,13 @@ function AuthScreen({ onLogin }) {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input 
-                      type="password" 
-                      placeholder="••••••••" 
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3.5 bg-white text-slate-800 border border-slate-200 focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] rounded-xl text-sm outline-none transition-all"
-                      required
-                    />
-                  </div>
+                  <PasswordInput
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    iconLeft={<Lock className="text-slate-400" size={18} />}
+                  />
                 </div>
               </>
             ) : (
@@ -622,17 +613,13 @@ function AuthScreen({ onLogin }) {
 
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Console Password</label>
-              <div className="relative">
-                <input 
-                  type="password" 
-                  placeholder="••••••••" 
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full pl-4 pr-11 py-3.5 bg-[#0b0f19] text-white border border-[#1e293b] focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] rounded-xl text-sm outline-none transition-all placeholder-slate-600"
-                  required
-                />
-                <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-              </div>
+              <PasswordInput
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                dark
+              />
             </div>
 
             <button 

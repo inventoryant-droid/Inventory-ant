@@ -21,11 +21,53 @@ const getProductDetailsText = (p) => {
 
 function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
   const [activeTab, setActiveTab] = useState('terminal'); // 'terminal' or 'history'
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => {
+    try {
+      const uid = userId || localStorage.getItem('ant_user') || 'default';
+      const saved = localStorage.getItem(`ant_cart_${uid}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [lastBill, setLastBill] = useState(null);
   const [bills, setBills] = useState([]);
+
+  const saveAndSetCart = (newCart) => {
+    setCart(newCart);
+    try {
+      const uid = userId || localStorage.getItem('ant_user') || 'default';
+      localStorage.setItem(`ant_cart_${uid}`, JSON.stringify(newCart));
+    } catch (e) {
+      console.error("Failed to save cart to localStorage", e);
+    }
+  };
+
+  useEffect(() => {
+    try {
+      const uid = userId || localStorage.getItem('ant_user') || 'default';
+      const saved = localStorage.getItem(`ant_cart_${uid}`);
+      setCart(saved ? JSON.parse(saved) : []);
+    } catch (e) {
+      setCart([]);
+    }
+  }, [userId]);
+
+  // GST Configuration states
+  const [applyGst, setApplyGst] = useState(false);
+  const [gstRate, setGstRate] = useState(18);
+
+  useEffect(() => {
+     if (userProfile?.gstNumber) {
+        setApplyGst(true);
+        setGstRate(18);
+     } else {
+        setApplyGst(false);
+        setGstRate(0);
+     }
+  }, [userProfile]);
 
   // Buyer Info states
   const [buyerName, setBuyerName] = useState('');
@@ -107,14 +149,15 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
 
      const exists = cart.find(item => item.id === product.id);
      if (exists) {
-        if (exists.quantity >= maxQty) {
+        const currentQty = parseInt(exists.quantity, 10) || 0;
+        if (currentQty >= maxQty) {
            showErrorToast(`Only ${maxQty} units of this item are available in stock.`);
            return;
         }
-        setCart(cart.map(item => item.id === product.id ? {...item, quantity: item.quantity + 1} : item));
+        saveAndSetCart(cart.map(item => item.id === product.id ? {...item, quantity: currentQty + 1} : item));
      } else {
         // Initialize manualPrice from mrp (user can override it)
-        setCart([...cart, {...product, quantity: 1, availableStock: maxQty, manualPrice: product.mrp || '0'}]);
+        saveAndSetCart([...cart, {...product, quantity: 1, availableStock: maxQty, manualPrice: product.mrp || '0'}]);
      }
      setSearchTerm('');
   };
@@ -124,7 +167,8 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
      let maxQty = 0;
      const newCart = cart.map(item => {
         if (item.id === id) {
-           const newQty = item.quantity + delta;
+           const currentQty = parseInt(item.quantity, 10) || 0;
+           const newQty = currentQty + delta;
            if (delta > 0 && newQty > item.availableStock) {
               exceeded = true;
               maxQty = item.availableStock;
@@ -138,12 +182,33 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
      if (exceeded) {
         showErrorToast(`Only ${maxQty} items are in stock!`);
      } else {
-        setCart(newCart);
+        saveAndSetCart(newCart);
      }
   };
 
+  const handleDirectQtyChange = (id, newQty) => {
+     let exceeded = false;
+     let maxQty = 0;
+     const updated = cart.map(item => {
+        if (item.id === id) {
+           if (newQty !== '' && newQty > item.availableStock) {
+              exceeded = true;
+              maxQty = item.availableStock;
+              return { ...item, quantity: item.availableStock };
+           }
+           return { ...item, quantity: newQty };
+        }
+        return item;
+     });
+     
+     if (exceeded) {
+        showErrorToast(`Only ${maxQty} items are in stock!`);
+     }
+     saveAndSetCart(updated);
+  };
+
   const removeFromCart = (id) => {
-     setCart(cart.filter(item => item.id !== id));
+     saveAndSetCart(cart.filter(item => item.id !== id));
   };
 
   const handleCheckout = async () => {
@@ -158,13 +223,14 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
              body: JSON.stringify({
                cart: cart.map(item => ({
                  id: item.id,
-                 quantity: item.quantity,
+                 quantity: parseInt(item.quantity, 10) || 1,
                  manualPrice: item.manualPrice || item.mrp || '0'
                })),
                buyerName,
                buyerPhone,
                buyerAddress,
-               hasGst: !!userProfile?.gstNumber
+               hasGst: applyGst,
+               gstRate: parseFloat(gstRate || 0)
              })
          });
          if (res.ok) {
@@ -172,7 +238,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
             setBuyerName('');
             setBuyerPhone('');
             setBuyerAddress('');
-            setCart([]);
+            saveAndSetCart([]);
             setLastBill(data.bill);
             onSaleSuccess();
             fetchBills();
@@ -182,10 +248,9 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
      }
   };
 
-  const hasGst = !!userProfile?.gstNumber;
   // Use manualPrice for subtotal calculation
   const subtotal = cart.reduce((acc, item) => acc + (parseFloat(item.manualPrice || item.mrp || 0) * item.quantity), 0);
-  const gstAmount = hasGst ? subtotal * 0.18 : 0;
+  const gstAmount = applyGst ? subtotal * (parseFloat(gstRate || 0) / 100) : 0;
   const totalAmount = subtotal + gstAmount;
 
   const handlePrint = () => {
@@ -233,7 +298,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
       `-------------------------------------------\n` +
       `*Items:*\n${itemsText}\n` +
       `-------------------------------------------\n` +
-      `${isGst ? `*Subtotal:* ₹${bill.subtotal.toFixed(2)}\n*GST (18%):* ₹${bill.gst.toFixed(2)}\n` : ''}` +
+      `${isGst ? `*Subtotal:* ₹${bill.subtotal.toFixed(2)}\n*GST (${bill.subtotal > 0 ? Math.round((bill.gst / bill.subtotal) * 100) : 18}%):* ₹${bill.gst.toFixed(2)}\n` : ''}` +
       `*TOTAL AMOUNT:* ₹${finalTotal.toFixed(2)}\n` +
       `-------------------------------------------\n` +
       `Thank you for shopping with us!\n\n` +
@@ -465,7 +530,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                                        min="0"
                                        step="0.01"
                                        value={item.manualPrice !== undefined ? item.manualPrice : (item.mrp || '')}
-                                       onChange={e => setCart(cart.map(ci => ci.id === item.id ? {...ci, manualPrice: e.target.value} : ci))}
+                                       onChange={e => saveAndSetCart(cart.map(ci => ci.id === item.id ? {...ci, manualPrice: e.target.value} : ci))}
                                        className="w-24 text-xs font-bold text-indigo-700 bg-white border border-indigo-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 rounded-lg px-2 py-1 outline-none transition-all"
                                        placeholder="Enter price"
                                      />
@@ -473,12 +538,37 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                                </div>
                                <div className="flex flex-col items-end gap-2 shrink-0">
                                  <div className="text-xs font-bold text-slate-700">
-                                   ₹{(parseFloat(item.manualPrice || item.mrp || 0) * item.quantity).toFixed(2)}
+                                   ₹{(parseFloat(item.manualPrice || item.mrp || 0) * (parseInt(item.quantity, 10) || 1)).toFixed(2)}
                                  </div>
                                  <div className="flex items-center gap-2">
                                    <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1 gap-1">
                                       <button onClick={() => updateQty(item.id, -1)} className="hover:bg-slate-100 border-none bg-transparent text-slate-700 w-6 h-6 rounded flex items-center justify-center cursor-pointer transition-colors"><Minus size={12} /></button>
-                                      <span className="font-bold text-slate-800 text-xs min-w-[20px] text-center">{item.quantity}</span>
+                                      <input 
+                                         type="number"
+                                         min="1"
+                                         max={item.availableStock}
+                                         value={item.quantity}
+                                         onChange={e => {
+                                           const val = e.target.value;
+                                           if (val === '') {
+                                             handleDirectQtyChange(item.id, '');
+                                           } else {
+                                             const parsed = parseInt(val, 10);
+                                             handleDirectQtyChange(item.id, isNaN(parsed) ? 1 : parsed);
+                                           }
+                                         }}
+                                         onBlur={e => {
+                                           const val = e.target.value;
+                                           const parsed = parseInt(val, 10);
+                                           if (val === '' || isNaN(parsed) || parsed < 1) {
+                                             handleDirectQtyChange(item.id, 1);
+                                           } else if (parsed > item.availableStock) {
+                                             showErrorToast(`Only ${item.availableStock} items are in stock!`);
+                                             handleDirectQtyChange(item.id, item.availableStock);
+                                           }
+                                         }}
+                                         className="font-bold text-slate-800 text-xs w-8 text-center border-none focus:outline-none p-0 bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-0"
+                                       />
                                       <button onClick={() => updateQty(item.id, 1)} className="hover:bg-slate-100 border-none bg-transparent text-slate-700 w-6 h-6 rounded flex items-center justify-center cursor-pointer transition-colors"><Plus size={12} /></button>
                                    </div>
                                    <button onClick={() => removeFromCart(item.id)} className="hover:bg-red-50 hover:text-red-500 border border-slate-200 text-slate-400 w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-colors bg-white"><Trash2 size={14} /></button>
@@ -500,11 +590,56 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                  </div>
 
                  <div className="border-t border-slate-100 mt-6 pt-5">
+                    {/* GST Configuration */}
+                    {userProfile?.gstNumber && (
+                       <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-4 text-left flex flex-col gap-2.5">
+                          <div className="flex items-center justify-between">
+                             <label className="text-xs font-bold text-slate-600 flex items-center gap-2 cursor-pointer">
+                                <input 
+                                   type="checkbox" 
+                                   checked={applyGst} 
+                                   onChange={(e) => setApplyGst(e.target.checked)} 
+                                   className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                />
+                                Apply GST (Tax)
+                             </label>
+                          </div>
+                          {applyGst && (
+                             <div className="flex flex-col gap-2 mt-1">
+                                <div className="flex items-center gap-3">
+                                   <span className="text-xs text-slate-500 font-medium whitespace-nowrap">GST Rate (%):</span>
+                                   <input 
+                                      type="number" 
+                                      min="0" 
+                                      max="100" 
+                                      step="0.1"
+                                      value={gstRate} 
+                                      onChange={(e) => setGstRate(e.target.value)} 
+                                      className="w-20 p-2 text-xs text-slate-800 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg outline-none transition-all font-mono font-bold"
+                                   />
+                                </div>
+                                <div className="flex gap-1.5 flex-wrap">
+                                   {[0, 5, 12, 18, 28].map(r => (
+                                      <button 
+                                         key={r}
+                                         type="button" 
+                                         onClick={() => setGstRate(r)}
+                                         className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer border ${parseFloat(gstRate) === r ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                      >
+                                         {r}%
+                                      </button>
+                                   ))}
+                                </div>
+                             </div>
+                          )}
+                       </div>
+                    )}
+
                     <div className="flex flex-col gap-2 mb-4 text-left text-sm">
-                       {hasGst ? (
+                       {applyGst ? (
                           <>
                              <div className="flex justify-between items-center text-xs font-semibold text-slate-400"><span>Subtotal:</span><span className="font-mono text-slate-700">₹{subtotal.toFixed(2)}</span></div>
-                             <div className="flex justify-between items-center text-xs font-semibold text-slate-400"><span>GST (18%):</span><span className="font-mono text-emerald-600">+₹{gstAmount.toFixed(2)}</span></div>
+                             <div className="flex justify-between items-center text-xs font-semibold text-slate-400"><span>GST ({gstRate}%):</span><span className="font-mono text-emerald-600">+₹{gstAmount.toFixed(2)}</span></div>
                           </>
                        ) : (
                           <div className="flex justify-between items-center text-xs font-semibold text-slate-400"><span>Items Price:</span><span className="font-mono text-slate-700">₹{subtotal.toFixed(2)}</span></div>
@@ -629,7 +764,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                             <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem' }}>DESCRIPTION</th>
                             <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'center' }}>QTY</th>
                             <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'right' }}>RATE (₹)</th>
-                            {showGst && <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'right' }}>GST (18%)</th>}
+                            {showGst && <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'right' }}>GST ({lastBill.subtotal > 0 ? Math.round((lastBill.gst / lastBill.subtotal) * 100) : 18}%)</th>}
                             <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'right' }}>TOTAL</th>
                          </tr>
                       </thead>
@@ -638,7 +773,8 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                             const rate = parseFloat(item.salePrice || item.mrp || 0);
                             const qty = item.quantity || 1;
                             const gross = rate * qty;
-                            const itemGst = showGst ? gross * 0.18 : 0;
+                            const gstRateFactor = showGst && lastBill.subtotal > 0 ? (lastBill.gst / lastBill.subtotal) : 0;
+                            const itemGst = gross * gstRateFactor;
                             const itemTotal = gross + itemGst;
                             const matchingProduct = products.find(p => p.id === item.id);
                             const detailsText = matchingProduct ? getProductDetailsText(matchingProduct) : '';
@@ -653,6 +789,18 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                                </tr>
                             );
                          })}
+                         {showGst && (
+                             <>
+                                <tr style={{ borderTop: '1px solid var(--inv-border)', fontWeight: 'bold' }}>
+                                   <td colSpan={5} style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', color: 'var(--inv-text-secondary)' }}>Subtotal:</td>
+                                   <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--inv-text-secondary)' }}>₹{lastBill.subtotal.toFixed(2)}</td>
+                                </tr>
+                                <tr style={{ fontWeight: 'bold' }}>
+                                   <td colSpan={5} style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', color: 'var(--inv-text-secondary)' }}>GST ({lastBill.subtotal > 0 ? Math.round((lastBill.gst / lastBill.subtotal) * 100) : 18}%):</td>
+                                   <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontFamily: 'monospace', color: '#10B981' }}>+₹{lastBill.gst.toFixed(2)}</td>
+                                </tr>
+                             </>
+                          )}
                          <tr style={{ background: 'var(--inv-bg-alt)', fontWeight: 'bold', borderTop: '2px solid var(--inv-border)' }}>
                             <td colSpan={showGst ? 4 : 3} style={{ padding: '1rem', textAlign: 'left', color: 'var(--inv-text-primary)' }}>
                                TOTAL QTY: {lastBill.items.reduce((acc, item) => acc + (item.quantity || 0), 0)}
