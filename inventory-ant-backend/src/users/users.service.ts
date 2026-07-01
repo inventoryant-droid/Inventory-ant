@@ -47,9 +47,9 @@ export class UsersService implements OnModuleInit {
 
   // Brevo SMTP transporter
   private mailer = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com',
-    port: 587,
-    secure: false,
+    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+    port: parseInt(process.env.SMTP_PORT || '465', 10),
+    secure: (process.env.SMTP_PORT || '465') === '465',
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
