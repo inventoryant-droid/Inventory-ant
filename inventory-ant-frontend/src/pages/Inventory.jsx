@@ -2,7 +2,7 @@ import { API_BASE_URL } from '../utils/config';
 import React, { useState, useEffect, useMemo } from 'react';
 import '../App.css';
 import { getExpiryInfo, getExpKey } from '../utils/expiryHelpers';
-import { Printer, Trash2, Edit3, Plus, Terminal, Check, X, CheckCircle, Search, History, User, Clock, ArrowRight, Eye } from 'lucide-react';
+import { Printer, Trash2, Edit3, Plus, Terminal, Check, X, CheckCircle, Search, History, User, Clock, ArrowRight, Eye, Package, IndianRupee, Info, ChevronDown, ChevronUp } from 'lucide-react';
 
 function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProduct, filterMode, setFilterMode, userRole }) {
   const [formData, setFormData] = useState({});
@@ -17,6 +17,18 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [selectedLog, setSelectedLog] = useState(null);
+  const [expandedProductIds, setExpandedProductIds] = useState(new Set());
+  const toggleRowExpand = (productId) => {
+    setExpandedProductIds(prev => {
+      const next = new Set(prev);
+      if (next.has(productId)) {
+        next.delete(productId);
+      } else {
+        next.add(productId);
+      }
+      return next;
+    });
+  };
 
   const getLogSourceInfo = (details) => {
     const text = (details || '').toLowerCase();
@@ -104,8 +116,9 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
     return {
       productId: 'SKU Code',
       name: 'Product Description',
-      quantity: 'Available Stock',
-      mrp: 'MRP'
+      costPrice: 'Cost Price',
+      mrp: 'Selling Price',
+      quantity: 'Available Stock'
     };
   }, [products]);
 
@@ -121,6 +134,22 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
 
   const [searchTerm, setSearchTerm] = useState('');
 
+  const stats = useMemo(() => {
+    const realProds = products.filter(p => !p._headers);
+    const total = realProds.length;
+    const withCostPrice = realProds.filter(p => {
+      const val = parseFloat(p.costPrice);
+      return p.costPrice && !isNaN(val) && val > 0;
+    }).length;
+    const missingCostPrice = total - withCostPrice;
+    const withSellingPrice = realProds.filter(p => {
+      const val = parseFloat(p.mrp);
+      return p.mrp && !isNaN(val) && val > 0;
+    }).length;
+    const missingSellingPrice = total - withSellingPrice;
+    return { total, withCostPrice, missingCostPrice, withSellingPrice, missingSellingPrice };
+  }, [products]);
+
   const displayProducts = useMemo(() => {
     // filter out the headers sentinel item first
     const realProds = products.filter(p => !p._headers);
@@ -135,6 +164,34 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
       return realProds.filter(p => {
         const q = parseInt(p.quantity || '0', 10);
         return !isNaN(q) && q === 0;
+      });
+    }
+
+    if (filterMode === 'withCostPrice') {
+      return realProds.filter(p => {
+        const val = parseFloat(p.costPrice);
+        return p.costPrice && !isNaN(val) && val > 0;
+      });
+    }
+
+    if (filterMode === 'missingCostPrice') {
+      return realProds.filter(p => {
+        const val = parseFloat(p.costPrice);
+        return !p.costPrice || isNaN(val) || val <= 0;
+      });
+    }
+
+    if (filterMode === 'withSellingPrice') {
+      return realProds.filter(p => {
+        const val = parseFloat(p.mrp);
+        return p.mrp && !isNaN(val) && val > 0;
+      });
+    }
+
+    if (filterMode === 'missingSellingPrice') {
+      return realProds.filter(p => {
+        const val = parseFloat(p.mrp);
+        return !p.mrp || isNaN(val) || val <= 0;
       });
     }
     
@@ -184,11 +241,17 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
       ...formData
     };
     onAddProduct(payload);
+    setFormData({}); // Reset the input fields
+    setToastMessage(`${payload.name || 'Item'} registered successfully!`);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
   };
 
   const standardFields = [
     { key: 'productId', placeholder: 'SKU CODE', className: 'w-24' },
     { key: 'name', placeholder: 'PRODUCT DESCRIPTION', className: 'w-48' },
+    { key: 'costPrice', placeholder: 'COST PRICE', className: 'w-24' },
+    { key: 'mrp', placeholder: 'SELLING PRICE', className: 'w-24' },
     { key: 'quantity', placeholder: 'AVAILABLE STOCK', className: 'w-24' },
   ];
 
@@ -227,8 +290,80 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
           </div>
        </div>
  
-       {activeSubTab === 'catalog' ? (
-         <>
+        {activeSubTab === 'catalog' ? (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+              {/* Total Items Card */}
+              <div 
+                onClick={() => setFilterMode('all')}
+                className={`rounded-2xl border p-5 flex items-center gap-4 cursor-pointer transition-all shadow-sm ${filterMode === 'all' || !filterMode ? 'bg-indigo-50/50 border-indigo-400 ring-2 ring-indigo-100' : 'bg-white border-slate-100 hover:border-indigo-200'}`}
+              >
+                <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600">
+                  <Package size={20} />
+                </div>
+                <div className="text-left">
+                  <div className="text-2xl font-extrabold text-slate-800">{stats.total}</div>
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Items</div>
+                </div>
+              </div>
+
+              {/* With Cost Price Card */}
+              <div 
+                onClick={() => setFilterMode('withCostPrice')}
+                className={`rounded-2xl border p-5 flex items-center gap-4 cursor-pointer transition-all shadow-sm ${filterMode === 'withCostPrice' ? 'bg-emerald-50/50 border-emerald-400 ring-2 ring-emerald-100' : 'bg-white border-slate-100 hover:border-emerald-200'}`}
+              >
+                <div className="bg-emerald-100 p-3 rounded-xl text-emerald-600">
+                  <IndianRupee size={20} />
+                </div>
+                <div className="text-left">
+                  <div className="text-2xl font-extrabold text-slate-800">{stats.withCostPrice}</div>
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">With Cost Price</div>
+                </div>
+              </div>
+
+              {/* Missing Cost Price Card */}
+              <div 
+                onClick={() => setFilterMode('missingCostPrice')}
+                className={`rounded-2xl border p-5 flex items-center gap-4 cursor-pointer transition-all shadow-sm ${filterMode === 'missingCostPrice' ? 'bg-amber-50/50 border-amber-400 ring-2 ring-amber-100' : 'bg-white border-slate-100 hover:border-amber-200'}`}
+              >
+                <div className="bg-amber-100 p-3 rounded-xl text-amber-600">
+                  <Info size={20} />
+                </div>
+                <div className="text-left">
+                  <div className="text-2xl font-extrabold text-slate-800">{stats.missingCostPrice}</div>
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Missing Cost Price</div>
+                </div>
+              </div>
+
+              {/* With Selling Price Card */}
+              <div 
+                onClick={() => setFilterMode('withSellingPrice')}
+                className={`rounded-2xl border p-5 flex items-center gap-4 cursor-pointer transition-all shadow-sm ${filterMode === 'withSellingPrice' ? 'bg-teal-50/50 border-teal-400 ring-2 ring-teal-100' : 'bg-white border-slate-100 hover:border-teal-200'}`}
+              >
+                <div className="bg-teal-100 p-3 rounded-xl text-teal-600">
+                  <IndianRupee size={20} />
+                </div>
+                <div className="text-left">
+                  <div className="text-2xl font-extrabold text-slate-800">{stats.withSellingPrice}</div>
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">With Selling Price</div>
+                </div>
+              </div>
+
+              {/* Missing Selling Price Card */}
+              <div 
+                onClick={() => setFilterMode('missingSellingPrice')}
+                className={`rounded-2xl border p-5 flex items-center gap-4 cursor-pointer transition-all shadow-sm ${filterMode === 'missingSellingPrice' ? 'bg-rose-50/50 border-rose-400 ring-2 ring-rose-100' : 'bg-white border-slate-100 hover:border-rose-200'}`}
+              >
+                <div className="bg-rose-100 p-3 rounded-xl text-rose-600">
+                  <Info size={20} />
+                </div>
+                <div className="text-left">
+                  <div className="text-2xl font-extrabold text-slate-800">{stats.missingSellingPrice}</div>
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Missing Selling Price</div>
+                </div>
+              </div>
+            </div>
+
            {isFiltered && (
              <div className="mb-4 text-left">
                <p className="m-0 text-slate-500 text-xs font-semibold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full inline-block">
@@ -285,118 +420,283 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
              />
            </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
+        <div className="overflow-x-hidden md:overflow-x-auto max-h-[650px] overflow-y-auto custom-scrollbar">
+          <table className="w-full text-left text-sm whitespace-normal md:whitespace-nowrap table-fixed md:table-auto">
             <thead>
-              <tr>
-                <th className="px-6 py-4 text-slate-400 text-[10px] tracking-wider uppercase font-bold w-16">ROW</th>
-                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-24">SKU CODE</th>
-                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase">PRODUCT DESCRIPTION</th>
+              <tr className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
+                <th className="px-3 md:px-6 py-3 md:py-4 text-slate-400 text-[10px] tracking-wider uppercase font-bold w-12 md:w-16 bg-white">ROW</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-20 md:w-24 bg-white hidden md:table-cell">{headers.productId || 'SKU CODE'}</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase bg-white">{headers.name || 'PRODUCT DETAILS'}</th>
                 {dynamicColumns.map(col => (
-                  <th key={col} className="px-6 py-4 text-[10px] tracking-wider font-bold text-slate-400 uppercase">{col}</th>
+                  <th key={col} className="px-6 py-4 text-[10px] tracking-wider font-bold text-slate-400 uppercase bg-white hidden md:table-cell">{col}</th>
                 ))}
-                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-32">AVAILABLE STOCK</th>
-                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase text-right w-24">ACTIONS</th>
+                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-28 bg-white hidden md:table-cell">{headers.costPrice || 'COST PRICE'} (₹)</th>
+                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-28 bg-white hidden md:table-cell">{headers.mrp || 'SELLING PRICE'} (₹)</th>
+                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-32 bg-white hidden md:table-cell">{headers.quantity || 'AVAILABLE STOCK'}</th>
+                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase text-right w-24 bg-white hidden md:table-cell">ACTIONS</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase text-center w-12 bg-white md:hidden"></th>
               </tr>
             </thead>
             <tbody>
-              {sortedDisplayProducts.map((p, i) => (
-                <tr key={p.id} className="border-t border-slate-50 hover:bg-slate-50 transition-colors group">
-                  <td className="px-6 py-5 text-slate-400 text-xs font-medium">{i + 1}</td>
-                  
-                  {/* SKU CODE */}
-                  <td className="px-6 py-5 text-slate-700 text-sm font-bold">
-                    {editingProductId === p.id ? (
-                      <input 
-                        type="text" 
-                        value={editFormData.productId || ''} 
-                        onChange={(e) => setEditFormData({...editFormData, productId: e.target.value})}
-                        className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
-                      />
-                    ) : (p.productId || '-')}
-                  </td>
-
-
-                  
-                  {/* PRODUCT DESCRIPTION */}
-                  <td className="px-6 py-5 font-bold text-slate-800 text-sm whitespace-normal max-w-md">
-                    {editingProductId === p.id ? (
-                      <input 
-                        type="text" 
-                        value={editFormData.name || ''} 
-                        onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
-                        className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-full"
-                        placeholder="Product Description"
-                      />
-                    ) : (
-                      p.name
-                    )}
-                  </td>
-                  
-                  {/* Custom CSV columns (e.g. Details / Pages, Pkg) */}
-                  {dynamicColumns.map(col => {
-                    let displayValue = p[col];
-                    return (
-                      <td key={col} className="px-6 py-5">
+              {sortedDisplayProducts.map((p, i) => {
+                const isExpanded = expandedProductIds.has(p.id);
+                return (
+                  <React.Fragment key={p.id}>
+                    <tr 
+                      onClick={() => { if (window.innerWidth < 768) toggleRowExpand(p.id); }}
+                      className={`border-t border-slate-50 hover:bg-slate-50 transition-colors group ${window.innerWidth < 768 ? 'cursor-pointer' : ''}`}
+                    >
+                      <td className="px-3 md:px-6 py-3.5 md:py-5 text-slate-400 text-xs font-medium">{i + 1}</td>
+                      
+                      {/* SKU CODE */}
+                      <td className="px-3 md:px-6 py-3.5 md:py-5 text-slate-700 text-sm font-bold hidden md:table-cell">
                         {editingProductId === p.id ? (
                           <input 
                             type="text" 
-                            value={editFormData[col] || ''} 
-                            onChange={(e) => setEditFormData({...editFormData, [col]: e.target.value})}
+                            value={editFormData.productId || ''} 
+                            onChange={(e) => setEditFormData({...editFormData, productId: e.target.value})}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
+                          />
+                        ) : (p.productId || '-')}
+                      </td>
+
+                      {/* PRODUCT DESCRIPTION / DETAILS */}
+                      <td className="px-3 md:px-6 py-3.5 md:py-5 font-bold text-slate-800 text-sm whitespace-normal max-w-md">
+                        {/* Mobile SKU code displayed above product name */}
+                        <div className="text-[10px] font-extrabold text-indigo-500 uppercase tracking-wider mb-0.5 md:hidden">
+                          SKU: {p.productId || '-'}
+                        </div>
+                        {editingProductId === p.id ? (
+                          <input 
+                            type="text" 
+                            value={editFormData.name || ''} 
+                            onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-full"
+                            placeholder="Product Description"
+                          />
+                        ) : (
+                          p.name
+                        )}
+                      </td>
+                      
+                      {/* Custom CSV columns (e.g. Details / Pages, Pkg) */}
+                      {dynamicColumns.map(col => {
+                        let displayValue = p[col];
+                        return (
+                          <td key={col} className="px-6 py-5 hidden md:table-cell">
+                            {editingProductId === p.id ? (
+                              <input 
+                                type="text" 
+                                value={editFormData[col] || ''} 
+                                onChange={(e) => setEditFormData({...editFormData, [col]: e.target.value})}
+                                className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
+                              />
+                            ) : (
+                              displayValue ? (
+                                <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[11px] font-bold">
+                                  {displayValue}
+                                </span>
+                              ) : <span className="text-slate-300">-</span>
+                            )}
+                          </td>
+                        );
+                      })}
+
+                      {/* Cost Price Cell */}
+                      <td className="px-6 py-5 hidden md:table-cell">
+                        {editingProductId === p.id ? (
+                          <input 
+                            type="text" 
+                            value={editFormData.costPrice || ''} 
+                            onChange={(e) => setEditFormData({...editFormData, costPrice: e.target.value})}
                             className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
                           />
                         ) : (
-                          displayValue ? (
-                            <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[11px] font-bold">
-                              {displayValue}
-                            </span>
-                          ) : <span className="text-slate-300">-</span>
+                          p.costPrice ? `₹${parseFloat(p.costPrice).toFixed(2)}` : '-'
                         )}
                       </td>
-                    );
-                  })}
 
-                  <td className="px-6 py-5">
-                    {editingProductId === p.id ? (
-                      <input 
-                        type="number" 
-                        value={editFormData.quantity || ''} 
-                        onChange={(e) => setEditFormData({...editFormData, quantity: e.target.value})}
-                        className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
-                      />
-                    ) : (
-                      <div className="font-bold text-slate-700 text-sm">{p.quantity}</div>
-                    )}
-                  </td>
-                  
-                  <td className="px-6 py-5 text-right">
-                    {editingProductId === p.id ? (
-                      <div className="flex justify-end gap-3">
-                        <button onClick={handleSaveEdit} className="bg-white border border-emerald-200 text-emerald-500 hover:text-white hover:bg-emerald-500 cursor-pointer p-1.5 rounded-md transition-colors shadow-sm">
-                          <Check size={16} strokeWidth={3} />
-                        </button>
-                        <button onClick={handleCancelEdit} className="bg-white border border-slate-200 text-slate-400 hover:text-white hover:bg-slate-400 cursor-pointer p-1.5 rounded-md transition-colors shadow-sm">
-                          <X size={16} strokeWidth={3} />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex justify-end gap-3 md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity">
-                        <button onClick={() => handleEditClick(p)} className="bg-transparent border-none text-indigo-500 hover:text-indigo-700 cursor-pointer p-1">
-                           <Edit3 size={16} />
-                        </button>
-                        {userRole !== 'staff' && (
-                          <button 
-                            onClick={() => onDeleteProduct(p.id)} 
-                            className="bg-transparent border-none text-red-400 hover:text-red-600 cursor-pointer p-1"
-                          >
-                             <Trash2 size={16} />
-                          </button>
+                      {/* Selling Price / MRP Cell */}
+                      <td className="px-6 py-5 hidden md:table-cell">
+                        {editingProductId === p.id ? (
+                          <input 
+                            type="text" 
+                            value={editFormData.mrp || ''} 
+                            onChange={(e) => setEditFormData({...editFormData, mrp: e.target.value})}
+                            className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
+                          />
+                        ) : (
+                          p.mrp ? `₹${parseFloat(p.mrp).toFixed(2)}` : '-'
                         )}
-                      </div>
+                      </td>
+
+                      {/* Available Stock Cell */}
+                      <td className="px-6 py-5 hidden md:table-cell">
+                        {editingProductId === p.id ? (
+                          <input 
+                            type="number" 
+                            value={editFormData.quantity || ''} 
+                            onChange={(e) => setEditFormData({...editFormData, quantity: e.target.value})}
+                            className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
+                          />
+                        ) : (
+                          <div className="font-bold text-slate-700 text-sm">{p.quantity}</div>
+                        )}
+                      </td>
+                      
+                      {/* Actions Cell */}
+                      <td className="px-6 py-5 text-right hidden md:table-cell">
+                        {editingProductId === p.id ? (
+                          <div className="flex justify-end gap-3" onClick={(e) => e.stopPropagation()}>
+                            <button onClick={handleSaveEdit} className="bg-white border border-emerald-200 text-emerald-500 hover:text-white hover:bg-emerald-500 cursor-pointer p-1.5 rounded-md transition-colors shadow-sm">
+                              <Check size={16} strokeWidth={3} />
+                            </button>
+                            <button onClick={handleCancelEdit} className="bg-white border border-slate-200 text-slate-400 hover:text-white hover:bg-slate-400 cursor-pointer p-1.5 rounded-md transition-colors shadow-sm">
+                              <X size={16} strokeWidth={3} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-end gap-3 md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                            <button onClick={() => handleEditClick(p)} className="bg-transparent border-none text-indigo-500 hover:text-indigo-700 cursor-pointer p-1">
+                               <Edit3 size={16} />
+                            </button>
+                            {userRole !== 'staff' && (
+                              <button 
+                                onClick={() => onDeleteProduct(p.id)} 
+                                className="bg-transparent border-none text-red-400 hover:text-red-600 cursor-pointer p-1"
+                              >
+                                 <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Arrow Indicator Cell (mobile only) */}
+                      <td className="px-3 md:px-6 py-3.5 md:py-5 text-center md:hidden">
+                        <div className="text-indigo-600 flex justify-center">
+                          {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Mobile Expandable Row Details */}
+                    {isExpanded && (
+                      <tr className="md:hidden bg-slate-50/50 border-t border-slate-100">
+                        <td colSpan="4" className="px-6 py-4">
+                          <div className="flex flex-col gap-3 text-left">
+                            {dynamicColumns.map(col => (
+                              <div key={col} className="flex justify-between items-center text-xs">
+                                <span className="font-bold text-slate-400 uppercase">{col}:</span>
+                                {editingProductId === p.id ? (
+                                  <input 
+                                    type="text" 
+                                    value={editFormData[col] || ''} 
+                                    onChange={(e) => setEditFormData({...editFormData, [col]: e.target.value})}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 w-24"
+                                  />
+                                ) : (
+                                  <span className="font-semibold text-slate-700">{p[col] || '-'}</span>
+                                )}
+                              </div>
+                            ))}
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="font-bold text-slate-400 uppercase">SKU Code:</span>
+                              {editingProductId === p.id ? (
+                                <input 
+                                  type="text" 
+                                  value={editFormData.productId || ''} 
+                                  onChange={(e) => setEditFormData({...editFormData, productId: e.target.value})}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 w-24"
+                                />
+                              ) : (
+                                <span className="font-semibold text-slate-700">{p.productId || '-'}</span>
+                              )}
+                            </div>
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="font-bold text-slate-400 uppercase">Cost Price:</span>
+                              {editingProductId === p.id ? (
+                                <input 
+                                  type="text" 
+                                  value={editFormData.costPrice || ''} 
+                                  onChange={(e) => setEditFormData({...editFormData, costPrice: e.target.value})}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 w-24"
+                                />
+                              ) : (
+                                <span className="font-bold text-slate-800">
+                                  {p.costPrice ? `₹${parseFloat(p.costPrice).toFixed(2)}` : '-'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="font-bold text-slate-400 uppercase">Selling Price:</span>
+                              {editingProductId === p.id ? (
+                                <input 
+                                  type="text" 
+                                  value={editFormData.mrp || ''} 
+                                  onChange={(e) => setEditFormData({...editFormData, mrp: e.target.value})}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 w-24"
+                                />
+                              ) : (
+                                <span className="font-bold text-slate-800">
+                                  {p.mrp ? `₹${parseFloat(p.mrp).toFixed(2)}` : '-'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="font-bold text-slate-400 uppercase">Available Stock:</span>
+                              {editingProductId === p.id ? (
+                                <input 
+                                  type="number" 
+                                  value={editFormData.quantity || ''} 
+                                  onChange={(e) => setEditFormData({...editFormData, quantity: e.target.value})}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 w-24"
+                                />
+                              ) : (
+                                <span className="font-bold text-slate-800">{p.quantity}</span>
+                              )}
+                            </div>
+                            <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-100">
+                              <span className="font-bold text-slate-400 uppercase">Actions:</span>
+                              {editingProductId === p.id ? (
+                                <div className="flex gap-3" onClick={(e) => e.stopPropagation()}>
+                                  <button onClick={handleSaveEdit} className="bg-white border border-emerald-200 text-emerald-500 hover:text-white hover:bg-emerald-500 cursor-pointer p-1.5 rounded-md transition-colors shadow-sm">
+                                    <Check size={16} strokeWidth={3} />
+                                  </button>
+                                  <button onClick={handleCancelEdit} className="bg-white border border-slate-200 text-slate-400 hover:text-white hover:bg-slate-400 cursor-pointer p-1.5 rounded-md transition-colors shadow-sm">
+                                    <X size={16} strokeWidth={3} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex gap-4" onClick={(e) => e.stopPropagation()}>
+                                  <button onClick={() => { handleEditClick(p); }} className="bg-transparent border-none text-indigo-500 hover:text-indigo-700 cursor-pointer p-1">
+                                     <Edit3 size={16} />
+                                  </button>
+                                  {userRole !== 'staff' && (
+                                    <button 
+                                      onClick={() => onDeleteProduct(p.id)} 
+                                      className="bg-transparent border-none text-red-400 hover:text-red-600 cursor-pointer p-1"
+                                    >
+                                       <Trash2 size={16} />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                </tr>
-              ))}
+                  </React.Fragment>
+                );
+              })}
               {displayProducts.length === 0 && (
                  <tr>
                     <td colSpan="10" className="px-6 py-12 text-center text-slate-400 text-sm">

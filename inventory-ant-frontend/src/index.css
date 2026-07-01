@@ -76,6 +76,7 @@
   --neon-glow: rgba(99, 102, 241, 0.2);
   --glass-bg: rgba(255, 255, 255, 0.4);
   --glass-border: rgba(99, 102, 241, 0.1);
+  background-color: var(--bg-page) !important;
 }
 
 .dark-theme {
@@ -86,6 +87,7 @@
   --text-muted: #94a3b8; /* slate-400 */
   --glass-border: #334155; /* slate-700 */
   --primary-bg: rgba(99, 102, 241, 0.15);
+  background-color: var(--bg-page) !important;
 }
 
 /* Dark Mode Global Overrides for Tailwind Classes */

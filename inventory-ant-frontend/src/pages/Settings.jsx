@@ -41,7 +41,7 @@ function Settings({ userId, token, onScanResult, userRole }) {
         }
 
         const firstRow = rawRows[0];
-        let idIdx = -1, nameIdx = -1, qtyIdx = -1, priceIdx = -1, detailsIdx = -1, hsnIdx = -1;
+        let idIdx = -1, nameIdx = -1, qtyIdx = -1, priceIdx = -1, detailsIdx = -1, hsnIdx = -1, costPriceIdx = -1, sellingPriceIdx = -1;
 
         firstRow.forEach((val, i) => {
           const v = String(val).toLowerCase().trim();
@@ -53,12 +53,23 @@ function Settings({ userId, token, onScanResult, userRole }) {
           if (v.includes('name') || v.includes('product') || v.includes('item description') || v.includes('item name')) nameIdx = i;
           // Quantity / Stock
           if (v.includes('qty') || v.includes('stock') || v.includes('quantity') || v.includes('total qty')) qtyIdx = i;
-          // Price / MRP / Rate
-          if (v.includes('mrp') || v.includes('price') || v.includes('rate')) priceIdx = i;
+          // Cost Price
+          if (v.includes('cost price') || v.includes('purchase price') || v === 'cost' || v === 'purchase rate') costPriceIdx = i;
+          // Selling Price / MRP
+          if (v.includes('selling price') || v.includes('mrp') || v.includes('sale price') || v === 'selling rate' || v === 'price' || v === 'rate') sellingPriceIdx = i;
           // Details: ONLY match if it says "details" or "desc" but NOT "product" or "item"
           if ((v.includes('details') || v === 'desc' || v === 'description') && !v.includes('product') && !v.includes('item')) detailsIdx = i;
           if (v.includes('hsn') || v.includes('sac')) hsnIdx = i;
         });
+
+        if (sellingPriceIdx !== -1) {
+          priceIdx = sellingPriceIdx;
+        } else {
+          firstRow.forEach((cell, i) => {
+            const v = String(cell || '').toLowerCase().trim();
+            if (v.includes('mrp') || v.includes('price') || v.includes('rate')) priceIdx = i;
+          });
+        }
 
         // Priority fix: if name and details landed on the same column, details wins only for
         // dedicated "details" columns. Here name takes priority so clear details collision.
@@ -81,7 +92,8 @@ function Settings({ userId, token, onScanResult, userRole }) {
           hsnSac: hsnIdx !== -1 && firstRow[hsnIdx] ? String(firstRow[hsnIdx]).trim() : 'HSN/SAC',
           name: nameIdx !== -1 && firstRow[nameIdx] ? String(firstRow[nameIdx]).trim() : 'Product Description',
           quantity: qtyIdx !== -1 && firstRow[qtyIdx] ? String(firstRow[qtyIdx]).trim() : 'Available Stock',
-          mrp: priceIdx !== -1 && firstRow[priceIdx] ? String(firstRow[priceIdx]).trim() : 'MRP'
+          mrp: priceIdx !== -1 && firstRow[priceIdx] ? String(firstRow[priceIdx]).trim() : (sellingPriceIdx !== -1 ? String(firstRow[sellingPriceIdx]).trim() : 'Selling Price'),
+          costPrice: costPriceIdx !== -1 && firstRow[costPriceIdx] ? String(firstRow[costPriceIdx]).trim() : 'Cost Price'
         };
 
         const mappedData = [];
@@ -104,7 +116,8 @@ function Settings({ userId, token, onScanResult, userRole }) {
             hsnSac: hsnIdx !== -1 ? String(row[hsnIdx] || '').trim() : '',
             name: mergedDesc || `Item-${i}`,
             quantity: row[qtyIdx] || '0',
-            mrp: row[priceIdx] || '0',
+            mrp: priceIdx !== -1 ? String(row[priceIdx] || '').trim() : (sellingPriceIdx !== -1 ? String(row[sellingPriceIdx] || '').trim() : '0'),
+            costPrice: costPriceIdx !== -1 ? String(row[costPriceIdx] || '').trim() : '',
             details: rawDesc && rawDesc.toLowerCase() !== rawName.toLowerCase() ? rawDesc : '',
             csv_row: i + 1,
             _timestamp: Date.now(),
@@ -112,7 +125,7 @@ function Settings({ userId, token, onScanResult, userRole }) {
           };
 
           row.forEach((cell, idx) => {
-            if (![idIdx, nameIdx, qtyIdx, priceIdx, detailsIdx, hsnIdx].includes(idx)) {
+            if (![idIdx, nameIdx, qtyIdx, priceIdx, detailsIdx, hsnIdx, costPriceIdx, sellingPriceIdx].includes(idx)) {
               let colName = firstRow[idx] ? String(firstRow[idx]).trim() : `col_${idx}`;
               if (!colName) colName = `col_${idx}`;
               obj[colName] = cell;

@@ -21,7 +21,7 @@ import WelcomeModal from './components/ui/WelcomeModal';
 import OnboardingScreen from './pages/OnboardingScreen';
 import Profile from './pages/Profile';
 import StaffManagement from './pages/StaffManagement';
-import ItemDetails from './pages/ItemDetails';
+
 
 export default function App() {
   const navigate = useNavigate();
@@ -252,7 +252,7 @@ export default function App() {
               theme={theme}
             />
           ) : (
-            <div className={(theme === 'dark' ? 'dark-theme ' : 'light-theme ') + "flex flex-col w-full min-h-screen bg-[#F8FAFC]"}>
+            <div className={(theme === 'dark' ? 'dark-theme ' : 'light-theme ') + "flex flex-col w-full min-h-screen bg-slate-50"}>
               {localStorage.getItem('ant_admin_token') && (
                 <div className="w-full bg-[#EF4444] text-white text-center py-3 px-6 flex flex-row items-center justify-between z-50 font-sans shadow-md shrink-0">
                   <div className="flex items-center gap-2">
@@ -312,7 +312,6 @@ export default function App() {
               {view === 'billing' && <Billing products={products} onSaleSuccess={fetchProducts} userId={userId} token={token} userProfile={userProfile} />}
               {view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onEditProduct={handleEditProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} userRole={userRole} />}
               {view === 'ai_lab' && <AITools userId={userId} token={token} onScanResult={fetchProducts} onOpenScanner={handleOpenScanner} userProfile={userProfile} theme={theme} />}
-              {view === 'item_details' && <ItemDetails products={products} token={token} onEditProduct={handleEditProduct} />}
               {view === 'staff_management' && <StaffManagement token={token} userProfile={userProfile} userId={userId} />}
               {view === 'ant_x' && <AntXTerminal 
                 userId={userId} 

@@ -29,6 +29,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
   const [showPhoneOnBills, setShowPhoneOnBills] = useState(true);
   const [showEmailOnBills, setShowEmailOnBills] = useState(true);
   const [logoBase64, setLogoBase64] = useState('');
+  const [businessNote, setBusinessNote] = useState('');
 
   // Password update states
   const [oldPass, setOldPass] = useState('');
@@ -57,6 +58,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
       setShowPhoneOnBills(userProfile.showPhoneOnBills !== false);
       setShowEmailOnBills(userProfile.showEmailOnBills !== false);
       setLogoBase64(userProfile.businessLogo || '');
+      setBusinessNote(userProfile.businessNote || '');
     }
   }, [userProfile]);
 
@@ -135,6 +137,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
           businessAddress,
           showPhoneOnBills,
           showEmailOnBills,
+          businessNote,
           profileCompleted: true
         })
       });
@@ -396,6 +399,19 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
                     onChange={e => setGstNumber(e.target.value)}
                     className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
                     placeholder="e.g. 22AAAAA0000A1Z5"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                    <Sparkles size={12} className="text-indigo-500" /> Business Note (Optional)
+                  </label>
+                  <input 
+                    type="text" 
+                    value={businessNote}
+                    onChange={e => setBusinessNote(e.target.value)}
+                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
+                    placeholder="e.g. Wholesaler of Classmate, Link, Studymate, and all kinds of Stationery items"
                   />
                 </div>
 

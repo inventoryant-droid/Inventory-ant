@@ -31,6 +31,7 @@ export interface User {
   storageUsed?: number;
   lastLogin?: number;
   adminRole?: 'super_admin' | 'support_admin' | 'finance_admin' | 'tech_admin';
+  businessNote?: string;
 }
 
 @Injectable()
@@ -250,6 +251,7 @@ export class UsersService implements OnModuleInit {
       storageUsed: dbUser.storageUsed || undefined,
       lastLogin: dbUser.lastLogin || undefined,
       adminRole: (dbUser.adminRole as any) || undefined,
+      businessNote: dbUser.businessNote || undefined,
     };
   }
 
@@ -724,6 +726,7 @@ export class UsersService implements OnModuleInit {
         showPhoneOnBills: profileData.showPhoneOnBills !== undefined ? !!profileData.showPhoneOnBills : undefined,
         showEmailOnBills: profileData.showEmailOnBills !== undefined ? !!profileData.showEmailOnBills : undefined,
         profileCompleted: profileData.profileCompleted !== undefined ? !!profileData.profileCompleted : undefined,
+        businessNote: profileData.businessNote !== undefined ? profileData.businessNote : undefined,
         updatedAt: Date.now()
       }
     });

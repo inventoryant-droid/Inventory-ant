@@ -252,13 +252,20 @@ export class ProductsService {
       console.log(`✅ [MATCH]: "${item.name}" → "${p.name}" score=${high.toFixed(0)}`);
       
       const updateData: any = {};
-      // Inbound scanner: mrp from scan updates costPrice (purchase price), not sale price
-      if (item.mrp && parseFloat(item.mrp) > 0) {
+      // Inbound scanner: costPrice/mrp update
+      if (item.costPrice && parseFloat(item.costPrice) > 0) {
+        updateData.costPrice = item.costPrice.toString();
+      } else if (item.mrp && parseFloat(item.mrp) > 0) {
         if (actionType === 'IN') {
-          updateData.costPrice = item.mrp.toString(); // scanner inbound = cost price update
+          updateData.costPrice = item.mrp.toString(); // fallback scanner inbound = cost price update
         } else {
           updateData.mrp = item.mrp.toString(); // outbound/voice: treat as sale price
         }
+      }
+      
+      // If scanner scanned both mrp and costPrice:
+      if (item.mrp && parseFloat(item.mrp) > 0 && actionType === 'IN' && item.costPrice) {
+        updateData.mrp = item.mrp.toString();
       }
       
       let newQtyStr: string;
@@ -338,8 +345,8 @@ export class ProductsService {
           name: item.name || 'Unknown Item',
           details: item.details || null,
           quantity: newQtyStr,
-          mrp: null, // sale price — not set yet by scanner
-          costPrice: item.mrp ? String(item.mrp) : null, // inbound scanner price = cost price
+          mrp: item.sellingPrice ? String(item.sellingPrice) : (actionType === 'OUT' && item.mrp ? String(item.mrp) : null),
+          costPrice: item.costPrice ? String(item.costPrice) : (actionType === 'IN' && item.mrp ? String(item.mrp) : null),
           timestamp: Date.now(),
           extraAttributes: extra
         }

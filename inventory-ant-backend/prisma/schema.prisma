@@ -32,6 +32,7 @@ model User {
   storageUsed      Float?
   lastLogin        Float?
   adminRole        String?  // "super_admin" | "support_admin" | "finance_admin" | "tech_admin"
+  businessNote     String?
 }
 
 model Product {

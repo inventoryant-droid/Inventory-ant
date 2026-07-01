@@ -371,7 +371,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">#</span>
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Product Name</span>
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center">Stock Qty</span>
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center">Price</span>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center">{scanType === 'IN' ? 'Cost Price' : 'Price'}</span>
                     <span></span>
                  </div>
 
@@ -424,7 +424,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                              type="text"
                              value={item.mrp || ''}
                              onChange={(e) => handleItemChange(idx, 'mrp', e.target.value)}
-                             placeholder="0.00"
+                             placeholder={scanType === 'IN' ? 'Cost Price' : '0.00'}
                              className="w-full bg-slate-50 dark:bg-slate-700/60
                                 border border-slate-200 dark:border-slate-600
                                 focus:border-indigo-400 dark:focus:border-indigo-500

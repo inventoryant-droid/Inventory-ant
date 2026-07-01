@@ -704,13 +704,13 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                                    </td>
                                 </tr>
                              ))}
-                          </tbody>
-                       </table>
-                    </div>
-                 )}
-              </div>
-           </div>
-        )}
+                           </tbody>
+                        </table>
+                     </div>
+                  )}
+               </div>
+            </div>
+         )}
 
         {/* Printable Invoice Modal */}
         {lastBill && (() => {
@@ -718,9 +718,34 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
           return (
             <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[1000] flex items-center justify-center p-4 overflow-y-auto print-modal-overlay">
               <div id="printable-invoice" className="rounded-2xl w-full max-w-4xl p-6 md:p-8 shadow-2xl border flex flex-col gap-6" style={{ backgroundColor: 'var(--inv-bg)', borderColor: 'var(--inv-border)', color: 'var(--inv-text-secondary)', transition: 'none' }}>
+                
+                {/* Centered Top Header details */}
+                <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                   <h1 style={{ fontSize: '2rem', fontWeight: 900, color: '#1e3a8a', textTransform: 'uppercase', margin: 0, letterSpacing: '0.5px' }}>
+                      {userProfile?.businessName || 'Warehouse'}
+                   </h1>
+                   <div style={{ fontSize: '0.8rem', color: 'var(--inv-text-secondary)', fontWeight: 500 }}>
+                      {userProfile?.businessAddress || ''} 
+                      {(userProfile?.phone && userProfile?.showPhoneOnBills !== false) ? ` | Phone: ${userProfile.phone}` : ''} 
+                      {(userProfile?.email && userProfile?.showEmailOnBills !== false) ? ` | Email: ${userProfile.email}` : ''}
+                   </div>
+                   {userProfile?.businessNote && (
+                      <div style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '0.4rem 1.25rem', fontStyle: 'italic', color: '#475569', fontWeight: 600, fontSize: '0.75rem', margin: '0.25rem auto 0', maxWidth: '80%', display: 'inline-block' }}>
+                         {userProfile.businessNote}
+                      </div>
+                   )}
+                   {showGst && userProfile?.gstNumber && (
+                      <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--inv-text-primary)', marginTop: '0.25rem' }}>
+                         GSTIN: {userProfile.gstNumber}
+                      </div>
+                   )}
+                </div>
+
+                <div style={{ height: '2px', backgroundColor: '#1e3a8a', margin: '0.5rem 0 1.5rem 0' }}></div>
+
                 <div style={{ border: '1px solid var(--inv-border)', borderRadius: '12px', padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--inv-bg-alt)' }}>
                    <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-                      <span style={{ fontSize: '1.4rem', fontWeight: 900, color: '#6366f1', textTransform: 'uppercase' }}>{showGst ? 'Tax Invoice' : 'Invoice'}</span>
+                      <span style={{ fontSize: '1.4rem', fontWeight: 900, color: '#1e3a8a', textTransform: 'uppercase' }}>{showGst ? 'Tax Invoice' : 'Invoice'}</span>
                       <span style={{ fontSize: '0.65rem', color: 'var(--inv-text-muted)', fontWeight: 'bold', textTransform: 'uppercase', marginTop: '2px' }}>Original for Recipient</span>
                    </div>
                    <div style={{ display: 'flex', gap: '2rem', fontSize: '0.75rem', textAlign: 'left', color: 'var(--inv-text-secondary)' }}>
@@ -736,22 +761,28 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem', flexWrap: 'wrap' }}>
-                   <div style={{ flex: '1 1 300px', border: '1px solid var(--inv-border)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', textAlign: 'left', fontSize: '0.75rem', backgroundColor: 'var(--inv-bg)', color: 'var(--inv-text-secondary)' }}>
-                      <strong style={{ textTransform: 'uppercase', color: 'var(--inv-text-muted)', fontSize: '0.65rem', letterSpacing: '1px', marginBottom: '0.25rem' }}>Sold By</strong>
+                   <div style={{ flex: '1 1 300px', border: '1px solid var(--inv-border)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', textAlign: 'left', fontSize: '0.75rem', backgroundColor: 'var(--inv-bg)', color: 'var(--inv-text-secondary)', lineHeight: '1.4' }}>
+                      <strong style={{ textTransform: 'uppercase', color: '#1e3a8a', fontSize: '0.65rem', letterSpacing: '1px', marginBottom: '0.25rem', borderBottom: '1px solid var(--inv-border)', paddingBottom: '0.25rem' }}>Sold By</strong>
                       <strong style={{ fontSize: '0.95rem', color: 'var(--inv-text-primary)' }}>{userProfile?.businessName || 'Warehouse'}</strong>
                       <div>{userProfile?.businessAddress || ''}</div>
-                      <div>Phone: {userProfile?.phone || ''}</div>
-                      {userProfile?.email && <div>Email: {userProfile.email}</div>}
+                      {userProfile?.phone && userProfile?.showPhoneOnBills !== false && <div>Phone: {userProfile.phone}</div>}
+                      {userProfile?.email && userProfile?.showEmailOnBills !== false && <div>Email: {userProfile.email}</div>}
                    </div>
-                   <div style={{ flex: '1 1 300px', border: '1px solid var(--inv-border)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', textAlign: 'left', fontSize: '0.75rem', backgroundColor: 'var(--inv-bg)', color: 'var(--inv-text-secondary)' }}>
-                      <strong style={{ textTransform: 'uppercase', color: 'var(--inv-text-muted)', fontSize: '0.65rem', letterSpacing: '1px', marginBottom: '0.25rem' }}>Billed To</strong>
+                   <div style={{ flex: '1 1 300px', border: '1px solid var(--inv-border)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', textAlign: 'left', fontSize: '0.75rem', backgroundColor: 'var(--inv-bg)', color: 'var(--inv-text-secondary)', lineHeight: '1.4' }}>
+                      <strong style={{ textTransform: 'uppercase', color: '#1e3a8a', fontSize: '0.65rem', letterSpacing: '1px', marginBottom: '0.25rem', borderBottom: '1px solid var(--inv-border)', paddingBottom: '0.25rem' }}>Billed To</strong>
                       {lastBill.buyerName || lastBill.buyerPhone || lastBill.buyerAddress ? (
                          <>
-                            {lastBill.buyerName && <div><strong>Name:</strong> <span style={{ color: 'var(--inv-text-primary)', fontWeight: 'bold' }}>{lastBill.buyerName}</span></div>}
-                            {lastBill.buyerPhone && <div><strong>Phone:</strong> <span style={{ color: 'var(--inv-text-primary)', fontWeight: 'bold' }}>{lastBill.buyerPhone}</span></div>}
-                            {lastBill.buyerAddress && <div><strong>Address:</strong> <span style={{ color: 'var(--inv-text-primary)', fontWeight: 'bold' }}>{lastBill.buyerAddress}</span></div>}
+                            <strong style={{ fontSize: '0.95rem', color: 'var(--inv-text-primary)' }}>{lastBill.buyerName || 'Walk-in Customer'}</strong>
+                            {lastBill.buyerPhone && <div>Phone: {lastBill.buyerPhone}</div>}
+                            {lastBill.buyerAddress && <div>Address: {lastBill.buyerAddress}</div>}
                          </>
-                      ) : <div style={{ color: 'var(--inv-text-muted)', fontStyle: 'italic' }}>Walk-in Customer / Retail Invoice</div>}
+                      ) : (
+                         <>
+                            <strong style={{ fontSize: '0.95rem', color: 'var(--inv-text-primary)' }}>Walk-in Customer</strong>
+                            <div style={{ color: 'var(--inv-text-muted)', fontStyle: 'italic' }}>Retail Invoice</div>
+                            <div style={{ color: 'var(--inv-text-muted)', fontStyle: 'italic' }}>Counter Sale</div>
+                         </>
+                      )}
                    </div>
                 </div>
 
@@ -759,18 +790,18 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                 <div className="invoice-items-container" style={{ border: '1px solid var(--inv-border)', borderRadius: '12px', overflow: 'hidden' }}>
                    <table className="w-full text-left text-xs" style={{ borderCollapse: 'collapse', margin: 0, backgroundColor: 'var(--inv-bg)' }}>
                       <thead>
-                         <tr style={{ background: 'var(--inv-bg-alt)', borderBottom: '1px solid var(--inv-border)' }}>
-                            <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem' }}>PRODUCT</th>
-                            <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem' }}>DESCRIPTION</th>
-                            <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'center' }}>QTY</th>
-                            <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'right' }}>RATE (₹)</th>
-                            {showGst && <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'right' }}>GST ({lastBill.subtotal > 0 ? Math.round((lastBill.gst / lastBill.subtotal) * 100) : 18}%)</th>}
-                            <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-secondary)', fontSize: '0.7rem', textAlign: 'right' }}>TOTAL</th>
+                         <tr style={{ background: '#1e3a8a', borderBottom: '1px solid var(--inv-border)' }}>
+                            <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: '#ffffff', fontSize: '0.7rem', textAlign: 'left' }}>PRODUCT</th>
+                            <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: '#ffffff', fontSize: '0.7rem', textAlign: 'left' }}>DESCRIPTION</th>
+                            <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: '#ffffff', fontSize: '0.7rem', textAlign: 'center', width: '80px' }}>QTY</th>
+                            <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: '#ffffff', fontSize: '0.7rem', textAlign: 'right', width: '120px' }}>RATE (₹)</th>
+                            {showGst && <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: '#ffffff', fontSize: '0.7rem', textAlign: 'right', width: '120px' }}>GST ({lastBill.subtotal > 0 ? Math.round((lastBill.gst / lastBill.subtotal) * 100) : 18}%)</th>}
+                            <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: '#ffffff', fontSize: '0.7rem', textAlign: 'right', width: '120px' }}>TOTAL</th>
                          </tr>
                       </thead>
                       <tbody>
                          {lastBill.items.map((item, idx) => {
-                            const rate = parseFloat(item.salePrice || item.mrp || 0);
+                            const rate = parseFloat(item.salePrice || item.manualPrice || item.mrp || 0);
                             const qty = item.quantity || 1;
                             const gross = rate * qty;
                             const gstRateFactor = showGst && lastBill.subtotal > 0 ? (lastBill.gst / lastBill.subtotal) : 0;
@@ -790,44 +821,39 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                             );
                          })}
                          {showGst && (
-                             <>
-                                <tr style={{ borderTop: '1px solid var(--inv-border)', fontWeight: 'bold' }}>
-                                   <td colSpan={5} style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', color: 'var(--inv-text-secondary)' }}>Subtotal:</td>
-                                   <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--inv-text-secondary)' }}>₹{lastBill.subtotal.toFixed(2)}</td>
-                                </tr>
-                                <tr style={{ fontWeight: 'bold' }}>
-                                   <td colSpan={5} style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', color: 'var(--inv-text-secondary)' }}>GST ({lastBill.subtotal > 0 ? Math.round((lastBill.gst / lastBill.subtotal) * 100) : 18}%):</td>
-                                   <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontFamily: 'monospace', color: '#10B981' }}>+₹{lastBill.gst.toFixed(2)}</td>
-                                </tr>
-                             </>
-                          )}
-                         <tr style={{ background: 'var(--inv-bg-alt)', fontWeight: 'bold', borderTop: '2px solid var(--inv-border)' }}>
-                            <td colSpan={showGst ? 4 : 3} style={{ padding: '1rem', textAlign: 'left', color: 'var(--inv-text-primary)' }}>
+                              <>
+                                 <tr style={{ borderTop: '1px solid var(--inv-border)', fontWeight: 'bold', backgroundColor: 'var(--inv-bg-alt)' }}>
+                                    <td colSpan={5} style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', color: 'var(--inv-text-secondary)' }}>Subtotal:</td>
+                                    <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--inv-text-secondary)' }}>₹{lastBill.subtotal.toFixed(2)}</td>
+                                 </tr>
+                                 <tr style={{ fontWeight: 'bold', backgroundColor: 'var(--inv-bg-alt)' }}>
+                                    <td colSpan={5} style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', color: 'var(--inv-text-secondary)' }}>GST ({lastBill.subtotal > 0 ? Math.round((lastBill.gst / lastBill.subtotal) * 100) : 18}%):</td>
+                                    <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontFamily: 'monospace', color: '#10B981' }}>+₹{lastBill.gst.toFixed(2)}</td>
+                                 </tr>
+                              </>
+                           )}
+                         <tr style={{ background: '#1e3a8a', fontWeight: 'bold', borderTop: '2px solid var(--inv-border)', color: '#ffffff' }}>
+                            <td colSpan={showGst ? 4 : 3} style={{ padding: '1rem', textAlign: 'left' }}>
                                TOTAL QTY: {lastBill.items.reduce((acc, item) => acc + (item.quantity || 0), 0)}
                             </td>
-                            <td colSpan={showGst ? 2 : 2} style={{ padding: '1rem', textAlign: 'right', fontSize: '0.85rem', color: 'var(--inv-text-primary)' }}>
-                               TOTAL: <span style={{ fontSize: '1rem', color: '#6366f1', fontFamily: 'monospace' }}>₹{(showGst ? lastBill.total : lastBill.subtotal)?.toFixed(2)}</span>
+                            <td colSpan={showGst ? 2 : 2} style={{ padding: '1rem', textAlign: 'right', fontSize: '0.85rem' }}>
+                               TOTAL: <span style={{ fontSize: '1rem', fontFamily: 'monospace' }}>₹{(showGst ? lastBill.total : lastBill.subtotal)?.toFixed(2)}</span>
                             </td>
                          </tr>
                       </tbody>
                    </table>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px dashed var(--inv-border)', borderBottom: '1px dashed var(--inv-border)', padding: '0.65rem 1rem', margin: '0.5rem 0', backgroundColor: 'var(--inv-bg-alt)', borderRadius: '8px' }}>
-                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                      <span style={{ fontSize: '1.25rem' }}>🐜</span>
-                      <div style={{ textAlign: 'left' }}>
-                         <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--inv-text-primary)' }}>Powered by Ant X IMS</div>
-                         <div style={{ fontSize: '0.6rem', color: 'var(--inv-text-muted)' }}>Simplify inventory management, billing, and OCR warehouse scanning.</div>
-                      </div>
+                {/* Professional Signatory and Declaration */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', margin: '1.5rem 0 0 0', padding: '1rem 0 0 0', borderTop: '1px dashed var(--inv-border)', fontSize: '0.7rem', color: 'var(--inv-text-secondary)' }}>
+                   <div style={{ textAlign: 'left', maxWidth: '55%', lineHeight: '1.4' }}>
+                      <strong>Declaration:</strong>
+                      <div>The goods sold are intended for end user consumption and not for resale. All disputes are subject to local jurisdiction.</div>
                    </div>
-                   <div style={{ fontSize: '0.65rem', fontWeight: 'extrabold', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      www.inventoryant.com
+                   <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2rem' }}>
+                      <div style={{ fontWeight: 'bold', color: 'var(--inv-text-primary)' }}>For {userProfile?.businessName || 'Warehouse'}</div>
+                      <div style={{ borderTop: '1px solid var(--inv-border)', width: '150px', textAlign: 'center', paddingTop: '0.25rem', fontSize: '0.65rem', color: 'var(--inv-text-muted)' }}>Authorized Signatory</div>
                    </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', textAlign: 'left', fontSize: '0.7rem', color: 'var(--inv-text-secondary)' }}>
-                   <div><strong>Declaration:</strong> The goods sold are intended for end user consumption and not for resale.</div>
                 </div>
 
                 <div className="flex flex-wrap gap-3 pt-2 no-print-btn">
