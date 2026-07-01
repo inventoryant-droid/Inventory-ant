@@ -5,7 +5,6 @@ import { OAuth2Client } from 'google-auth-library';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma.service';
-import * as nodemailer from 'nodemailer';
 
 export interface User {
   id: string;
@@ -44,17 +43,6 @@ export class UsersService implements OnModuleInit {
 
   // In-memory OTP store: email -> { otp, expiresAt, purpose }
   private otpStore = new Map<string, { otp: string; expiresAt: number; purpose: 'signup' | 'reset' }>();
-
-  // Brevo SMTP transporter
-  private mailer = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
-    port: parseInt(process.env.SMTP_PORT || '465', 10),
-    secure: (process.env.SMTP_PORT || '465') === '465',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
 
   constructor(
     private readonly jwtService: JwtService,
@@ -98,12 +86,34 @@ export class UsersService implements OnModuleInit {
       </div>
     `;
 
-    await this.mailer.sendMail({
-      from: `"Inventory Ant" <${process.env.SMTP_SENDER || 'inventoryant@gmail.com'}>`,
-      to: email,
-      subject,
-      html,
+    const apiKey = process.env.BREVO_API_KEY;
+
+    if (!apiKey) {
+      throw new BadRequestException('Email configuration key is missing.');
+    }
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': apiKey,
+        'content-type': 'application/json',
+        'accept': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: {
+          name: 'Inventory Ant',
+          email: process.env.SMTP_SENDER || 'inventoryant@gmail.com',
+        },
+        to: [{ email }],
+        subject,
+        htmlContent: html,
+      }),
     });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(`Brevo HTTP API failed: ${response.status} - ${JSON.stringify(errData)}`);
+    }
   }
 
   // ─── Send OTP for Signup ──────────────────────────────────────────────────
