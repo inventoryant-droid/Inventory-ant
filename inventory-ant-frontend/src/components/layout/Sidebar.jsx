@@ -123,22 +123,36 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
           )})}
         </nav>
 
-        {/* Bottom Action Buttons */}
-        <div className="mt-8 md:mt-auto flex flex-col gap-2 shrink-0 pb-4 md:pb-0">
-          <button onClick={onSwitchAccount} className="flex items-center justify-center gap-2 w-full py-3 bg-white border border-slate-200 hover:bg-slate-50 text-indigo-600 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-sm cursor-pointer">
-            <ArrowLeftRight size={14} />
-            <span className="inline">Switch Workspace</span>
-          </button>
-          <button onClick={onToggleTheme} className="flex items-center justify-center gap-2 w-full py-2.5 bg-transparent border-none hover:bg-slate-50 text-slate-500 rounded-lg font-semibold text-xs transition-all cursor-pointer">
-             {theme === 'dark' ? <Sun size={14}/> : <Moon size={14}/>}
-             <span className="inline">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
-          </button>
-          <button onClick={onLogout} className="flex items-center justify-center gap-2 w-full py-2.5 bg-transparent border-none hover:bg-red-50 text-red-500 rounded-lg font-semibold text-xs transition-all cursor-pointer">
-            <LogOut size={14} />
-            <span className="inline">Logout</span>
-          </button>
-        </div>
-      </div>
+         {/* Bottom Action Buttons */}
+         <div className="mt-8 md:mt-auto flex flex-col gap-2 shrink-0 pb-4 md:pb-0">
+           <button onClick={onSwitchAccount} className="flex items-center justify-center gap-2 w-full py-3 bg-white border border-slate-200 hover:bg-slate-50 text-indigo-600 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-sm cursor-pointer">
+             <ArrowLeftRight size={14} />
+             <span className="inline">Switch Workspace</span>
+           </button>
+           <button 
+             onClick={onToggleTheme} 
+             className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none shadow-sm
+               ${theme === 'dark' 
+                 ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' 
+                 : 'bg-[#E0E7FF]/60 hover:bg-[#E0E7FF]/90 text-indigo-700'
+               }`}
+           >
+              {theme === 'dark' ? <Sun size={14}/> : <Moon size={14}/>}
+              <span className="inline">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+           </button>
+           <button 
+             onClick={onLogout} 
+             className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none shadow-sm
+               ${theme === 'dark' 
+                 ? 'bg-red-950/40 hover:bg-red-950/60 text-red-400' 
+                 : 'bg-red-50 hover:bg-red-100/90 text-red-600'
+               }`}
+           >
+             <LogOut size={14} />
+             <span className="inline">Logout</span>
+           </button>
+         </div>
+       </div>
     </>
   );
 }
