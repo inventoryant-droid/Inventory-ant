@@ -18,6 +18,26 @@ export class UsersController {
     return this.usersService.userSignup(body.name, body.email, body.password, body.phone);
   }
 
+  @Post('auth/send-signup-otp')
+  async sendSignupOtp(@Body('email') email: string) {
+    return this.usersService.sendSignupOtp(email);
+  }
+
+  @Post('auth/verify-signup')
+  async verifySignup(@Body() body: { email: string; otp: string; name: string; password: string; phone?: string }) {
+    return this.usersService.verifySignupOtp(body.email, body.otp, body.name, body.password, body.phone);
+  }
+
+  @Post('auth/forgot-password')
+  async forgotPassword(@Body('email') email: string) {
+    return this.usersService.sendForgotPasswordOtp(email);
+  }
+
+  @Post('auth/reset-password')
+  async resetUserPassword(@Body() body: { email: string; otp: string; newPassword: string }) {
+    return this.usersService.resetPasswordWithOtp(body.email, body.otp, body.newPassword);
+  }
+
   @Post('auth/login')
   async login(@Body() body: { email: string; password?: string }) {
     return this.usersService.login(body.email, body.password);
@@ -161,7 +181,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Post('admin/users/:email/reset-password')
-  async resetPassword(@Param('email') email: string, @Body() body: { newPass: string }) {
+  async adminResetPasswordForUser(@Param('email') email: string, @Body() body: { newPass: string }) {
     return this.usersService.adminResetUserPassword(email, body.newPass);
   }
 

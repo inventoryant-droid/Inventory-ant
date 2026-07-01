@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException, UnauthorizedException, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException, OnModuleInit, BadRequestException } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { OAuth2Client } from 'google-auth-library';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma.service';
+import * as nodemailer from 'nodemailer';
 
 export interface User {
   id: string;
@@ -41,10 +42,174 @@ export class UsersService implements OnModuleInit {
     'postmessage'
   );
 
+  // In-memory OTP store: email -> { otp, expiresAt, purpose }
+  private otpStore = new Map<string, { otp: string; expiresAt: number; purpose: 'signup' | 'reset' }>();
+
+  // Brevo SMTP transporter
+  private mailer = nodemailer.createTransport({
+    host: 'smtp-relay.brevo.com',
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService
   ) {}
+
+  // ─── OTP Helpers ──────────────────────────────────────────────────────────
+
+  private generateOtp(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  private async sendOtpEmail(email: string, otp: string, purpose: 'signup' | 'reset'): Promise<void> {
+    const subject = purpose === 'signup'
+      ? '🐜 Inventory Ant – Email Verification OTP'
+      : '🔑 Inventory Ant – Password Reset OTP';
+
+    const actionLabel = purpose === 'signup' ? 'verify your email' : 'reset your password';
+
+    const html = `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #f8fafc; padding: 32px 16px;">
+        <div style="background: #ffffff; border-radius: 20px; padding: 40px 36px; box-shadow: 0 4px 24px rgba(0,0,0,0.07); border: 1px solid #e2e8f0;">
+          <div style="text-align: center; margin-bottom: 28px;">
+            <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: #7c3aed; border-radius: 16px; margin-bottom: 16px;">
+              <span style="font-size: 28px;">🐜</span>
+            </div>
+            <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #1e293b; letter-spacing: -0.5px;">Inventory Ant</h1>
+            <p style="margin: 4px 0 0; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px;">B2B Warehouse Intelligence</p>
+          </div>
+
+          <h2 style="font-size: 18px; font-weight: 700; color: #1e293b; margin: 0 0 8px;">Your OTP to ${actionLabel}</h2>
+          <p style="color: #64748b; font-size: 14px; margin: 0 0 28px; line-height: 1.6;">Use the following one-time password. It is valid for <strong>10 minutes</strong>.</p>
+
+          <div style="background: #f1f5f9; border-radius: 14px; padding: 24px; text-align: center; margin-bottom: 28px;">
+            <span style="font-size: 40px; font-weight: 900; letter-spacing: 10px; color: #7c3aed; font-family: monospace;">${otp}</span>
+          </div>
+
+          <p style="color: #94a3b8; font-size: 12px; margin: 0; line-height: 1.6;">If you did not request this OTP, you can safely ignore this email. Do not share this code with anyone.</p>
+        </div>
+        <p style="text-align: center; color: #cbd5e1; font-size: 11px; margin-top: 20px;">© 2026 Inventory Ant. All rights reserved.</p>
+      </div>
+    `;
+
+    await this.mailer.sendMail({
+      from: `"Inventory Ant" <${process.env.SMTP_SENDER || 'inventoryant@gmail.com'}>`,
+      to: email,
+      subject,
+      html,
+    });
+  }
+
+  // ─── Send OTP for Signup ──────────────────────────────────────────────────
+
+  async sendSignupOtp(email: string): Promise<{ message: string }> {
+    const existing = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+    if (existing) {
+      throw new BadRequestException('An account with this email already exists.');
+    }
+
+    const otp = this.generateOtp();
+    this.otpStore.set(email.toLowerCase(), {
+      otp,
+      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+      purpose: 'signup',
+    });
+
+    await this.sendOtpEmail(email.toLowerCase(), otp, 'signup');
+    return { message: 'OTP sent to your email. Please check your inbox.' };
+  }
+
+  // ─── Verify OTP + Complete Signup ─────────────────────────────────────────
+
+  async verifySignupOtp(
+    email: string,
+    otp: string,
+    name: string,
+    password: string,
+    phone?: string,
+  ): Promise<{ access_token: string; refresh_token: string; user: Omit<User, 'password'> }> {
+    const entry = this.otpStore.get(email.toLowerCase());
+
+    if (!entry || entry.purpose !== 'signup') {
+      throw new BadRequestException('No OTP found for this email. Please request a new OTP.');
+    }
+    if (Date.now() > entry.expiresAt) {
+      this.otpStore.delete(email.toLowerCase());
+      throw new BadRequestException('OTP has expired. Please request a new one.');
+    }
+    if (entry.otp !== otp.trim()) {
+      throw new BadRequestException('Invalid OTP. Please try again.');
+    }
+
+    this.otpStore.delete(email.toLowerCase());
+
+    // Create the user account
+    return this.userSignup(name, email, password, phone);
+  }
+
+  // ─── Send OTP for Forgot Password ─────────────────────────────────────────
+
+  async sendForgotPasswordOtp(email: string): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+    if (!user) {
+      // Return generic message to prevent email enumeration
+      return { message: 'If this email is registered, an OTP has been sent.' };
+    }
+    if (user.role === 'admin') {
+      throw new BadRequestException('Admin accounts cannot use forgot password. Contact super admin.');
+    }
+
+    const otp = this.generateOtp();
+    this.otpStore.set(email.toLowerCase(), {
+      otp,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      purpose: 'reset',
+    });
+
+    await this.sendOtpEmail(email.toLowerCase(), otp, 'reset');
+    return { message: 'If this email is registered, an OTP has been sent.' };
+  }
+
+  // ─── Verify Reset OTP + Set New Password ──────────────────────────────────
+
+  async resetPasswordWithOtp(
+    email: string,
+    otp: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    const entry = this.otpStore.get(email.toLowerCase());
+
+    if (!entry || entry.purpose !== 'reset') {
+      throw new BadRequestException('No reset OTP found for this email. Please request again.');
+    }
+    if (Date.now() > entry.expiresAt) {
+      this.otpStore.delete(email.toLowerCase());
+      throw new BadRequestException('OTP has expired. Please request a new one.');
+    }
+    if (entry.otp !== otp.trim()) {
+      throw new BadRequestException('Invalid OTP. Please try again.');
+    }
+
+    this.otpStore.delete(email.toLowerCase());
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { email: email.toLowerCase() },
+      data: { password: hashedPassword, updatedAt: Date.now() },
+    });
+
+    return { message: 'Password reset successfully. You can now log in.' };
+  }
 
   private isBCryptHash(str: string): boolean {
     return /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(str);

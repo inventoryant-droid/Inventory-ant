@@ -1,108 +1,325 @@
 import { API_BASE_URL } from '../utils/config';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { toast } from 'react-hot-toast';
-import { Mail, Lock, Phone, User, ArrowRight, Eye, EyeOff, CheckCircle2, ShieldCheck, RefreshCw, ShieldAlert, Cpu, Sparkles } from 'lucide-react';
+import { Mail, Lock, Phone, User, ArrowRight, CheckCircle2, ShieldCheck, RefreshCw, ShieldAlert, Cpu, Sparkles, KeyRound, Eye, EyeOff, Loader2 } from 'lucide-react';
 import PasswordInput from '../components/ui/PasswordInput';
 import '../App.css';
 
-function AuthScreen({ onLogin }) {
-  const [view, setView] = useState('landing'); // 'landing', 'login', 'otp', 'signup', 'admin'
+// ─── OTP Input Component ───────────────────────────────────────────────────
+function OtpInput({ value, onChange }) {
+  const inputs = useRef([]);
 
-  // Form states
+  const handleChange = (e, idx) => {
+    const val = e.target.value.replace(/\D/g, '');
+    if (!val && e.nativeEvent.inputType !== 'deleteContentBackward') return;
+    const newOtp = [...value];
+    newOtp[idx] = val.slice(-1);
+    onChange(newOtp);
+    if (val && idx < 5) inputs.current[idx + 1]?.focus();
+  };
+
+  const handleKeyDown = (e, idx) => {
+    if (e.key === 'Backspace') {
+      const newOtp = [...value];
+      if (newOtp[idx]) {
+        newOtp[idx] = '';
+        onChange(newOtp);
+      } else if (idx > 0) {
+        inputs.current[idx - 1]?.focus();
+      }
+    }
+    if (e.key === 'ArrowLeft' && idx > 0) inputs.current[idx - 1]?.focus();
+    if (e.key === 'ArrowRight' && idx < 5) inputs.current[idx + 1]?.focus();
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+    const newOtp = [...value];
+    pasted.split('').forEach((ch, i) => { newOtp[i] = ch; });
+    onChange(newOtp);
+    inputs.current[Math.min(pasted.length, 5)]?.focus();
+  };
+
+  return (
+    <div className="flex justify-center gap-2 mb-2">
+      {value.map((digit, idx) => (
+        <input
+          key={idx}
+          ref={el => inputs.current[idx] = el}
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          value={digit}
+          onChange={e => handleChange(e, idx)}
+          onKeyDown={e => handleKeyDown(e, idx)}
+          onFocus={e => e.target.select()}
+          onPaste={handlePaste}
+          className="w-12 h-14 text-center text-2xl font-bold text-slate-800 bg-white border-2 border-slate-200 focus:border-[#7c3aed] focus:ring-2 focus:ring-[#7c3aed]/20 rounded-xl outline-none transition-all"
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Countdown Timer Hook ──────────────────────────────────────────────────
+function useCountdown(seconds) {
+  const [remaining, setRemaining] = useState(seconds);
+  const timerRef = useRef(null);
+
+  const start = (s = seconds) => {
+    setRemaining(s);
+    clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setRemaining(prev => {
+        if (prev <= 1) { clearInterval(timerRef.current); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  useEffect(() => () => clearInterval(timerRef.current), []);
+  return { remaining, start, canResend: remaining === 0 };
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────
+function AuthScreen({ onLogin }) {
+  // 'landing' | 'login' | 'otp' | 'signup' | 'admin'
+  // | 'verify-otp' | 'forgot-password' | 'verify-reset-otp' | 'set-new-password'
+  const [view, setView] = useState('landing');
+
+  // Form fields
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mobile, setMobile] = useState('');
   const [adminUsername, setAdminUsername] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [generatedOtp, setGeneratedOtp] = useState('');
-  const [enteredOtp, setEnteredOtp] = useState(['', '', '', '', '', '']);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
 
+  // OTP state
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
+  const [loading, setLoading] = useState(false);
+
+  // Countdown for resend
+  const { remaining, start: startCountdown, canResend } = useCountdown(60);
 
   const savedId = localStorage.getItem('ant_user');
   const savedToken = localStorage.getItem('ant_token');
   const savedRole = localStorage.getItem('ant_role') || 'user';
 
-  const handleUserSubmit = async (e) => {
-    e.preventDefault();
-    if (view === 'signup') {
-      if (password !== confirmPassword) {
-        toast.error('Passwords do not match. Please try again.');
-        return;
-      }
-      
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      setGeneratedOtp(otp);
-      toast.success(`OTP sent successfully to mobile! (Default Code: ${otp})`);
-      
-      setView('verify-otp');
-    } else if (view === 'login') {
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-        const data = await res.json();
-        if (data.access_token) {
-          onLogin(data.user.email, data.user.role, data.access_token, data.refresh_token);
-        } else {
-          toast.error(data.message || 'Invalid credentials');
-        }
-      } catch (err) {
-        toast.error('Network error');
-      }
-    } else if (view === 'otp') {
-      toast.success(`OTP sent to ${mobile}! (Mocked)`);
-    }
+  // ─── Navigate helpers ──────────────────────────────────────────────────
+  const goTo = (v) => {
+    setView(v);
+    setOtpDigits(['', '', '', '', '', '']);
+    setLoading(false);
   };
 
-  const handleOtpChange = (element, index) => {
-    if (isNaN(element.value)) return false;
-    const newOtp = [...enteredOtp];
-    newOtp[index] = element.value;
-    setEnteredOtp(newOtp);
-
-    if (element.nextSibling && element.value) {
-      element.nextSibling.focus();
-    }
-  };
-
-  const handleOtpSubmit = async (e) => {
+  // ─── Signup: Step 1 — Send OTP ──────────────────────────────────────
+  const handleSignupSubmit = async (e) => {
     e.preventDefault();
-    const code = enteredOtp.join('');
-    if (code !== generatedOtp) {
-      toast.error('Invalid OTP. Please try again.');
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match. Please try again.');
       return;
     }
-    
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters.');
+      return;
+    }
+    setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+      const res = await fetch(`${API_BASE_URL}/api/auth/send-signup-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, phone: mobile }) 
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.message || 'Failed to send OTP.');
+        return;
+      }
+      toast.success('OTP sent! Please check your email inbox.');
+      startCountdown(60);
+      goTo('verify-otp');
+    } catch {
+      toast.error('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Signup: Step 2 — Verify OTP ────────────────────────────────────
+  const handleSignupOtpSubmit = async (e) => {
+    e.preventDefault();
+    const otp = otpDigits.join('');
+    if (otp.length < 6) { toast.error('Please enter the complete 6-digit OTP.'); return; }
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/verify-signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp, name, password, phone: mobile || undefined }),
+      });
+      const data = await res.json();
+      if (data.access_token) {
+        toast.success('Account created successfully! Welcome to Inventory Ant 🐜');
+        onLogin(data.user.email, data.user.role, data.access_token, data.refresh_token);
+      } else {
+        toast.error(data.message || 'OTP verification failed.');
+      }
+    } catch {
+      toast.error('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Signup: Resend OTP ──────────────────────────────────────────────
+  const handleResendSignupOtp = async () => {
+    if (!canResend) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/send-signup-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.message || 'Failed to resend OTP.'); return; }
+      toast.success('New OTP sent to your email!');
+      setOtpDigits(['', '', '', '', '', '']);
+      startCountdown(60);
+    } catch {
+      toast.error('Network error.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Login ───────────────────────────────────────────────────────────
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
       if (data.access_token) {
         onLogin(data.user.email, data.user.role, data.access_token, data.refresh_token);
       } else {
-        toast.error(data.message || 'Signup failed');
+        toast.error(data.message || 'Invalid credentials');
       }
-    } catch (err) {
+    } catch {
       toast.error('Network error');
+    } finally {
+      setLoading(false);
     }
   };
 
+  // ─── Forgot Password: Step 1 — Send Reset OTP ───────────────────────
+  const handleForgotPasswordSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.message || 'Failed to send OTP.'); return; }
+      toast.success('If your email is registered, an OTP has been sent!');
+      startCountdown(60);
+      goTo('verify-reset-otp');
+    } catch {
+      toast.error('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Forgot Password: Resend OTP ─────────────────────────────────────
+  const handleResendResetOtp = async () => {
+    if (!canResend) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.message || 'Failed to resend OTP.'); return; }
+      toast.success('New OTP sent to your email!');
+      setOtpDigits(['', '', '', '', '', '']);
+      startCountdown(60);
+    } catch {
+      toast.error('Network error.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Forgot Password: Step 2 — Verify Reset OTP ──────────────────────
+  const handleResetOtpSubmit = async (e) => {
+    e.preventDefault();
+    const otp = otpDigits.join('');
+    if (otp.length < 6) { toast.error('Please enter the complete 6-digit OTP.'); return; }
+    // Just move to set-new-password screen, OTP is verified on final step
+    setView('set-new-password');
+  };
+
+  // ─── Forgot Password: Step 3 — Set New Password ──────────────────────
+  const handleSetNewPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmNewPassword) {
+      toast.error('Passwords do not match. Please try again.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters.');
+      return;
+    }
+    setLoading(true);
+    const otp = otpDigits.join('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp, newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.message || 'Failed to reset password.');
+        // Go back to OTP entry if OTP was wrong/expired
+        goTo('verify-reset-otp');
+        return;
+      }
+      toast.success('Password reset successfully! Please log in.');
+      setPassword('');
+      goTo('login');
+    } catch {
+      toast.error('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Admin Login ─────────────────────────────────────────────────────
   const handleAdminSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: adminUsername, password })
+        body: JSON.stringify({ email: adminUsername, password }),
       });
       const data = await res.json();
       if (data.access_token) {
@@ -110,11 +327,14 @@ function AuthScreen({ onLogin }) {
       } else {
         toast.error(data.message || 'Invalid admin credentials');
       }
-    } catch (err) {
+    } catch {
       toast.error('Network error');
+    } finally {
+      setLoading(false);
     }
   };
 
+  // ─── Google Auth ──────────────────────────────────────────────────────
   const handleGoogleAuth = useGoogleLogin({
     flow: 'auth-code',
     onSuccess: async (codeResponse) => {
@@ -122,7 +342,7 @@ function AuthScreen({ onLogin }) {
         const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: codeResponse.code })
+          body: JSON.stringify({ code: codeResponse.code }),
         });
         const data = await res.json();
         if (data && data.access_token) {
@@ -130,12 +350,13 @@ function AuthScreen({ onLogin }) {
         } else {
           toast.error('Failed to authenticate with Google');
         }
-      } catch(e) {
+      } catch {
         toast.error('Google Login failed');
       }
-    }
+    },
   });
 
+  // ─── Shared UI ────────────────────────────────────────────────────────
   const GoogleIcon = () => (
     <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
       <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -151,29 +372,61 @@ function AuthScreen({ onLogin }) {
     </div>
   );
 
+  const CardBack = ({ to, label = '← Back' }) => (
+    <button
+      onClick={() => goTo(to)}
+      className="absolute top-6 left-6 text-slate-400 hover:text-slate-600 transition-colors bg-transparent border-none cursor-pointer text-xs font-bold"
+    >
+      {label}
+    </button>
+  );
+
+  const SubmitBtn = ({ label, icon }) => (
+    <button
+      type="submit"
+      disabled={loading}
+      className="w-full py-3.5 mt-2 text-base font-bold bg-[#7c3aed] hover:bg-[#6d28d9] disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-md shadow-[#7c3aed]/20 border-none cursor-pointer flex items-center justify-center gap-2"
+    >
+      {loading ? <Loader2 size={18} className="animate-spin" /> : (icon || <ArrowRight size={18} />)}
+      {loading ? 'Please wait...' : label}
+    </button>
+  );
+
+  const ResendSection = ({ onResend }) => (
+    <div className="flex items-center justify-between mt-4">
+      <span className="text-sm font-bold text-slate-500">
+        {canResend ? 'Didn\'t receive it?' : `Resend OTP in ${remaining}s`}
+      </span>
+      <button
+        type="button"
+        onClick={onResend}
+        disabled={!canResend || loading}
+        className={`text-sm font-bold flex items-center gap-1 bg-transparent border-none transition-colors ${canResend ? 'text-[#7c3aed] cursor-pointer hover:text-[#6d28d9]' : 'text-slate-300 cursor-not-allowed'}`}
+      >
+        <RefreshCw size={14} /> Resend OTP
+      </button>
+    </div>
+  );
+
   const isDark = view === 'admin';
 
   return (
-    <div 
+    <div
       className={`w-screen h-screen overflow-auto m-0 transition-colors duration-300 ${isDark ? 'bg-[#030712]' : 'bg-[#f8fafc]'} ${view !== 'landing' ? 'flex flex-col items-center justify-center p-4' : ''}`}
       style={{
-        backgroundImage: view !== 'landing' ? (isDark 
-          ? 'radial-gradient(#1e293b 1px, transparent 1px)' 
+        backgroundImage: view !== 'landing' ? (isDark
+          ? 'radial-gradient(#1e293b 1px, transparent 1px)'
           : 'radial-gradient(#cbd5e1 1px, transparent 1px)') : 'none',
-        backgroundSize: '24px 24px'
+        backgroundSize: '24px 24px',
       }}
     >
 
-
+      {/* ── Landing ──────────────────────────────────────────────────────── */}
       {view === 'landing' && (
         <div className="w-full flex flex-col m-0 p-0 overflow-x-hidden relative">
-          <div 
+          <div
             className="w-full min-h-screen flex flex-col items-center justify-center px-4 py-12"
-            style={{
-              backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)',
-              backgroundSize: '24px 24px',
-              backgroundColor: '#f8fafc'
-            }}
+            style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '24px 24px', backgroundColor: '#f8fafc' }}
           >
             <div className="max-w-3xl text-center space-y-6">
               {savedId && savedToken && (
@@ -182,8 +435,8 @@ function AuthScreen({ onLogin }) {
                     <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Authorized Node</div>
                     <div className="font-bold text-slate-700 text-sm">{savedId}</div>
                   </div>
-                  <button 
-                    onClick={() => onLogin(savedId, savedRole, savedToken)} 
+                  <button
+                    onClick={() => onLogin(savedId, savedRole, savedToken)}
                     className="px-4 py-2 text-xs font-bold bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-lg transition-colors border-none cursor-pointer"
                   >Resume Session</button>
                 </div>
@@ -197,15 +450,15 @@ function AuthScreen({ onLogin }) {
               <p className="text-slate-500 text-lg md:text-xl max-w-2xl mx-auto font-medium leading-relaxed mt-6">
                 Artificial Intelligence powered B2B Warehouse Intelligence. Control your master records, billing invoices, and barcode registers with natural language commands.
               </p>
-              
+
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
-                <button 
+                <button
                   onClick={() => setView('login')}
                   className="w-full sm:w-auto bg-[#7c3aed] hover:bg-[#6d28d9] text-white px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-3 transition-all shadow-lg shadow-[#7c3aed]/20 border-none cursor-pointer text-base"
                 >
                   Login as User <ArrowRight size={18} />
                 </button>
-                <button 
+                <button
                   onClick={() => setView('signup')}
                   className="w-full sm:w-auto bg-[#7c3aed]/10 hover:bg-[#7c3aed]/20 text-[#7c3aed] px-8 py-4 rounded-xl font-bold transition-all border-none cursor-pointer text-base"
                 >
@@ -222,57 +475,34 @@ function AuthScreen({ onLogin }) {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl w-full mx-auto">
               <div className="bg-[#111827] border border-slate-800 rounded-2xl p-8 flex flex-col text-left hover:bg-[#1f2937] transition-colors">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-6 bg-red-500/10 border border-red-500/20 text-red-500">
-                  <ShieldAlert size={24} />
-                </div>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-6 bg-red-500/10 border border-red-500/20 text-red-500"><ShieldAlert size={24} /></div>
                 <h3 className="text-white font-bold text-xl mb-3">1. Manual Chaos</h3>
-                <p className="text-slate-400 text-sm leading-relaxed mb-8 flex-1">
-                  Excel sheets and registers manual maintenance me multiple entries aur formatting mistakes ho hi jaati hain. This causes massive reconciliation headaches.
-                </p>
+                <p className="text-slate-400 text-sm leading-relaxed mb-8 flex-1">Excel sheets and registers manual maintenance me multiple entries aur formatting mistakes ho hi jaati hain. This causes massive reconciliation headaches.</p>
                 <div className="w-full h-px bg-slate-800 mb-4"></div>
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 size={16} className="text-green-500 shrink-0" />
-                  <span className="text-[#d946ef] text-xs font-bold tracking-wide">Ant X Terminal handles NLP commands</span>
-                </div>
+                <div className="flex items-center gap-3"><CheckCircle2 size={16} className="text-green-500 shrink-0" /><span className="text-[#d946ef] text-xs font-bold tracking-wide">Ant X Terminal handles NLP commands</span></div>
               </div>
 
               <div className="bg-[#111827] border border-slate-800 rounded-2xl p-8 flex flex-col text-left hover:bg-[#1f2937] transition-colors">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-6 bg-orange-500/10 border border-orange-500/20 text-orange-500">
-                  <Cpu size={24} />
-                </div>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-6 bg-orange-500/10 border border-orange-500/20 text-orange-500"><Cpu size={24} /></div>
                 <h3 className="text-white font-bold text-xl mb-3">2. Invisible Losses</h3>
-                <p className="text-slate-400 text-sm leading-relaxed mb-8 flex-1">
-                  Inventory leakage aur undocumented outbound entry stock updates ke lack me identify nahi ho pate. Margin losses are difficult to pinpoint.
-                </p>
+                <p className="text-slate-400 text-sm leading-relaxed mb-8 flex-1">Inventory leakage aur undocumented outbound entry stock updates ke lack me identify nahi ho pate. Margin losses are difficult to pinpoint.</p>
                 <div className="w-full h-px bg-slate-800 mb-4"></div>
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 size={16} className="text-green-500 shrink-0" />
-                  <span className="text-[#d946ef] text-xs font-bold tracking-wide">Live Sales Checkout syncs terminal stocks</span>
-                </div>
+                <div className="flex items-center gap-3"><CheckCircle2 size={16} className="text-green-500 shrink-0" /><span className="text-[#d946ef] text-xs font-bold tracking-wide">Live Sales Checkout syncs terminal stocks</span></div>
               </div>
 
               <div className="bg-[#111827] border border-slate-800 rounded-2xl p-8 flex flex-col text-left hover:bg-[#1f2937] transition-colors">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-6 bg-purple-500/10 border border-purple-500/20 text-purple-500">
-                  <Sparkles size={24} />
-                </div>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-6 bg-purple-500/10 border border-purple-500/20 text-purple-500"><Sparkles size={24} /></div>
                 <h3 className="text-white font-bold text-xl mb-3">3. Expiry & Reorder Ignores</h3>
-                <p className="text-slate-400 text-sm leading-relaxed mb-8 flex-1">
-                  Low stock levels and batch expiration dates check karna miss ho jata hai. Business loses order momentum when core stocks run dry.
-                </p>
+                <p className="text-slate-400 text-sm leading-relaxed mb-8 flex-1">Low stock levels and batch expiration dates check karna miss ho jata hai. Business loses order momentum when core stocks run dry.</p>
                 <div className="w-full h-px bg-slate-800 mb-4"></div>
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 size={16} className="text-green-500 shrink-0" />
-                  <span className="text-[#d946ef] text-xs font-bold tracking-wide">Smart metrics and automated low-stock warnings</span>
-                </div>
+                <div className="flex items-center gap-3"><CheckCircle2 size={16} className="text-green-500 shrink-0" /><span className="text-[#d946ef] text-xs font-bold tracking-wide">Smart metrics and automated low-stock warnings</span></div>
               </div>
             </div>
           </div>
 
           <footer className="w-full bg-[#030712] py-8 border-t border-slate-800 flex flex-col items-center justify-center gap-4 relative z-10">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-[#7c3aed] rounded-lg flex items-center justify-center shadow-lg">
-                <span className="text-sm grayscale brightness-150 relative top-[-1px]">🐜</span>
-              </div>
+              <div className="w-8 h-8 bg-[#7c3aed] rounded-lg flex items-center justify-center shadow-lg"><span className="text-sm grayscale brightness-150 relative top-[-1px]">🐜</span></div>
               <span className="text-white font-bold tracking-widest text-sm">INVENTORY ANT</span>
             </div>
             <p className="text-slate-500 text-xs text-center px-4">© 2026 Inventory Ant. B2B Warehouse Intelligence SaaS. All rights reserved.</p>
@@ -280,90 +510,49 @@ function AuthScreen({ onLogin }) {
         </div>
       )}
 
-      {(view === 'login' || view === 'otp') && (
+      {/* ── Login ─────────────────────────────────────────────────────────── */}
+      {view === 'login' && (
         <div className="bg-white rounded-[2rem] shadow-xl p-8 w-full max-w-md mx-auto border border-slate-100 text-center relative z-10 my-8">
           <LogoIcon />
           <h2 className="text-2xl font-black text-[#7c3aed] m-0 tracking-tight">INVENTORY ANT</h2>
-          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 mb-6">
-            B2B Warehouse Intelligence
-          </p>
+          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 mb-8">B2B Warehouse Intelligence</p>
 
-          <div className="flex mb-6 bg-slate-50 p-1 rounded-xl border border-slate-100">
-            <button 
-              type="button"
-              onClick={() => setView('login')}
-              className={`flex-1 py-2.5 text-sm font-bold rounded-lg cursor-pointer transition-all border-none ${view === 'login' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 bg-transparent'}`}
-            >
-              Password Login
-            </button>
-            <button 
-              type="button"
-              onClick={() => setView('otp')}
-              className={`flex-1 py-2.5 text-sm font-bold rounded-lg cursor-pointer transition-all border-none ${view === 'otp' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 bg-transparent'}`}
-            >
-              OTP Login
-            </button>
-          </div>
-
-          <h3 className="text-xl font-bold text-slate-800 m-0">
-            {view === 'login' ? 'Account Access Portal' : 'OTP Login Access'}
-          </h3>
-          <p className="text-slate-500 text-sm mt-1 mb-8">
-            {view === 'login' ? 'Enter your registered credentials to sign in' : 'Get an OTP to verify and access your account'}
-          </p>
-
-          <form onSubmit={handleUserSubmit} className="flex flex-col gap-5 text-left">
-            {view === 'login' ? (
-              <>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email or Phone Number</label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input 
-                      type="text" 
-                      placeholder="amit@warehouse.com ya 9876543210" 
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3.5 bg-white text-slate-800 border border-slate-200 focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] rounded-xl text-sm outline-none transition-all"
-                      required
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Password</label>
-                  <PasswordInput
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    iconLeft={<Lock className="text-slate-400" size={18} />}
-                  />
-                </div>
-              </>
-            ) : (
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mobile Number</label>
-                <div className="relative flex items-center border border-slate-200 rounded-xl focus-within:border-[#7c3aed] focus-within:ring-1 focus-within:ring-[#7c3aed] bg-white transition-all overflow-hidden">
-                  <span className="pl-4 pr-2 py-3.5 text-slate-400 font-bold border-r border-slate-100">+91</span>
-                  <input 
-                    type="tel" 
-                    placeholder="98765 43210" 
-                    value={mobile}
-                    onChange={e => setMobile(e.target.value)}
-                    className="flex-1 px-4 py-3.5 text-slate-800 text-sm outline-none bg-transparent"
-                    required
-                  />
-                  <Phone className="absolute right-4 text-slate-400" size={18} />
-                </div>
+          <form onSubmit={handleLoginSubmit} className="flex flex-col gap-5 text-left">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  type="email"
+                  placeholder="amit@warehouse.com"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3.5 bg-white text-slate-800 border border-slate-200 focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] rounded-xl text-sm outline-none transition-all"
+                  required
+                />
               </div>
-            )}
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Password</label>
+                <button
+                  type="button"
+                  onClick={() => { setEmail(email); goTo('forgot-password'); }}
+                  className="text-xs font-bold text-[#7c3aed] hover:text-[#6d28d9] bg-transparent border-none cursor-pointer p-0 hover:underline"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+              <PasswordInput
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                iconLeft={<Lock className="text-slate-400" size={18} />}
+              />
+            </div>
 
-            <button 
-              type="submit" 
-              className="w-full py-3.5 mt-2 text-base font-bold bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-xl transition-all shadow-md shadow-[#7c3aed]/20 border-none cursor-pointer flex items-center justify-center gap-2"
-            >
-              {view === 'login' ? 'Sign In Karein' : 'OTP Send Karein'} <ArrowRight size={18} />
-            </button>
+            <SubmitBtn label="Sign In Karein" />
 
             <div className="flex items-center gap-4 my-2">
               <div className="flex-1 h-px bg-slate-100"></div>
@@ -371,8 +560,8 @@ function AuthScreen({ onLogin }) {
               <div className="flex-1 h-px bg-slate-100"></div>
             </div>
 
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => handleGoogleAuth()}
               className="w-full py-3.5 text-sm font-medium bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl transition-all shadow-sm flex items-center justify-center gap-3 cursor-pointer"
             >
@@ -382,36 +571,30 @@ function AuthScreen({ onLogin }) {
 
           <p className="mt-8 mb-0 text-sm text-slate-500 font-medium">
             Naye User hain?{' '}
-            <button type="button" onClick={() => setView('signup')} className="text-[#7c3aed] font-bold bg-transparent border-none cursor-pointer p-0 hover:underline">
+            <button type="button" onClick={() => goTo('signup')} className="text-[#7c3aed] font-bold bg-transparent border-none cursor-pointer p-0 hover:underline">
               Sign Up here
             </button>
           </p>
-          
-          <button 
-            onClick={() => setView('landing')}
-            className="absolute top-6 left-6 text-slate-400 hover:text-slate-600 transition-colors bg-transparent border-none cursor-pointer text-xs font-bold"
-          >
-            &larr; Back
-          </button>
+
+          <CardBack to="landing" />
         </div>
       )}
 
+      {/* ── Signup Form ───────────────────────────────────────────────────── */}
       {view === 'signup' && (
         <div className="bg-white rounded-[2rem] shadow-xl p-8 w-full max-w-md mx-auto border border-slate-100 text-center relative z-10 my-8">
           <LogoIcon />
           <h2 className="text-2xl font-black text-[#7c3aed] m-0 tracking-tight uppercase">Join Inventory Ant</h2>
-          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 mb-8">
-            SaaS Warehouse Signup
-          </p>
+          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 mb-8">SaaS Warehouse Signup</p>
 
-          <form onSubmit={handleUserSubmit} className="flex flex-col gap-5 text-left">
+          <form onSubmit={handleSignupSubmit} className="flex flex-col gap-5 text-left">
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Full Name</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  type="text" 
-                  placeholder="Amit Sharma" 
+                <input
+                  type="text"
+                  placeholder="Amit Sharma"
                   value={name}
                   onChange={e => setName(e.target.value)}
                   className="w-full pl-11 pr-4 py-3.5 bg-white text-slate-800 border border-slate-200 focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] rounded-xl text-sm outline-none transition-all"
@@ -424,9 +607,9 @@ function AuthScreen({ onLogin }) {
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  type="email" 
-                  placeholder="amit@warehouse.com" 
+                <input
+                  type="email"
+                  placeholder="amit@warehouse.com"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   className="w-full pl-11 pr-4 py-3.5 bg-white text-slate-800 border border-slate-200 focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] rounded-xl text-sm outline-none transition-all"
@@ -436,16 +619,15 @@ function AuthScreen({ onLogin }) {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mobile Number</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mobile Number (Optional)</label>
               <div className="relative flex items-center border border-slate-200 rounded-xl focus-within:border-[#7c3aed] focus-within:ring-1 focus-within:ring-[#7c3aed] bg-white transition-all overflow-hidden">
                 <span className="pl-4 pr-2 py-3.5 text-slate-400 font-bold border-r border-slate-100">+91</span>
-                <input 
-                  type="tel" 
-                  placeholder="98765 43210" 
+                <input
+                  type="tel"
+                  placeholder="98765 43210"
                   value={mobile}
                   onChange={e => setMobile(e.target.value)}
                   className="flex-1 px-4 py-3.5 text-slate-800 text-sm outline-none bg-transparent"
-                  required
                 />
                 <Phone className="absolute right-4 text-slate-400" size={18} />
               </div>
@@ -453,54 +635,27 @@ function AuthScreen({ onLogin }) {
 
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Choose Password</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••" 
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-11 py-3.5 bg-white text-slate-800 border border-slate-200 focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] rounded-xl text-sm outline-none transition-all"
-                  required
-                />
-                <button 
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer p-0"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
+              <PasswordInput
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                iconLeft={<Lock className="text-slate-400" size={18} />}
+              />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Confirm Password</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder="••••••••" 
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  className="w-full pl-11 pr-11 py-3.5 bg-white text-slate-800 border border-slate-200 focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] rounded-xl text-sm outline-none transition-all"
-                  required
-                />
-                <button 
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer p-0"
-                >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
+              <PasswordInput
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                iconLeft={<Lock className="text-slate-400" size={18} />}
+              />
             </div>
 
-            <button 
-              type="submit" 
-              className="w-full py-3.5 mt-2 text-base font-bold bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-xl transition-all shadow-md shadow-[#7c3aed]/20 border-none cursor-pointer flex items-center justify-center gap-2"
-            >
-              OTP Mangayein <ArrowRight size={18} />
-            </button>
+            <SubmitBtn label="Email OTP Send Karein" />
 
             <div className="flex items-center gap-4 my-2">
               <div className="flex-1 h-px bg-slate-100"></div>
@@ -508,8 +663,8 @@ function AuthScreen({ onLogin }) {
               <div className="flex-1 h-px bg-slate-100"></div>
             </div>
 
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => handleGoogleAuth()}
               className="w-full py-3.5 text-sm font-medium bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl transition-all shadow-sm flex items-center justify-center gap-3 cursor-pointer"
             >
@@ -519,74 +674,157 @@ function AuthScreen({ onLogin }) {
 
           <p className="mt-8 mb-0 text-sm text-slate-500 font-medium">
             Already registered?{' '}
-            <button type="button" onClick={() => setView('login')} className="text-[#7c3aed] font-bold bg-transparent border-none cursor-pointer p-0 hover:underline">
+            <button type="button" onClick={() => goTo('login')} className="text-[#7c3aed] font-bold bg-transparent border-none cursor-pointer p-0 hover:underline">
               Sign In Here
             </button>
           </p>
-          
-          <button 
-            onClick={() => setView('landing')}
-            className="absolute top-6 left-6 text-slate-400 hover:text-slate-600 transition-colors bg-transparent border-none cursor-pointer text-xs font-bold"
-          >
-            &larr; Back
-          </button>
+
+          <CardBack to="landing" />
         </div>
       )}
 
+      {/* ── Signup OTP Verification ───────────────────────────────────────── */}
       {view === 'verify-otp' && (
         <div className="bg-white rounded-[2rem] shadow-xl p-8 w-full max-w-md mx-auto border border-slate-100 text-center relative z-10 my-8">
-          <LogoIcon />
-          <h2 className="text-2xl font-black text-[#7c3aed] m-0 tracking-tight uppercase">Join Inventory Ant</h2>
-          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 mb-8">
-            SaaS Warehouse Signup
+          <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-indigo-100">
+            <Mail size={28} className="text-[#7c3aed]" />
+          </div>
+          <h2 className="text-2xl font-black text-[#7c3aed] m-0 tracking-tight uppercase">Verify Your Email</h2>
+          <p className="text-slate-500 text-sm mt-2 mb-1">
+            We've sent a 6-digit OTP to
           </p>
+          <p className="text-slate-800 font-bold text-sm mb-8">{email}</p>
 
-          <h3 className="text-xl font-bold text-slate-800 m-0">Verify OTP</h3>
-          <p className="text-slate-500 text-sm mt-1 mb-6">
-            Enter 6 digit code sent to +91 {mobile}
-          </p>
+          <form onSubmit={handleSignupOtpSubmit} className="flex flex-col gap-6 text-left">
+            <OtpInput value={otpDigits} onChange={setOtpDigits} />
 
-          <form onSubmit={handleOtpSubmit} className="flex flex-col gap-6 text-left">
-            <div className="flex justify-center gap-2 mb-2">
-              {enteredOtp.map((data, index) => {
-                return (
-                  <input
-                    key={index}
-                    type="text"
-                    maxLength="1"
-                    value={data}
-                    onChange={e => handleOtpChange(e.target, index)}
-                    onFocus={e => e.target.select()}
-                    className="w-12 h-14 text-center text-xl font-bold text-slate-800 bg-white border border-slate-200 focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] rounded-xl outline-none transition-all"
-                  />
-                );
-              })}
-            </div>
-
-            <button 
-              type="submit" 
-              className="w-full py-4 mt-2 text-base font-bold bg-[#6366f1] hover:bg-[#4f46e5] text-white rounded-xl transition-all shadow-md shadow-[#6366f1]/20 border-none cursor-pointer flex items-center justify-center gap-2"
+            <button
+              type="submit"
+              disabled={loading || otpDigits.join('').length < 6}
+              className="w-full py-4 mt-1 text-base font-bold bg-[#7c3aed] hover:bg-[#6d28d9] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-md shadow-[#7c3aed]/20 border-none cursor-pointer flex items-center justify-center gap-2"
             >
-              <ShieldCheck size={18} /> OTP Verify & Sign Up
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
+              {loading ? 'Verifying...' : 'Verify & Create Account'}
             </button>
-            
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-sm font-bold text-[#7c3aed]">Resend OTP in 59s</span>
-              <button type="button" className="text-sm font-bold text-slate-300 flex items-center gap-1 bg-transparent border-none cursor-not-allowed">
-                <RefreshCw size={14} /> Resend OTP
-              </button>
-            </div>
+
+            <ResendSection onResend={handleResendSignupOtp} />
           </form>
 
-          <button 
-            onClick={() => setView('signup')}
-            className="absolute top-6 left-6 text-slate-400 hover:text-slate-600 transition-colors bg-transparent border-none cursor-pointer text-xs font-bold"
-          >
-            &larr; Back
-          </button>
+          <CardBack to="signup" />
         </div>
       )}
 
+      {/* ── Forgot Password: Step 1 — Email ──────────────────────────────── */}
+      {view === 'forgot-password' && (
+        <div className="bg-white rounded-[2rem] shadow-xl p-8 w-full max-w-md mx-auto border border-slate-100 text-center relative z-10 my-8">
+          <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-100">
+            <KeyRound size={28} className="text-amber-500" />
+          </div>
+          <h2 className="text-2xl font-black text-slate-800 m-0 tracking-tight">Forgot Password?</h2>
+          <p className="text-slate-500 text-sm mt-2 mb-8">
+            Enter your registered email address. We'll send a 6-digit OTP to reset your password.
+          </p>
+
+          <form onSubmit={handleForgotPasswordSubmit} className="flex flex-col gap-5 text-left">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Registered Email</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  type="email"
+                  placeholder="amit@warehouse.com"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3.5 bg-white text-slate-800 border border-slate-200 focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] rounded-xl text-sm outline-none transition-all"
+                  required
+                />
+              </div>
+            </div>
+
+            <SubmitBtn label="Send Reset OTP" icon={<Mail size={18} />} />
+          </form>
+
+          <CardBack to="login" />
+        </div>
+      )}
+
+      {/* ── Forgot Password: Step 2 — OTP ────────────────────────────────── */}
+      {view === 'verify-reset-otp' && (
+        <div className="bg-white rounded-[2rem] shadow-xl p-8 w-full max-w-md mx-auto border border-slate-100 text-center relative z-10 my-8">
+          <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-100">
+            <ShieldCheck size={28} className="text-amber-500" />
+          </div>
+          <h2 className="text-2xl font-black text-slate-800 m-0 tracking-tight">Enter OTP</h2>
+          <p className="text-slate-500 text-sm mt-2 mb-1">We've sent a 6-digit OTP to</p>
+          <p className="text-slate-800 font-bold text-sm mb-8">{email}</p>
+
+          <form onSubmit={handleResetOtpSubmit} className="flex flex-col gap-6 text-left">
+            <OtpInput value={otpDigits} onChange={setOtpDigits} />
+
+            <button
+              type="submit"
+              disabled={loading || otpDigits.join('').length < 6}
+              className="w-full py-4 mt-1 text-base font-bold bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-md border-none cursor-pointer flex items-center justify-center gap-2"
+            >
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
+              {loading ? 'Please wait...' : 'Continue'}
+            </button>
+
+            <ResendSection onResend={handleResendResetOtp} />
+          </form>
+
+          <CardBack to="forgot-password" />
+        </div>
+      )}
+
+      {/* ── Forgot Password: Step 3 — New Password ───────────────────────── */}
+      {view === 'set-new-password' && (
+        <div className="bg-white rounded-[2rem] shadow-xl p-8 w-full max-w-md mx-auto border border-slate-100 text-center relative z-10 my-8">
+          <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-100">
+            <Lock size={28} className="text-emerald-500" />
+          </div>
+          <h2 className="text-2xl font-black text-slate-800 m-0 tracking-tight">Set New Password</h2>
+          <p className="text-slate-500 text-sm mt-2 mb-8">
+            Choose a strong new password for your account.
+          </p>
+
+          <form onSubmit={handleSetNewPasswordSubmit} className="flex flex-col gap-5 text-left">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">New Password</label>
+              <PasswordInput
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                iconLeft={<Lock className="text-slate-400" size={18} />}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Confirm New Password</label>
+              <PasswordInput
+                value={confirmNewPassword}
+                onChange={e => setConfirmNewPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                iconLeft={<Lock className="text-slate-400" size={18} />}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 mt-2 text-base font-bold bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-md border-none cursor-pointer flex items-center justify-center gap-2"
+            >
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
+              {loading ? 'Resetting...' : 'Reset Password'}
+            </button>
+          </form>
+
+          <CardBack to="verify-reset-otp" />
+        </div>
+      )}
+
+      {/* ── Admin Login ───────────────────────────────────────────────────── */}
       {view === 'admin' && (
         <div className="bg-[#0f172a] rounded-[2rem] shadow-2xl p-8 w-full max-w-md mx-auto border border-[#1e293b] text-center relative z-10 my-8">
           <LogoIcon />
@@ -599,9 +837,9 @@ function AuthScreen({ onLogin }) {
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Admin Username</label>
               <div className="relative">
-                <input 
-                  type="text" 
-                  placeholder="Enter admin username" 
+                <input
+                  type="text"
+                  placeholder="Enter admin username"
                   value={adminUsername}
                   onChange={e => setAdminUsername(e.target.value)}
                   className="w-full pl-4 pr-11 py-3.5 bg-[#0b0f19] text-white border border-[#1e293b] focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] rounded-xl text-sm outline-none transition-all placeholder-slate-600"
@@ -622,11 +860,13 @@ function AuthScreen({ onLogin }) {
               />
             </div>
 
-            <button 
-              type="submit" 
-              className="w-full py-4 mt-2 text-sm font-bold bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-xl transition-all shadow-lg shadow-[#7c3aed]/20 border-none cursor-pointer flex items-center justify-center gap-2"
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-4 mt-2 text-sm font-bold bg-[#7c3aed] hover:bg-[#6d28d9] disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-lg shadow-[#7c3aed]/20 border-none cursor-pointer flex items-center justify-center gap-2"
             >
-              Console Access verify karein
+              {loading ? <Loader2 size={18} className="animate-spin" /> : null}
+              {loading ? 'Authenticating...' : 'Console Access verify karein'}
             </button>
           </form>
 
@@ -634,8 +874,8 @@ function AuthScreen({ onLogin }) {
             Dhyan dein: Yaha se plans aur clients database adjust kiye ja sakte hain. Any modification will be logged in the audit-trail.
           </p>
 
-          <button 
-            onClick={() => setView('landing')}
+          <button
+            onClick={() => goTo('landing')}
             className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors bg-transparent border-none cursor-pointer text-xs font-bold"
           >
             Cancel
