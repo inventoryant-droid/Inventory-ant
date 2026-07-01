@@ -124,12 +124,18 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
 
   const dynamicColumns = useMemo(() => {
     const cols = new Set();
-    products.forEach(p => Object.keys(p).forEach(k => {
-      if (!['id', 'userId', 'quantity', 'mrp', 'costPrice', 'productId', 'hsnSac', 'name', 'details', '_headers', '_timestamp', 'timestamp', 'csv_row', 'extraAttributes'].includes(k)) {
-          cols.add(k);
-      }
+    const realProds = products.filter(p => !p._headers);
+    realProds.forEach(p => Object.keys(p).forEach(k => {
+      // Skip standard fields
+      if (['id', 'userId', 'quantity', 'mrp', 'costPrice', 'productId', 'hsnSac', 'name', 'details', '_headers', '_timestamp', 'timestamp', 'csv_row', 'extraAttributes'].includes(k)) return;
+      // Skip phantom col_N columns generated from empty Excel trailing cells
+      if (/^col_\d+$/.test(k)) return;
+      cols.add(k);
     }));
-    return Array.from(cols);
+    // Also filter out columns where ALL products have empty/null/undefined values
+    return Array.from(cols).filter(col =>
+      realProds.some(p => p[col] !== undefined && p[col] !== null && String(p[col]).trim() !== '')
+    );
   }, [products]);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -250,7 +256,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
   const standardFields = [
     { key: 'productId', placeholder: 'SKU CODE', className: 'w-24' },
     { key: 'name', placeholder: 'PRODUCT DESCRIPTION', className: 'w-48' },
-    { key: 'costPrice', placeholder: 'COST PRICE', className: 'w-24' },
+    ...(userRole !== 'staff' ? [{ key: 'costPrice', placeholder: 'COST PRICE', className: 'w-24' }] : []),
     { key: 'mrp', placeholder: 'SELLING PRICE', className: 'w-24' },
     { key: 'quantity', placeholder: 'AVAILABLE STOCK', className: 'w-24' },
   ];
@@ -292,7 +298,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
  
         {activeSubTab === 'catalog' ? (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+            <div className={`grid grid-cols-2 md:grid-cols-3 ${userRole === 'staff' ? 'lg:grid-cols-3' : 'lg:grid-cols-5'} gap-4 mb-6`}>
               {/* Total Items Card */}
               <div 
                 onClick={() => setFilterMode('all')}
@@ -307,33 +313,37 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                 </div>
               </div>
 
-              {/* With Cost Price Card */}
-              <div 
-                onClick={() => setFilterMode('withCostPrice')}
-                className={`rounded-2xl border p-5 flex items-center gap-4 cursor-pointer transition-all shadow-sm ${filterMode === 'withCostPrice' ? 'bg-emerald-50/50 border-emerald-400 ring-2 ring-emerald-100' : 'bg-white border-slate-100 hover:border-emerald-200'}`}
-              >
-                <div className="bg-emerald-100 p-3 rounded-xl text-emerald-600">
-                  <IndianRupee size={20} />
+              {/* With Cost Price Card - hidden for staff */}
+              {userRole !== 'staff' && (
+                <div 
+                  onClick={() => setFilterMode('withCostPrice')}
+                  className={`rounded-2xl border p-5 flex items-center gap-4 cursor-pointer transition-all shadow-sm ${filterMode === 'withCostPrice' ? 'bg-emerald-50/50 border-emerald-400 ring-2 ring-emerald-100' : 'bg-white border-slate-100 hover:border-emerald-200'}`}
+                >
+                  <div className="bg-emerald-100 p-3 rounded-xl text-emerald-600">
+                    <IndianRupee size={20} />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-2xl font-extrabold text-slate-800">{stats.withCostPrice}</div>
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">With Cost Price</div>
+                  </div>
                 </div>
-                <div className="text-left">
-                  <div className="text-2xl font-extrabold text-slate-800">{stats.withCostPrice}</div>
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">With Cost Price</div>
-                </div>
-              </div>
+              )}
 
-              {/* Missing Cost Price Card */}
-              <div 
-                onClick={() => setFilterMode('missingCostPrice')}
-                className={`rounded-2xl border p-5 flex items-center gap-4 cursor-pointer transition-all shadow-sm ${filterMode === 'missingCostPrice' ? 'bg-amber-50/50 border-amber-400 ring-2 ring-amber-100' : 'bg-white border-slate-100 hover:border-amber-200'}`}
-              >
-                <div className="bg-amber-100 p-3 rounded-xl text-amber-600">
-                  <Info size={20} />
+              {/* Missing Cost Price Card - hidden for staff */}
+              {userRole !== 'staff' && (
+                <div 
+                  onClick={() => setFilterMode('missingCostPrice')}
+                  className={`rounded-2xl border p-5 flex items-center gap-4 cursor-pointer transition-all shadow-sm ${filterMode === 'missingCostPrice' ? 'bg-amber-50/50 border-amber-400 ring-2 ring-amber-100' : 'bg-white border-slate-100 hover:border-amber-200'}`}
+                >
+                  <div className="bg-amber-100 p-3 rounded-xl text-amber-600">
+                    <Info size={20} />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-2xl font-extrabold text-slate-800">{stats.missingCostPrice}</div>
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Missing Cost Price</div>
+                  </div>
                 </div>
-                <div className="text-left">
-                  <div className="text-2xl font-extrabold text-slate-800">{stats.missingCostPrice}</div>
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Missing Cost Price</div>
-                </div>
-              </div>
+              )}
 
               {/* With Selling Price Card */}
               <div 
@@ -430,7 +440,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                 {dynamicColumns.map(col => (
                   <th key={col} className="px-6 py-4 text-[10px] tracking-wider font-bold text-slate-400 uppercase bg-white hidden md:table-cell">{col}</th>
                 ))}
-                <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-28 bg-white hidden md:table-cell">{headers.costPrice || 'COST PRICE'} (₹)</th>
+                {userRole !== 'staff' && <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-28 bg-white hidden md:table-cell">{headers.costPrice || 'COST PRICE'} (₹)</th>}
                 <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-28 bg-white hidden md:table-cell">{headers.mrp || 'SELLING PRICE'} (₹)</th>
                 <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase w-32 bg-white hidden md:table-cell">{headers.quantity || 'AVAILABLE STOCK'}</th>
                 <th className="px-6 py-4 text-[10px] font-bold tracking-wider text-slate-400 uppercase text-right w-24 bg-white hidden md:table-cell">ACTIONS</th>
@@ -504,19 +514,25 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                         );
                       })}
 
-                      {/* Cost Price Cell */}
-                      <td className="px-6 py-5 hidden md:table-cell">
-                        {editingProductId === p.id ? (
-                          <input 
-                            type="text" 
-                            value={editFormData.costPrice || ''} 
-                            onChange={(e) => setEditFormData({...editFormData, costPrice: e.target.value})}
-                            className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
-                          />
-                        ) : (
-                          p.costPrice ? `₹${parseFloat(p.costPrice).toFixed(2)}` : '-'
-                        )}
-                      </td>
+                      {/* Cost Price Cell - hidden for staff */}
+                      {userRole !== 'staff' && (
+                        <td className="px-6 py-5 hidden md:table-cell">
+                          {editingProductId === p.id ? (
+                            <input 
+                              type="text" 
+                              value={editFormData.costPrice || ''} 
+                              onChange={(e) => setEditFormData({...editFormData, costPrice: e.target.value})}
+                              className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
+                            />
+                          ) : (() => {
+                            const v = parseFloat(p.costPrice);
+                            const isSet = p.costPrice && !isNaN(v) && v > 0;
+                            return isSet
+                              ? <span className="font-semibold text-slate-700">₹{v.toFixed(2)}</span>
+                              : <span className="text-xs text-slate-400 italic">Not Set</span>;
+                          })()}
+                        </td>
+                      )}
 
                       {/* Selling Price / MRP Cell */}
                       <td className="px-6 py-5 hidden md:table-cell">
@@ -527,9 +543,13 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                             onChange={(e) => setEditFormData({...editFormData, mrp: e.target.value})}
                             className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
                           />
-                        ) : (
-                          p.mrp ? `₹${parseFloat(p.mrp).toFixed(2)}` : '-'
-                        )}
+                        ) : (() => {
+                          const v = parseFloat(p.mrp);
+                          const isSet = p.mrp && !isNaN(v) && v > 0;
+                          return isSet
+                            ? <span className="font-semibold text-slate-700">₹{v.toFixed(2)}</span>
+                            : <span className="text-xs text-slate-400 italic">Not Set</span>;
+                        })()}
                       </td>
 
                       {/* Available Stock Cell */}
@@ -585,7 +605,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                     {/* Mobile Expandable Row Details */}
                     {isExpanded && (
                       <tr className="md:hidden bg-slate-50/50 border-t border-slate-100">
-                        <td colSpan="4" className="px-6 py-4">
+                        <td colSpan="3" className="px-3 py-4">
                           <div className="flex flex-col gap-3 text-left">
                             {dynamicColumns.map(col => (
                               <div key={col} className="flex justify-between items-center text-xs">
@@ -603,36 +623,26 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                                 )}
                               </div>
                             ))}
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="font-bold text-slate-400 uppercase">SKU Code:</span>
-                              {editingProductId === p.id ? (
-                                <input 
-                                  type="text" 
-                                  value={editFormData.productId || ''} 
-                                  onChange={(e) => setEditFormData({...editFormData, productId: e.target.value})}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 w-24"
-                                />
-                              ) : (
-                                <span className="font-semibold text-slate-700">{p.productId || '-'}</span>
-                              )}
-                            </div>
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="font-bold text-slate-400 uppercase">Cost Price:</span>
-                              {editingProductId === p.id ? (
-                                <input 
-                                  type="text" 
-                                  value={editFormData.costPrice || ''} 
-                                  onChange={(e) => setEditFormData({...editFormData, costPrice: e.target.value})}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 w-24"
-                                />
-                              ) : (
-                                <span className="font-bold text-slate-800">
-                                  {p.costPrice ? `₹${parseFloat(p.costPrice).toFixed(2)}` : '-'}
-                                </span>
-                              )}
-                            </div>
+                            {/* Cost Price mobile row - hidden for staff */}
+                            {userRole !== 'staff' && (
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="font-bold text-slate-400 uppercase">Cost Price:</span>
+                                {editingProductId === p.id ? (
+                                  <input 
+                                    type="text" 
+                                    value={editFormData.costPrice || ''} 
+                                    onChange={(e) => setEditFormData({...editFormData, costPrice: e.target.value})}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 w-24"
+                                  />
+                                ) : (() => {
+                                  const cv = parseFloat(p.costPrice);
+                                  return p.costPrice && !isNaN(cv) && cv > 0
+                                    ? <span className="font-bold text-slate-800">₹{cv.toFixed(2)}</span>
+                                    : <span className="text-xs text-slate-400 italic">Not Set</span>;
+                                })()}
+                              </div>
+                            )}
                             <div className="flex justify-between items-center text-xs">
                               <span className="font-bold text-slate-400 uppercase">Selling Price:</span>
                               {editingProductId === p.id ? (
@@ -643,11 +653,12 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                                   onClick={(e) => e.stopPropagation()}
                                   className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 w-24"
                                 />
-                              ) : (
-                                <span className="font-bold text-slate-800">
-                                  {p.mrp ? `₹${parseFloat(p.mrp).toFixed(2)}` : '-'}
-                                </span>
-                              )}
+                              ) : (() => {
+                                const mv = parseFloat(p.mrp);
+                                return p.mrp && !isNaN(mv) && mv > 0
+                                  ? <span className="font-bold text-slate-800">₹{mv.toFixed(2)}</span>
+                                  : <span className="text-xs text-slate-400 italic">Not Set</span>;
+                              })()}
                             </div>
                             <div className="flex justify-between items-center text-xs">
                               <span className="font-bold text-slate-400 uppercase">Available Stock:</span>

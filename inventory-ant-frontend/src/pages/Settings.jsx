@@ -67,7 +67,9 @@ function Settings({ userId, token, onScanResult, userRole }) {
         } else {
           firstRow.forEach((cell, i) => {
             const v = String(cell || '').toLowerCase().trim();
-            if (v.includes('mrp') || v.includes('price') || v.includes('rate')) priceIdx = i;
+            // Exclude cost/purchase columns from being mapped to selling price
+            const isCostCol = v.includes('cost') || v.includes('purchase');
+            if (!isCostCol && (v.includes('mrp') || v.includes('price') || v.includes('rate'))) priceIdx = i;
           });
         }
 
@@ -126,9 +128,10 @@ function Settings({ userId, token, onScanResult, userRole }) {
 
           row.forEach((cell, idx) => {
             if (![idIdx, nameIdx, qtyIdx, priceIdx, detailsIdx, hsnIdx, costPriceIdx, sellingPriceIdx].includes(idx)) {
-              let colName = firstRow[idx] ? String(firstRow[idx]).trim() : `col_${idx}`;
-              if (!colName) colName = `col_${idx}`;
-              obj[colName] = cell;
+              const rawHeader = firstRow[idx] ? String(firstRow[idx]).trim() : '';
+              // Skip columns with no header name (e.g. trailing empty Excel columns that produce col_5, col_6 etc.)
+              if (!rawHeader) return;
+              obj[rawHeader] = cell;
             }
           });
 

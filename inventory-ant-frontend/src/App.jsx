@@ -252,7 +252,7 @@ export default function App() {
               theme={theme}
             />
           ) : (
-            <div className={(theme === 'dark' ? 'dark-theme ' : 'light-theme ') + "flex flex-col w-full min-h-screen bg-slate-50"}>
+            <div className={(theme === 'dark' ? 'dark-theme ' : 'light-theme ') + "flex flex-col w-full h-screen overflow-hidden bg-slate-50"}>
               {localStorage.getItem('ant_admin_token') && (
                 <div className="w-full bg-[#EF4444] text-white text-center py-3 px-6 flex flex-row items-center justify-between z-50 font-sans shadow-md shrink-0">
                   <div className="flex items-center gap-2">
@@ -284,7 +284,7 @@ export default function App() {
                   </button>
                 </div>
               )}
-              <div className="flex flex-col md:flex-row w-full flex-1 h-[100dvh] md:h-screen overflow-hidden">
+              <div className="flex flex-col md:flex-row w-full flex-1 min-h-0 overflow-hidden">
                 <Sidebar 
                 setView={setView} 
                 view={view} 

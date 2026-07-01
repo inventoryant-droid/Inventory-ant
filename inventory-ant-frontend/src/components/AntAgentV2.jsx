@@ -30,6 +30,59 @@ export default function AntAgentV2({ userId, token, onUpdate, onNavigate, onLogi
   const isStartingRef = useRef(false);
   const isThinkingRef = useRef(false);
 
+  // Floating widget dragging functionality
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const dragPosStartRef = useRef({ x: 0, y: 0 });
+  const hasMovedRef = useRef(false);
+
+  const handlePointerDown = (e) => {
+    isDraggingRef.current = true;
+    hasMovedRef.current = false;
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    dragStartRef.current = { x: clientX, y: clientY };
+    dragPosStartRef.current = { ...position };
+  };
+
+  useEffect(() => {
+    const handlePointerMove = (e) => {
+      if (!isDraggingRef.current) return;
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+      if (clientX === undefined || clientY === undefined) return;
+
+      const dx = clientX - dragStartRef.current.x;
+      const dy = clientY - dragStartRef.current.y;
+
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        hasMovedRef.current = true;
+      }
+
+      setPosition({
+        x: dragPosStartRef.current.x + dx,
+        y: dragPosStartRef.current.y + dy
+      });
+    };
+
+    const handlePointerUp = () => {
+      isDraggingRef.current = false;
+    };
+
+    window.addEventListener('mousemove', handlePointerMove);
+    window.addEventListener('mouseup', handlePointerUp);
+    window.addEventListener('touchmove', handlePointerMove, { passive: false });
+    window.addEventListener('touchend', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handlePointerMove);
+      window.removeEventListener('mouseup', handlePointerUp);
+      window.removeEventListener('touchmove', handlePointerMove);
+      window.removeEventListener('touchend', handlePointerUp);
+    };
+  }, [position]);
+
   // Sync internal continuous ref with global state
   // Sync local states to global shared states for Terminal visibility
   useEffect(() => {
@@ -283,7 +336,18 @@ export default function AntAgentV2({ userId, token, onUpdate, onNavigate, onLogi
   );
 
   return (
-    <div style={{ position: 'fixed', bottom: 30, right: 30, zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.8rem' }}>
+    <div style={{ 
+      position: 'fixed', 
+      bottom: 30, 
+      right: 30, 
+      zIndex: 1000, 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'flex-end', 
+      gap: '0.8rem',
+      transform: `translate(${position.x}px, ${position.y}px)`,
+      touchAction: 'none' // Prevent browser default drag behavior on touchscreens
+    }}>
       <audio ref={audioRef} style={{ display: 'none' }} preload="auto" crossOrigin="anonymous" />
       
       {(status || aiResponseText || transcript || showInput) && (
@@ -327,16 +391,41 @@ export default function AntAgentV2({ userId, token, onUpdate, onNavigate, onLogi
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+      {/* Draggable buttons wrapper */}
+      <div 
+        onMouseDown={handlePointerDown}
+        onTouchStart={handlePointerDown}
+        style={{ 
+          display: 'flex', 
+          gap: '0.8rem', 
+          alignItems: 'center',
+          cursor: isDraggingRef.current ? 'grabbing' : 'grab',
+          userSelect: 'none'
+        }}
+      >
          <button 
-          onClick={() => setShowInput(!showInput)}
-          style={{ width: '45px', height: '45px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', cursor: 'pointer', color: 'white' }}
+          onClick={(e) => {
+            if (hasMovedRef.current) return;
+            setShowInput(!showInput);
+          }}
+          style={{ 
+            width: '45px', 
+            height: '45px', 
+            borderRadius: '50%', 
+            background: 'rgba(255,255,255,0.05)', 
+            border: '1px solid var(--glass-border)', 
+            cursor: 'pointer', 
+            color: 'white' 
+          }}
          >⌨️</button>
 
          <div style={{ position: 'relative' }}>
             {isListening && <div className="green-wave"></div>}
             <button 
-              onClick={toggleListening}
+              onClick={(e) => {
+                if (hasMovedRef.current) return;
+                toggleListening();
+              }}
               style={{
                 width: '75px', height: '75px', borderRadius: '50%',
                 background: isListening ? '#10B981' : 'var(--neon-accent)', 

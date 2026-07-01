@@ -136,7 +136,7 @@ export class ProductsService {
           name: name || null,
           details: details || null,
           mrp: mrp ? String(mrp) : null,
-          costPrice: costPrice ? String(costPrice) : (mrp ? String(mrp) : null), // from CSV: if costPrice col exists use it, else default to mrp
+          costPrice: costPrice ? String(costPrice) : null, // keep null if missing, do not default to mrp
           quantity: quantity ? String(quantity) : null,
           timestamp: _timestamp || Date.now(),
           extraAttributes: extra
@@ -252,21 +252,19 @@ export class ProductsService {
       console.log(`✅ [MATCH]: "${item.name}" → "${p.name}" score=${high.toFixed(0)}`);
       
       const updateData: any = {};
-      // Inbound scanner: costPrice/mrp update
-      if (item.costPrice && parseFloat(item.costPrice) > 0) {
-        updateData.costPrice = item.costPrice.toString();
-      } else if (item.mrp && parseFloat(item.mrp) > 0) {
-        if (actionType === 'IN') {
-          updateData.costPrice = item.mrp.toString(); // fallback scanner inbound = cost price update
-        } else {
-          updateData.mrp = item.mrp.toString(); // outbound/voice: treat as sale price
+      // Pricing update rules:
+      // - Inbound (IN): update costPrice from item.costPrice or item.mrp (supplier rate). NEVER touch mrp.
+      // - Outbound (OUT): update quantity only. Do NOT update mrp or costPrice.
+      if (actionType === 'IN') {
+        // Prefer explicit costPrice field, otherwise use mrp as the incoming rate (supplier invoice price)
+        const incomingRate = item.costPrice && parseFloat(item.costPrice) > 0
+          ? item.costPrice.toString()
+          : (item.mrp && parseFloat(item.mrp) > 0 ? item.mrp.toString() : null);
+        if (incomingRate) {
+          updateData.costPrice = incomingRate;
         }
       }
-      
-      // If scanner scanned both mrp and costPrice:
-      if (item.mrp && parseFloat(item.mrp) > 0 && actionType === 'IN' && item.costPrice) {
-        updateData.mrp = item.mrp.toString();
-      }
+      // For OUT: no pricing update — quantity only
       
       let newQtyStr: string;
       if (actionType === 'IN') {
@@ -482,7 +480,11 @@ export class ProductsService {
     return list.map(p => {
       const { paket, ...rest } = p as any;
       // Strip internal metadata from extraAttributes before spreading
-      const { _headers, csv_row, ...safeExtra } = (rest.extraAttributes as any || {});
+      const { _headers, csv_row, ...rawExtra } = (rest.extraAttributes as any || {});
+      // Also strip phantom col_N keys from empty trailing Excel columns
+      const safeExtra = Object.fromEntries(
+        Object.entries(rawExtra).filter(([k]) => !/^col_\d+$/.test(k))
+      );
       return {
         ...rest,
         extraAttributes: safeExtra,

@@ -484,8 +484,8 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                                      </div>
                                   </div>
                                   <div className="text-right">
-                                    <div className={`${isOutOfStock ? 'text-red-500' : 'text-indigo-600'} font-bold text-sm`}>₹{p.mrp || '0'}</div>
-                                    <div className="text-[10px] text-slate-400">Cost Price</div>
+                                    <div className={`${isOutOfStock ? 'text-red-500' : 'text-indigo-600'} font-bold text-sm`}>{p.mrp && parseFloat(p.mrp) > 0 ? `₹${parseFloat(p.mrp).toFixed(2)}` : 'Not Set'}</div>
+                                    <div className="text-[10px] text-slate-400">Selling Price</div>
                                   </div>
                                </div>
                              );
@@ -520,7 +520,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                                <div className="flex-1 min-w-0 text-left">
                                    <div className="font-bold text-sm text-slate-800 truncate">{item.name}</div>
                                    {(() => { const d = getProductDetailsText(item); return d ? <div className="text-[10px] text-slate-400 mt-0.5 truncate">{d}</div> : null; })()}
-                                   <div className="text-[10px] text-slate-400 mt-1">Cost Price: ₹{item.mrp || '0'}</div>
+                                   <div className="text-[10px] text-slate-400 mt-1">Selling Price: {item.mrp && parseFloat(item.mrp) > 0 ? `₹${parseFloat(item.mrp).toFixed(2)}` : 'Not Set'}</div>
                                    <div className="text-[10px] text-indigo-600 font-bold mt-0.5">Available Stock: {item.availableStock || '0'} units</div>
                                    {/* Manual Sale Price Input */}
                                    <div className="flex items-center gap-2 mt-2">
