@@ -128,6 +128,10 @@ export class ProductsService {
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const { id, userId: uId, productId, hsnSac, name, details, mrp, costPrice, quantity, _timestamp, _headers, csv_row, ...extra } = item;
+      const cleanQuantity = quantity ? String(quantity).replace(/,/g, '').trim() : null;
+      const cleanMrp = mrp ? String(mrp).replace(/,/g, '').trim() : null;
+      const cleanCostPrice = costPrice ? String(costPrice).replace(/,/g, '').trim() : null;
+
       await this.prisma.product.create({
         data: {
           id: this.generateId(i),
@@ -136,9 +140,9 @@ export class ProductsService {
           hsnSac: hsnSac ? String(hsnSac) : null,
           name: name || null,
           details: details || null,
-          mrp: mrp ? String(mrp) : null,
-          costPrice: costPrice ? String(costPrice) : null, // keep null if missing, do not default to mrp
-          quantity: quantity ? String(quantity) : null,
+          mrp: cleanMrp,
+          costPrice: cleanCostPrice, // keep null if missing, do not default to mrp
+          quantity: cleanQuantity,
           timestamp: _timestamp || Date.now(),
           extraAttributes: extra
         }
@@ -149,7 +153,7 @@ export class ProductsService {
         name || 'Unknown Item',
         productId ? String(productId) : null,
         '0',
-        quantity ? String(quantity) : '0',
+        cleanQuantity || '0',
         'Bulk imported via CSV file'
       );
       addedCount++;
@@ -159,7 +163,7 @@ export class ProductsService {
     return { count: addedCount };
   }
 
-  public async updateSingleItem(userId: string, item: any, actionType: 'IN' | 'OUT', source?: string, operatorName = 'Owner'): Promise<string> {
+  public async updateSingleItem(userId: string, item: any, actionType: 'IN' | 'OUT', source?: string, operatorName = 'Owner'): Promise<any> {
     console.log(`🔍 [PROCESS]: "${item.name}" qty=${item.qty} action=${actionType}`);
 
     if (item.description && !item.details) {
@@ -322,7 +326,15 @@ export class ProductsService {
         operatorName
       );
 
-      return `SUCCESS: ${display} ${actionType === 'IN' ? '+' : '-'}${qty} (Total: ${newQtyStr})`;
+      return {
+        status: 'SUCCESS',
+        productId: p.productId || '',
+        name: p.name || '',
+        qty,
+        newQty: newQtyStr,
+        csvRow: (p.extraAttributes as any)?.csv_row || null,
+        message: `SUCCESS: ${display} ${actionType === 'IN' ? '+' : '-'}${qty} (Total: ${newQtyStr})`
+      };
     } else {
       console.log(`❌ [NO_MATCH]: "${item.name}"`);
       const isRawSerial = isSerialNumber(incomingRawId);
@@ -374,9 +386,25 @@ export class ProductsService {
       );
 
       if (actionType === 'IN') {
-        return `NEW: ${newItem.name} (qty: ${qty})`;
+        return {
+          status: 'NEW',
+          productId: newItem.productId || '',
+          name: newItem.name || '',
+          qty,
+          newQty: newQtyStr,
+          csvRow: null,
+          message: `NEW: ${newItem.name} (qty: ${qty})`
+        };
       } else {
-        return `NEW_OUTBOUND: ${newItem.name} (qty deducted below 0, recorded as 0)`;
+        return {
+          status: 'NEW_OUTBOUND',
+          productId: newItem.productId || '',
+          name: newItem.name || '',
+          qty,
+          newQty: newQtyStr,
+          csvRow: null,
+          message: `NEW_OUTBOUND: ${newItem.name} (qty deducted below 0, recorded as 0)`
+        };
       }
     }
   }
@@ -578,9 +606,9 @@ export class ProductsService {
         hsnSac: hsnSac ? String(hsnSac) : null,
         name: name || null,
         details: details || null,
-        mrp: mrp ? String(mrp) : null,
-        costPrice: costPrice ? String(costPrice) : null,
-        quantity: quantity ? String(quantity) : null,
+        mrp: mrp ? String(mrp).replace(/,/g, '').trim() : null,
+        costPrice: costPrice ? String(costPrice).replace(/,/g, '').trim() : null,
+        quantity: quantity ? String(quantity).replace(/,/g, '').trim() : null,
         timestamp: Date.now(),
         extraAttributes: extra
       }
@@ -617,9 +645,9 @@ export class ProductsService {
         hsnSac: hsnSac !== undefined ? (hsnSac ? String(hsnSac) : null) : undefined,
         name: name !== undefined ? name : undefined,
         details: details !== undefined ? details : undefined,
-        mrp: mrp !== undefined ? (mrp ? String(mrp) : null) : undefined,
-        costPrice: costPrice !== undefined ? (costPrice ? String(costPrice) : null) : undefined,
-        quantity: quantity !== undefined ? (quantity ? String(quantity) : null) : undefined,
+        mrp: mrp !== undefined ? (mrp ? String(mrp).replace(/,/g, '').trim() : null) : undefined,
+        costPrice: costPrice !== undefined ? (costPrice ? String(costPrice).replace(/,/g, '').trim() : null) : undefined,
+        quantity: quantity !== undefined ? (quantity ? String(quantity).replace(/,/g, '').trim() : null) : undefined,
         extraAttributes: Object.keys(extra).length > 0 ? { ...(existing.extraAttributes as any || {}), ...extra } : undefined
       }
     });

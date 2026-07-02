@@ -154,7 +154,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
   }, [activeTab]);
 
   const addToCart = (product) => {
-     const maxQty = parseInt(product.quantity || '0', 10);
+     const maxQty = parseQty(product.quantity);
      if (maxQty <= 0) {
         showErrorToast("This item is Out of Stock!");
         return;

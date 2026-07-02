@@ -63,7 +63,8 @@ export class AiService {
                 expiry: action.expiry, 
                 ...(action.dynamicData || {}) 
               };
-              const msg = await this.productsService.updateSingleItem(userId, itemPayload, action.action, 'VOICE', operatorName);
+              const updateRes = await this.productsService.updateSingleItem(userId, itemPayload, action.action, 'VOICE', operatorName);
+              const msg = updateRes.message;
               
               // Resolve matching item for context sync
               let matchedP = userItems.find(p => p.productId === action.productId);
@@ -389,7 +390,8 @@ export class AiService {
 
       if (data.action === 'IN' || data.action === 'OUT') {
         const itemPayload = { name: data.itemName, details: data.details, qty: data.qty, productId: data.productId, expiry: data.expiry, ...(data.dynamicData || {}) };
-        const msg = await this.productsService.updateSingleItem(userId, itemPayload, data.action, 'VOICE', operatorName);
+        const updateRes = await this.productsService.updateSingleItem(userId, itemPayload, data.action, 'VOICE', operatorName);
+        const msg = updateRes.message;
         
         let finalSpeech = data.speechText;
         if (msg.startsWith('Maaf kijiye') || msg.startsWith('NOT_FOUND')) {
@@ -578,10 +580,13 @@ export class AiService {
     }
 
     const log: string[] = [];
+    const syncResults: any[] = [];
     const source = payload.actionType === 'IN' ? 'SCANNER_IN' : 'SCANNER_OUT';
     for (const i of items) {
       if (!i.qty || i.qty < 1) i.qty = 1;
-      log.push(await this.productsService.updateSingleItem(userId, i, payload.actionType, source, operatorName));
+      const updateRes = await this.productsService.updateSingleItem(userId, i, payload.actionType, source, operatorName);
+      log.push(updateRes.message);
+      syncResults.push(updateRes);
     }
 
     // Save scan to ScanHistory in database
@@ -606,12 +611,13 @@ export class AiService {
       console.error('Failed to write scan history:', err);
     }
 
-    return { success: true, action: payload.actionType, parsedItems: items, auditLog: log };
+    return { success: true, action: payload.actionType, parsedItems: items, auditLog: log, syncResults };
   }
 
   async confirmBillScan(userId: string, payload: any, operatorName = 'Owner'): Promise<any> {
     const { actionType, items } = payload;
     const log: string[] = [];
+    const syncResults: any[] = [];
     const source = actionType === 'IN' ? 'SCANNER_IN' : 'SCANNER_OUT';
 
     for (const i of items) {
@@ -623,7 +629,9 @@ export class AiService {
         qty: Math.max(1, parseInt(i.qty, 10) || 1),
         mrp: i.mrp ? String(i.mrp) : '0'
       };
-      log.push(await this.productsService.updateSingleItem(userId, mappedItem, actionType, source, operatorName));
+      const updateRes = await this.productsService.updateSingleItem(userId, mappedItem, actionType, source, operatorName);
+      log.push(updateRes.message);
+      syncResults.push(updateRes);
     }
 
     try {
@@ -647,6 +655,6 @@ export class AiService {
       console.error('Failed to write scan history:', err);
     }
 
-    return { success: true, action: actionType, parsedItems: items, auditLog: log };
+    return { success: true, action: actionType, parsedItems: items, auditLog: log, syncResults };
   }
 }

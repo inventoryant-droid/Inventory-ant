@@ -483,37 +483,70 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
 
 
            {/* Final Sync Completion Screen */}
-           {finalSyncResult && !loading && (
-              <div className="mt-8">
-                 {finalSyncResult.success ? (
-                    <div className="p-6 bg-emerald-50 rounded-xl border border-emerald-100 text-center flex flex-col items-center">
-                        <CheckCircle2 size={48} className="text-emerald-500 mb-4" />
-                        <h3 className="m-0 text-emerald-700 text-lg font-bold mb-2">SYNC SUCCESSFUL</h3>
-                        <div className="text-sm text-emerald-600 font-medium">{finalSyncResult.parsedItems?.length || 0} items mapped and saved to inventory.</div>
-                    </div>
-                 ) : (
-                    <div className="p-6 bg-red-50 rounded-xl border border-red-100 text-center flex flex-col items-center">
-                        <X size={48} className="text-red-500 mb-4" />
-                        <h3 className="m-0 text-red-700 text-lg font-bold mb-2">SYNC FAILED</h3>
-                        <div className="text-sm text-red-600 font-medium">{finalSyncResult.message || "Unknown error occurred."}</div>
-                    </div>
-                 )}
-                 <div className="flex flex-col sm:flex-row gap-3 mt-6">
-                    <button 
-                       className="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none transition-colors" 
-                       onClick={() => onNavigate ? onNavigate('dashboard') : onClose()}
-                    >
-                       Go to Overview
-                    </button>
-                    <button 
-                       className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none shadow-sm transition-colors" 
-                       onClick={() => onNavigate ? onNavigate('inventory') : onClose()}
-                    >
-                       Go to Master Inventory
-                    </button>
-                 </div>
-              </div>
-           )}
+            {finalSyncResult && !loading && (
+               <div className="mt-8">
+                  {finalSyncResult.success ? (
+                     <div className="p-6 bg-emerald-50 rounded-xl border border-emerald-100 text-center flex flex-col items-center">
+                         <CheckCircle2 size={48} className="text-emerald-500 mb-4" />
+                         <h3 className="m-0 text-emerald-700 text-lg font-bold mb-2">SYNC SUCCESSFUL</h3>
+                         <div className="text-sm text-emerald-600 font-medium mb-4">{finalSyncResult.parsedItems?.length || 0} items mapped and saved to inventory.</div>
+                         
+                         {/* Detailed Sync Summary */}
+                         {finalSyncResult.syncResults && finalSyncResult.syncResults.length > 0 && (
+                            <div className="w-full text-left bg-white border border-slate-100 rounded-xl p-3 shadow-inner">
+                               <h4 className="m-0 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">Detailed Sync Summary</h4>
+                               <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">
+                                  {finalSyncResult.syncResults.map((res, index) => (
+                                     <div key={index} className="p-2.5 rounded-lg border border-slate-50 bg-slate-50/50 flex flex-col gap-1 text-[11px]">
+                                        <div className="flex items-center justify-between gap-2">
+                                           <span className="font-semibold text-slate-800 truncate" title={res.name}>
+                                              {res.name}
+                                           </span>
+                                           <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold shrink-0 ${
+                                              res.status === 'NEW' 
+                                                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                                                 : res.status === 'NEW_OUTBOUND'
+                                                 ? 'bg-orange-100 text-orange-800 border border-orange-200'
+                                                 : 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                                           }`}>
+                                              {res.status === 'NEW' ? 'NEW ITEM' : res.status === 'NEW_OUTBOUND' ? 'NEW (OUT)' : 'UPDATED'}
+                                           </span>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-slate-500 font-medium">
+                                           <span>SKU Code: <strong className="text-slate-700">{res.productId || 'N/A'}</strong></span>
+                                           {res.csvRow && <span>CSV Row: <strong className="text-slate-700">{res.csvRow}</strong></span>}
+                                           <span>Change: <strong className={res.status === 'SUCCESS' ? 'text-indigo-600' : 'text-emerald-600'}>{scanType === 'IN' ? '+' : '-'}{res.qty}</strong></span>
+                                           <span>Total Stock: <strong className="text-slate-700">{res.newQty}</strong></span>
+                                        </div>
+                                     </div>
+                                  ))}
+                               </div>
+                            </div>
+                         )}
+                     </div>
+                  ) : (
+                     <div className="p-6 bg-red-50 rounded-xl border border-red-100 text-center flex flex-col items-center">
+                         <X size={48} className="text-red-500 mb-4" />
+                         <h3 className="m-0 text-red-700 text-lg font-bold mb-2">SYNC FAILED</h3>
+                         <div className="text-sm text-red-600 font-medium">{finalSyncResult.message || "Unknown error occurred."}</div>
+                     </div>
+                  )}
+                  <div className="flex flex-col sm:flex-row gap-3 mt-6">
+                     <button 
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none transition-colors" 
+                        onClick={() => onNavigate ? onNavigate('dashboard') : onClose()}
+                     >
+                        Go to Overview
+                     </button>
+                     <button 
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none shadow-sm transition-colors" 
+                        onClick={() => onNavigate ? onNavigate('inventory') : onClose()}
+                     >
+                        Go to Master Inventory
+                     </button>
+                  </div>
+               </div>
+            )}
 
            {scanResult && !loading && !parsedItems.length && (
               <div className="mt-8">
