@@ -110,7 +110,15 @@ export class AiService {
           ? Array.from(new Set(userItems.flatMap(p => Object.keys(p)))).filter(k => !['id', 'userId', 'quantity', 'mrp', 'productId', 'name', 'details', 'extraAttributes'].includes(k))
           : [];
       const totalItems = userItems.length;
-      const lowStockItems = userItems.filter(p => parseInt(p.quantity || '0', 10) < 20).length;
+      const dbUser = await this.prisma.user.findUnique({
+        where: { email: userId.trim().toLowerCase() }
+      });
+      const lowStockThreshold = dbUser?.lowStockThreshold ?? 20;
+      const lowStockItems = userItems.filter(p => {
+        const cleanQty = String(p.quantity || '0').replace(/,/g, '');
+        const q = parseInt(cleanQty, 10);
+        return !isNaN(q) && q > 0 && q <= lowStockThreshold;
+      }).length;
       const expKey = dynamicKeys.find(k => k.toLowerCase().includes('exp'));
       let expiredCount = 0;
       let soonCount = 0;

@@ -4,7 +4,14 @@ import '../App.css';
 import { getExpiryInfo, getExpKey } from '../utils/expiryHelpers';
 import { Printer, Trash2, Edit3, Plus, Terminal, Check, X, CheckCircle, Search, History, User, Clock, ArrowRight, Eye, Package, IndianRupee, Info, ChevronDown, ChevronUp } from 'lucide-react';
 
-function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProduct, filterMode, setFilterMode, userRole }) {
+const parseQty = (qty) => {
+  if (!qty) return 0;
+  const clean = String(qty).replace(/,/g, '');
+  const parsed = parseInt(clean, 10);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
+function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProduct, filterMode, setFilterMode, userRole, userProfile }) {
   const [formData, setFormData] = useState({});
   const [editingProductId, setEditingProductId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
@@ -160,16 +167,17 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
     // filter out the headers sentinel item first
     const realProds = products.filter(p => !p._headers);
     if (filterMode === 'lowStock') {
+      const threshold = userProfile?.lowStockThreshold ?? 20;
       return realProds.filter(p => {
-        const q = parseInt(p.quantity || '0', 10);
-        return !isNaN(q) && q > 0 && q < 20;
+        const q = parseQty(p.quantity);
+        return q > 0 && q <= threshold;
       });
     }
     
     if (filterMode === 'outOfStock') {
       return realProds.filter(p => {
-        const q = parseInt(p.quantity || '0', 10);
-        return !isNaN(q) && q === 0;
+        const q = parseQty(p.quantity);
+        return q === 0;
       });
     }
 
@@ -211,7 +219,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
       });
     }
     return realProds;
-  }, [products, filterMode, dynamicColumns]);
+  }, [products, filterMode, dynamicColumns, userProfile]);
 
   // Filter by searchTerm (SKU, Name) & Sort by SKU code ascending
   const sortedDisplayProducts = useMemo(() => {

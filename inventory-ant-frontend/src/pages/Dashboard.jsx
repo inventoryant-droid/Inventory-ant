@@ -1,9 +1,18 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import '../App.css';
 import { getExpiryInfo, getExpKey } from '../utils/expiryHelpers';
-import { Box, AlertTriangle, Layers, BarChart2, TrendingUp, Edit, MapPin, Building, ShieldCheck, XCircle } from 'lucide-react';
+import { Box, AlertTriangle, Layers, BarChart2, TrendingUp, Edit, MapPin, Building, ShieldCheck, XCircle, Check, X } from 'lucide-react';
+import { API_BASE_URL } from '../utils/config';
+import { toast } from 'react-hot-toast';
 
-function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner, onGoToProfile, onGoToSettings, userProfile, userRole }) {
+const parseQty = (qty) => {
+  if (!qty) return 0;
+  const clean = String(qty).replace(/,/g, '');
+  const parsed = parseInt(clean, 10);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
+function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner, onGoToProfile, onGoToSettings, userProfile, userRole, onProfileUpdate, token }) {
   const dynamicColumns = useMemo(() => {
     const cols = new Set();
     products.forEach(p => Object.keys(p).forEach(k => {
@@ -14,23 +23,68 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
     return Array.from(cols);
   }, [products]);
 
+  const threshold = userProfile?.lowStockThreshold ?? 20;
+
   const expKey = getExpKey(dynamicColumns);
   const lowStockCount = products.filter(p => {
-    const q = parseInt(p.quantity || '0', 10);
-    return !isNaN(q) && q > 0 && q < 20;
+    const q = parseQty(p.quantity);
+    return q > 0 && q <= threshold;
   }).length;
+
+  const [isEditingThreshold, setIsEditingThreshold] = useState(false);
+  const [tempThreshold, setTempThreshold] = useState('');
+  const [isSavingThreshold, setIsSavingThreshold] = useState(false);
+
+  const handleSaveThreshold = async (e) => {
+    if (e) e.stopPropagation();
+    const val = parseInt(tempThreshold, 10);
+    if (isNaN(val) || val <= 0) {
+      toast.error("Please enter a valid threshold greater than 0");
+      return;
+    }
+
+    setIsSavingThreshold(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/user/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          lowStockThreshold: val
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to update threshold');
+      }
+
+      if (onProfileUpdate) {
+        onProfileUpdate(data);
+      }
+      setIsEditingThreshold(false);
+      toast.success("Low stock threshold updated successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Failed to update threshold');
+    } finally {
+      setIsSavingThreshold(false);
+    }
+  };
 
   const outOfStockCount = products.filter(p => {
-    const q = parseInt(p.quantity || '0', 10);
-    return !isNaN(q) && q === 0;
+    const q = parseQty(p.quantity);
+    return q === 0;
   }).length;
 
-  const totalStock = products.reduce((acc, p) => acc + (parseInt(p.quantity || '0', 10) || 0), 0);
+  const totalStock = products.reduce((acc, p) => acc + parseQty(p.quantity), 0);
 
   // Chart Logic
   const maxStock = useMemo(() => {
      if (products.length === 0) return 200;
-     const max = Math.max(...products.map(p => parseInt(p.quantity || '0', 10) || 0));
+     const max = Math.max(...products.map(p => parseQty(p.quantity)));
      return max < 50 ? 50 : max;
   }, [products]);
 
@@ -146,6 +200,54 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
              <span className="text-xs text-slate-500 font-medium">
                Items requiring replenishment.
              </span>
+             <div 
+               className="mt-3 flex items-center gap-2 text-[10px] sm:text-xs text-slate-500 font-bold bg-slate-50 border border-slate-200/60 rounded-lg px-2 py-1 w-fit hover:bg-slate-100/80 transition-all cursor-default select-none shadow-sm"
+               onClick={(e) => e.stopPropagation()}
+             >
+               <span>Alert Threshold:</span>
+               {userRole === 'staff' ? (
+                 <span className="text-indigo-700">{threshold}</span>
+               ) : isEditingThreshold ? (
+                 <div className="flex items-center gap-1.5">
+                   <input
+                     type="number"
+                     value={tempThreshold}
+                     onChange={(e) => setTempThreshold(e.target.value)}
+                     className="w-12 h-6 px-1 border border-indigo-200 rounded text-center text-xs font-bold text-indigo-700 bg-white focus:outline-none focus:border-indigo-500"
+                     min="1"
+                     autoFocus
+                     disabled={isSavingThreshold}
+                   />
+                   <button
+                     onClick={handleSaveThreshold}
+                     className="p-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded border border-emerald-200 transition-colors cursor-pointer flex items-center justify-center"
+                     title="Save"
+                     disabled={isSavingThreshold}
+                   >
+                     <Check size={12} strokeWidth={2.5} />
+                   </button>
+                   <button
+                     onClick={() => setIsEditingThreshold(false)}
+                     className="p-0.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded border border-rose-200 transition-colors cursor-pointer flex items-center justify-center"
+                     title="Cancel"
+                     disabled={isSavingThreshold}
+                   >
+                     <X size={12} strokeWidth={2.5} />
+                   </button>
+                 </div>
+               ) : (
+                 <div 
+                   className="flex items-center gap-1 cursor-pointer hover:text-indigo-600 text-indigo-700 font-extrabold" 
+                   onClick={() => {
+                     setTempThreshold(threshold.toString());
+                     setIsEditingThreshold(true);
+                   }}
+                 >
+                   <span>{threshold}</span>
+                   <Edit size={10} className="opacity-60 hover:opacity-100" />
+                 </div>
+               )}
+             </div>
            </div>
            <div className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl shrink-0 ${lowStockCount > 0 ? 'bg-amber-50 text-amber-500' : 'bg-slate-50 text-slate-400'} flex items-center justify-center`}>
               <AlertTriangle size={20} className="md:w-6 md:h-6" strokeWidth={2} />
@@ -213,7 +315,7 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
                 
                 {/* Bars */}
                 {products.slice(0, 50).map((p, i) => {
-                   const qty = parseInt(p.quantity || '0', 10) || 0;
+                   const qty = parseQty(p.quantity);
                    const heightPct = Math.min(100, (qty / maxStock) * 100);
                    return (
                      <div key={p.id || i} className="flex-1 flex flex-col items-center group relative h-full justify-end min-w-[12px]">

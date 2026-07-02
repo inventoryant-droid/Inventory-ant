@@ -32,6 +32,7 @@ export interface User {
   lastLogin?: number;
   adminRole?: 'super_admin' | 'support_admin' | 'finance_admin' | 'tech_admin';
   businessNote?: string;
+  lowStockThreshold?: number;
 }
 
 @Injectable()
@@ -252,6 +253,7 @@ export class UsersService implements OnModuleInit {
       lastLogin: dbUser.lastLogin || undefined,
       adminRole: (dbUser.adminRole as any) || undefined,
       businessNote: dbUser.businessNote || undefined,
+      lowStockThreshold: dbUser.lowStockThreshold !== undefined && dbUser.lowStockThreshold !== null ? dbUser.lowStockThreshold : 20,
     };
   }
 
@@ -727,6 +729,7 @@ export class UsersService implements OnModuleInit {
         showEmailOnBills: profileData.showEmailOnBills !== undefined ? !!profileData.showEmailOnBills : undefined,
         profileCompleted: profileData.profileCompleted !== undefined ? !!profileData.profileCompleted : undefined,
         businessNote: profileData.businessNote !== undefined ? profileData.businessNote : undefined,
+        lowStockThreshold: profileData.lowStockThreshold !== undefined ? Number(profileData.lowStockThreshold) : undefined,
         updatedAt: Date.now()
       }
     });

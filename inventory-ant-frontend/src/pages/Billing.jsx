@@ -10,13 +10,20 @@ const getProductDetailsText = (p) => {
   if (p.details) {
     parts.push(p.details);
   }
-  const standardKeys = ['id', 'userId', 'quantity', 'mrp', 'costPrice', 'productId', 'name', 'details', '_headers', '_timestamp', 'timestamp', 'csv_row', 'extraAttributes', 'availableStock', 'manualPrice'];
+  const standardKeys = ['id', 'userId', 'quantity', 'mrp', 'costPrice', 'productId', 'name', 'details', '_headers', '_timestamp', 'timestamp', 'csv_row', 'extraAttributes', 'availableStock', 'manualPrice', 'hsnSac'];
   Object.keys(p).forEach(k => {
     if (!standardKeys.includes(k) && p[k] !== undefined && p[k] !== null && String(p[k]).trim() !== '') {
       parts.push(`${k}: ${p[k]}`);
     }
   });
   return parts.join(' | ');
+};
+
+const parseQty = (qty) => {
+  if (!qty) return 0;
+  const clean = String(qty).replace(/,/g, '');
+  const parsed = parseInt(clean, 10);
+  return isNaN(parsed) ? 0 : parsed;
 };
 
 function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
@@ -97,10 +104,15 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
      const realProds = products.filter(p => !p._headers);
      if (searchTerm.trim().length > 0) {
         const term = searchTerm.trim().toLowerCase();
-        const filtered = realProds.filter(p =>
-            (p.name || '').toLowerCase().includes(term) ||
-            (p.productId && String(p.productId).toLowerCase().includes(term))
-        );
+        const isNumeric = /^\d+$/.test(term);
+        const filtered = realProds.filter(p => {
+           if (isNumeric) {
+              return p.productId && String(p.productId).toLowerCase().includes(term);
+           } else {
+              return (p.name || '').toLowerCase().includes(term) ||
+                     (p.details || '').toLowerCase().includes(term);
+           }
+        });
         // Sort results by SKU code ascending
         const sortedFiltered = [...filtered].sort((a, b) => {
           const skuA = (a.productId || '').toString().trim();
@@ -411,7 +423,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
             .print-modal-overlay, #printable-invoice, #printable-invoice * { visibility: visible !important; }
             .invoice-items-container { max-height: none !important; overflow: visible !important; }
             .print-modal-overlay { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; height: auto !important; background: white !important; backdrop-filter: none !important; padding: 0 !important; margin: 0 !important; display: block !important; overflow: visible !important; }
-            #printable-invoice { --inv-bg: #ffffff !important; --inv-border: #475569 !important; --inv-bg-alt: #f8fafc !important; --inv-text-primary: #1e293b !important; --inv-text-secondary: #475569 !important; --inv-text-muted: #64748b !important; position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; max-width: 100% !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
+            #printable-invoice { --inv-bg: #ffffff !important; --inv-border: #475569 !important; --inv-bg-alt: #f8fafc !important; --inv-text-primary: #1e293b !important; --inv-text-secondary: #475569 !important; --inv-text-muted: #64748b !important; position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; max-width: 100% !important; border: none !important; box-shadow: none !important; padding: 8mm !important; margin: 0 !important; }
             .no-print-btn { display: none !important; }
             @page { size: landscape; margin: 10mm; }
             html, body, #root, #root > div { overflow: visible !important; height: auto !important; }
@@ -443,8 +455,8 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                              if (e.key === 'Enter' && searchResults.length > 0) {
                                // Find the first in-stock item
                                const inStockItem = searchResults.find(p => {
-                                 const q = parseInt(p.quantity || '0', 10);
-                                 return !isNaN(q) && q > 0;
+                                 const q = parseQty(p.quantity);
+                                 return q > 0;
                                });
                                if (inStockItem) {
                                  addToCart(inStockItem);
@@ -459,8 +471,8 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                     {searchResults.length > 0 && (
                        <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
                           {searchResults.map(p => {
-                             const qty = parseInt(p.quantity || '0', 10);
-                             const isOutOfStock = isNaN(qty) || qty <= 0;
+                             const qty = parseQty(p.quantity);
+                             const isOutOfStock = qty <= 0;
                              return (
                                <div
                                  key={p.id}
@@ -519,6 +531,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                             <div key={item.id} className="flex items-start gap-3 p-4 bg-slate-50 border border-slate-100 rounded-xl">
                                <div className="flex-1 min-w-0 text-left">
                                    <div className="font-bold text-sm text-slate-800 truncate">{item.name}</div>
+                                   <div className="text-[10px] text-slate-400 font-semibold mt-0.5">SKU: {item.productId || '---'}</div>
                                    {(() => { const d = getProductDetailsText(item); return d ? <div className="text-[10px] text-slate-400 mt-0.5 truncate">{d}</div> : null; })()}
                                    <div className="text-[10px] text-slate-400 mt-1">Selling Price: {item.mrp && parseFloat(item.mrp) > 0 ? `₹${parseFloat(item.mrp).toFixed(2)}` : 'Not Set'}</div>
                                    <div className="text-[10px] text-indigo-600 font-bold mt-0.5">Available Stock: {item.availableStock || '0'} units</div>
@@ -792,7 +805,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                       <thead>
                          <tr style={{ background: '#1e3a8a', borderBottom: '1px solid var(--inv-border)' }}>
                             <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: '#ffffff', fontSize: '0.7rem', textAlign: 'left' }}>PRODUCT</th>
-                            <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: '#ffffff', fontSize: '0.7rem', textAlign: 'left' }}>DESCRIPTION</th>
+                            <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: '#ffffff', fontSize: '0.7rem', textAlign: 'left' }}>SKU</th>
                             <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: '#ffffff', fontSize: '0.7rem', textAlign: 'center', width: '80px' }}>QTY</th>
                             <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: '#ffffff', fontSize: '0.7rem', textAlign: 'right', width: '120px' }}>RATE (₹)</th>
                             {showGst && <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: '#ffffff', fontSize: '0.7rem', textAlign: 'right', width: '120px' }}>GST ({lastBill.subtotal > 0 ? Math.round((lastBill.gst / lastBill.subtotal) * 100) : 18}%)</th>}
@@ -808,11 +821,11 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                             const itemGst = gross * gstRateFactor;
                             const itemTotal = gross + itemGst;
                             const matchingProduct = products.find(p => p.id === item.id);
-                            const detailsText = matchingProduct ? getProductDetailsText(matchingProduct) : '';
+                            const skuCode = item.productId || matchingProduct?.productId || '---';
                             return (
                                <tr key={item.id || idx} style={{ borderBottom: '1px solid var(--inv-border)' }}>
                                   <td style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-primary)', textAlign: 'left' }}>{item.name}</td>
-                                  <td style={{ padding: '0.85rem 1rem', color: 'var(--inv-text-secondary)', fontSize: '0.65rem', textAlign: 'left' }}>{detailsText || 'No details'}</td>
+                                  <td style={{ padding: '0.85rem 1rem', color: 'var(--inv-text-primary)', fontWeight: 'bold', fontSize: '0.75rem', fontFamily: 'monospace', textAlign: 'left' }}>{skuCode}</td>
                                   <td style={{ padding: '0.85rem 1rem', textAlign: 'center', fontWeight: 'bold', color: 'var(--inv-text-primary)' }}>{qty}</td>
                                   <td style={{ padding: '0.85rem 1rem', textAlign: 'right', fontFamily: 'monospace', color: 'var(--inv-text-secondary)' }}>₹{rate.toFixed(2)}</td>
                                   {showGst && <td style={{ padding: '0.85rem 1rem', textAlign: 'right', color: '#10B981', fontFamily: 'monospace' }}>₹{itemGst.toFixed(2)}</td>}

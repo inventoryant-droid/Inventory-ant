@@ -308,9 +308,11 @@ export default function App() {
                 onGoToSettings={() => setView('settings')}
                 userProfile={userProfile}
                 userRole={userRole}
+                onProfileUpdate={handleProfileCompleted}
+                token={token}
               />}
               {view === 'billing' && <Billing products={products} onSaleSuccess={fetchProducts} userId={userId} token={token} userProfile={userProfile} />}
-              {view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onEditProduct={handleEditProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} userRole={userRole} />}
+              {view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onEditProduct={handleEditProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} userRole={userRole} userProfile={userProfile} />}
               {view === 'ai_lab' && <AITools userId={userId} token={token} onScanResult={fetchProducts} onOpenScanner={handleOpenScanner} userProfile={userProfile} theme={theme} />}
               {view === 'staff_management' && <StaffManagement token={token} userProfile={userProfile} userId={userId} />}
               {view === 'ant_x' && <AntXTerminal 

@@ -33,6 +33,7 @@ model User {
   lastLogin        Float?
   adminRole        String?  // "super_admin" | "support_admin" | "finance_admin" | "tech_admin"
   businessNote     String?
+  lowStockThreshold Int      @default(20)
 }
 
 model Product {

@@ -241,13 +241,13 @@ export class ProductsService {
     // Minimum threshold: must have at least 30% word overlap (score >= 9000)
     if (high < 9000) bestIdx = -1;
 
-    const qty = parseInt(item.qty, 10) || 1;
+    const qty = parseInt(String(item.qty || '1').replace(/,/g, ''), 10) || 1;
 
     // No ambiguity check needed – we always pick the single best match
 
     if (bestIdx !== -1) {
       const p = userItems[bestIdx];
-      const cur = parseInt(p.quantity || '0', 10);
+      const cur = parseInt(String(p.quantity || '0').replace(/,/g, ''), 10);
       const display = p.productId ? `[${p.productId}] ${p.name}` : p.name;
       console.log(`✅ [MATCH]: "${item.name}" → "${p.name}" score=${high.toFixed(0)}`);
       
