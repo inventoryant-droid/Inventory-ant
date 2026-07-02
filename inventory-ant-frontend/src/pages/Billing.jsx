@@ -311,13 +311,8 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
   };
 
   const handlePrint = () => {
-     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-     if (isMobile) {
-        window.print();
-     } else {
-        if (lastBill) {
-           printInvoicePDF(lastBill);
-        }
+     if (lastBill) {
+        printInvoicePDF(lastBill);
      }
   };
 
@@ -371,34 +366,24 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
 
          // Try native file sharing (e.g. mobile apps / devices)
          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            try {
-               await navigator.share({
-                  files: [file],
-                  title: `Invoice ${bill.invoiceId || bill.id}`
-               });
-               showSuccessToast("Invoice shared successfully!");
-               return;
-            } catch (shareErr) {
-               console.log("Native share failed or cancelled:", shareErr);
-               if (shareErr.name === 'AbortError') {
-                  showSuccessToast("Share cancelled");
-                  return;
-               }
-            }
+            await navigator.share({
+               files: [file],
+               title: `Invoice ${bill.invoiceId || bill.id}`
+            });
+         } else {
+            // Fallback for Desktop/unsupported browsers: trigger direct download & open WhatsApp link
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Invoice_${bill.invoiceId || bill.id}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            showSuccessToast("PDF downloaded! Opening WhatsApp...");
+            const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent("Please attach the downloaded PDF Invoice (Invoice_" + (bill.invoiceId || bill.id) + ".pdf) file to send it.")}`;
+            window.open(whatsappUrl, '_blank');
          }
-
-         // Fallback for Desktop/unsupported browsers: trigger direct download & open WhatsApp link
-         const url = window.URL.createObjectURL(blob);
-         const a = document.createElement('a');
-         a.href = url;
-         a.download = `Invoice_${bill.invoiceId || bill.id}.pdf`;
-         document.body.appendChild(a);
-         a.click();
-         a.remove();
-         window.URL.revokeObjectURL(url);
-         showSuccessToast("PDF downloaded! Opening WhatsApp...");
-         const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent("Please attach the downloaded PDF Invoice (Invoice_" + (bill.invoiceId || bill.id) + ".pdf) file to send it.")}`;
-         window.open(whatsappUrl, '_blank');
       } catch (err) {
          console.error("PDF generation/sharing failed:", err);
          const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent("Failed to generate PDF Invoice. Please download manually.")}`;
