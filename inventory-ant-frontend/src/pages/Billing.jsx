@@ -41,6 +41,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
   const [searchResults, setSearchResults] = useState([]);
   const [lastBill, setLastBill] = useState(null);
   const [bills, setBills] = useState([]);
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
 
   const saveAndSetCart = (newCart) => {
     setCart(newCart);
@@ -265,8 +266,54 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
   const gstAmount = applyGst ? subtotal * (parseFloat(gstRate || 0) / 100) : 0;
   const totalAmount = subtotal + gstAmount;
 
+  const printInvoicePDF = async (bill) => {
+     try {
+        showSuccessToast("Loading print preview...");
+        const res = await fetch(`${API_BASE_URL}/api/user/products/bills/${bill.id}/download`, {
+           headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error("Failed to load PDF");
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile) {
+           window.open(url, '_blank');
+        } else {
+           const iframe = document.createElement('iframe');
+           iframe.style.position = 'fixed';
+           iframe.style.right = '0';
+           iframe.style.bottom = '0';
+           iframe.style.width = '0';
+           iframe.style.height = '0';
+           iframe.style.border = 'none';
+           iframe.src = url;
+           document.body.appendChild(iframe);
+
+           iframe.onload = () => {
+              try {
+                 iframe.contentWindow.focus();
+                 iframe.contentWindow.print();
+                 setTimeout(() => {
+                    document.body.removeChild(iframe);
+                    window.URL.revokeObjectURL(url);
+                 }, 3000);
+              } catch (e) {
+                 console.error("Iframe printing failed, falling back to new tab:", e);
+                 window.open(url, '_blank');
+              }
+           };
+        }
+     } catch (err) {
+        console.error(err);
+        showErrorToast("Could not load print preview.");
+     }
+  };
+
   const handlePrint = () => {
-     window.print();
+     if (lastBill) {
+        printInvoicePDF(lastBill);
+     }
   };
 
   const formatDate = (timestamp) => {
@@ -282,103 +329,75 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
     }).replace(/am/i, 'am').replace(/pm/i, 'pm');
   };
 
+  const downloadInvoicePDF = async (bill) => {
+     try {
+        showSuccessToast("Generating PDF Invoice...");
+        const res = await fetch(`${API_BASE_URL}/api/user/products/bills/${bill.id}/download`, {
+           headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) {
+           throw new Error("Failed to download PDF invoice");
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Invoice_${bill.invoiceId || bill.id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        showSuccessToast("Invoice PDF downloaded successfully!");
+     } catch (err) {
+        console.error(err);
+        showErrorToast("Could not download PDF invoice.");
+     }
+  };
+
   const shareWhatsApp = async (bill) => {
-    // If the modal isn't open for this specific bill, temporarily mount it so html2pdf can capture it
-    let tempMounted = false;
-    if (!lastBill || lastBill.id !== bill.id) {
-       setLastBill(bill);
-       tempMounted = true;
-       // Wait 300ms for React render cycle
-       await new Promise(resolve => setTimeout(resolve, 300));
-    }
+      try {
+         showSuccessToast("Generating PDF Invoice...");
+         const res = await fetch(`${API_BASE_URL}/api/user/products/bills/${bill.id}/download`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+         });
+         if (!res.ok) throw new Error("Failed to download PDF");
+         const blob = await res.blob();
+         const file = new File([blob], `Invoice_${bill.invoiceId || bill.id}.pdf`, { type: 'application/pdf' });
 
-    const element = document.getElementById('printable-invoice');
-    
-    // Fallback share text
-    const isGst = bill.hasGst !== undefined ? !!bill.hasGst : !!userProfile?.gstNumber;
-    const finalTotal = isGst ? bill.total : bill.subtotal;
-    let itemsText = bill.items.map(item => {
-      const rate = parseFloat(item.salePrice || item.mrp || 0);
-      const qty = item.quantity || 1;
-      return `• ${item.name} (${qty} x ₹${rate.toFixed(2)}) = ₹${(rate * qty).toFixed(2)}`;
-    }).join('\n');
-
-    const shareText = `*INVOICE FROM ${userProfile?.businessName || 'Test Warehouse'}*\n` +
-      `-------------------------------------------\n` +
-      `*Order ID:* ${bill.id}\n` +
-      `*Date:* ${formatDate(bill.date)}\n` +
-      `-------------------------------------------\n` +
-      `*Items:*\n${itemsText}\n` +
-      `-------------------------------------------\n` +
-      `${isGst ? `*Subtotal:* ₹${bill.subtotal.toFixed(2)}\n*GST (${bill.subtotal > 0 ? Math.round((bill.gst / bill.subtotal) * 100) : 18}%):* ₹${bill.gst.toFixed(2)}\n` : ''}` +
-      `*TOTAL AMOUNT:* ₹${finalTotal.toFixed(2)}\n` +
-      `-------------------------------------------\n` +
-      `Thank you for shopping with us!\n\n` +
-      `*Billing generated using Ant X IMS*\n` +
-      `_Smart Warehouse Intelligence & Inventory System_\n` +
-      `_Visit: www.inventoryant.com_`;
-
-    if (window.html2pdf && element) {
-       showSuccessToast("Generating PDF Invoice...");
-       try {
-          // Temporarily hide the close/print action buttons panel so they aren't captured in the PDF
-          const actionButtons = element.querySelector('.no-print-btn');
-          if (actionButtons) actionButtons.style.display = 'none';
-
-          const opt = {
-            margin: [8, 8, 8, 8],
-            filename: `Invoice_${bill.id}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-          };
-
-          // Generate PDF blob
-          const blob = await window.html2pdf().from(element).set(opt).outputPdf('blob');
-          
-          if (actionButtons) actionButtons.style.display = '';
-
-          const file = new File([blob], `Invoice_${bill.id}.pdf`, { type: 'application/pdf' });
-
-          // Try native file sharing (e.g. mobile apps / devices)
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-             await navigator.share({
-                files: [file],
-                title: `Invoice ${bill.id}`,
-                text: shareText
-             });
-          } else {
-             // Fallback for Desktop/unsupported browsers: trigger direct download & open WhatsApp link
-             window.html2pdf().from(element).set(opt).save();
-             showSuccessToast("PDF downloaded! Opening WhatsApp...");
-             const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + "\n\n(Please attach the downloaded PDF Invoice file to send it)")}`;
-             window.open(whatsappUrl, '_blank');
-          }
-       } catch (err) {
-          console.error("PDF generation/sharing failed:", err);
-          // Fallback to text share
-          const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
-          window.open(whatsappUrl, '_blank');
-       }
-    } else {
-       // Graceful fallback to text share if html2pdf didn't load
-       const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
-       window.open(whatsappUrl, '_blank');
-    }
-
-    // Clean up temporary modal mount if needed
-    if (tempMounted) {
-       setLastBill(null);
-    }
+         // Try native file sharing (e.g. mobile apps / devices)
+         if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+               files: [file],
+               title: `Invoice ${bill.invoiceId || bill.id}`
+            });
+         } else {
+            // Fallback for Desktop/unsupported browsers: trigger direct download & open WhatsApp link
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Invoice_${bill.invoiceId || bill.id}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            showSuccessToast("PDF downloaded! Opening WhatsApp...");
+            const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent("Please attach the downloaded PDF Invoice (Invoice_" + (bill.invoiceId || bill.id) + ".pdf) file to send it.")}`;
+            window.open(whatsappUrl, '_blank');
+         }
+      } catch (err) {
+         console.error("PDF generation/sharing failed:", err);
+         const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent("Failed to generate PDF Invoice. Please download manually.")}`;
+         window.open(whatsappUrl, '_blank');
+      }
   };
 
   const shareSystem = async (bill) => {
     const isGst = bill.hasGst !== undefined ? !!bill.hasGst : !!userProfile?.gstNumber;
     const finalTotal = isGst ? bill.total : bill.subtotal;
-    const shareText = `Invoice from ${userProfile?.businessName || 'Test Warehouse'} - Order: ${bill.id} - Total: ₹${finalTotal.toFixed(2)} - Generated via Ant X IMS (www.inventoryant.com)`;
+    const shareText = `Invoice from ${userProfile?.businessName || 'Test Warehouse'} - Invoice: ${bill.invoiceId || bill.id} - Order: ${bill.orderId || bill.id} - Total: ₹${finalTotal.toFixed(2)} - Generated via Ant X IMS (www.inventoryant.com)`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: `Invoice ${bill.id}`, text: shareText, url: window.location.origin });
+        await navigator.share({ title: `Invoice ${bill.invoiceId || bill.id}`, text: shareText, url: window.location.origin });
       } catch (error) {
         console.log('Error sharing:', error);
       }
@@ -675,61 +694,87 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
         ) : (
            <div className="w-full no-print-btn text-left">
               <div className="bg-white border border-slate-200 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6">
-                 <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                    <Receipt size={22} className="text-indigo-500" /> Billing Transaction History
-                 </h2>
+                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 m-0">
+                       <Receipt size={22} className="text-indigo-500" /> Billing Transaction History
+                    </h2>
+                    {bills.length > 0 && (
+                       <div className="relative w-full md:w-80">
+                          <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
+                          <input
+                             type="text"
+                             placeholder="Search by Invoice ID or Order ID..."
+                             value={historySearchQuery}
+                             onChange={e => setHistorySearchQuery(e.target.value)}
+                             className="w-full py-2.5 pl-10 pr-4 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-xl outline-none transition-all shadow-sm"
+                          />
+                       </div>
+                    )}
+                 </div>
                  {bills.length === 0 ? (
                     <p className="text-slate-500 italic bg-slate-50 p-6 rounded-xl text-center border border-slate-100">No billing transactions recorded yet.</p>
-                 ) : (
-                    <div className="overflow-x-auto">
-                       <table className="w-full text-left text-sm border-collapse">
-                          <thead>
-                             <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
-                                <th className="p-4 pl-6">Invoice ID</th>
-                                <th className="p-4">Date</th>
-                                <th className="p-4">Buyer Details</th>
-                                <th className="p-4">Items Count</th>
-                                <th className="p-4">Total Amount</th>
-                                <th className="p-4">Generated By</th>
-                                <th className="p-4 text-right pr-6">Action</th>
-                             </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                             {bills.map(b => (
-                                <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
-                                   <td className="p-4 pl-6 font-mono font-bold text-xs text-indigo-600">{b.id}</td>
-                                   <td className="p-4 text-xs text-slate-600">{formatDate(b.date)}</td>
-                                   <td className="p-4 text-xs">
-                                      {b.buyerName ? (
-                                         <div className="flex flex-col gap-0.5">
-                                            <span className="font-bold text-slate-800">{b.buyerName}</span>
-                                            {b.buyerPhone && <span className="text-[10px] text-slate-400">{b.buyerPhone}</span>}
-                                         </div>
-                                      ) : <span className="text-slate-400 italic">None</span>}
-                                   </td>
-                                   <td className="p-4 text-xs font-bold text-slate-700">{b.items?.reduce((acc, it) => acc + (it.quantity || 0), 0) || 0} units</td>
-                                   <td className="p-4 text-sm font-extrabold text-slate-800">₹{b.total?.toFixed(2)}</td>
-                                   <td className="p-4 text-xs font-bold text-slate-600">{b.operatorName || 'Owner'}</td>
-                                   <td className="p-4 text-right pr-6 flex items-center justify-end gap-2">
-                                      <button onClick={() => setLastBill(b)} className="py-1.5 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-none rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 inline-flex" title="View Invoice"><Receipt size={14} /> View Invoice</button>
-                                      <button onClick={() => triggerPrintForBill(b)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg cursor-pointer transition-colors border-none inline-flex" title="Download PDF / Print"><Download size={14} /></button>
-                                      <button onClick={() => shareWhatsApp(b)} className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg cursor-pointer transition-colors border-none inline-flex" title="Share on WhatsApp"><Send size={14} /></button>
-                                   </td>
+                 ) : (() => {
+                    const filteredBills = bills.filter(b => {
+                       const query = historySearchQuery.toLowerCase().trim();
+                       if (!query) return true;
+                       const billId = (b.id || '').toLowerCase();
+                       const invoiceId = (b.invoiceId || '').toLowerCase();
+                       const orderId = (b.orderId || '').toLowerCase();
+return billId.includes(query) || invoiceId.includes(query) || orderId.includes(query);
+                    });
+                    return filteredBills.length === 0 ? (
+                       <p className="text-slate-500 italic bg-slate-50 p-6 rounded-xl text-center border border-slate-100">No matching transactions found.</p>
+                    ) : (
+                       <div className="overflow-x-auto">
+                          <table className="w-full text-left text-sm border-collapse">
+                             <thead>
+                                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                                   <th className="p-4 pl-6">Invoice ID</th>
+                                   <th className="p-4">Date</th>
+                                   <th className="p-4">Buyer Details</th>
+                                   <th className="p-4">Items Count</th>
+                                   <th className="p-4">Total Amount</th>
+                                   <th className="p-4">Generated By</th>
+                                   <th className="p-4 text-right pr-6">Action</th>
                                 </tr>
-                             ))}
-                           </tbody>
-                        </table>
-                     </div>
-                  )}
-               </div>
-            </div>
-         )}
+                             </thead>
+                             <tbody className="divide-y divide-slate-100">
+                                {filteredBills.map(b => (
+                                   <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
+                                      <td className="p-4 pl-6 font-mono font-bold text-xs text-indigo-600">{b.invoiceId || b.id}</td>
+                                      <td className="p-4 text-xs text-slate-600">{formatDate(b.date)}</td>
+                                      <td className="p-4 text-xs">
+                                         {b.buyerName ? (
+                                            <div className="flex flex-col gap-0.5">
+                                               <span className="font-bold text-slate-800">{b.buyerName}</span>
+                                               {b.buyerPhone && <span className="text-[10px] text-slate-400">{b.buyerPhone}</span>}
+                                            </div>
+                                         ) : <span className="text-slate-400 italic">None</span>}
+                                      </td>
+                                      <td className="p-4 text-xs font-bold text-slate-700">{b.items?.reduce((acc, it) => acc + (it.quantity || 0), 0) || 0} units</td>
+                                      <td className="p-4 text-sm font-extrabold text-slate-800">₹{b.total?.toFixed(2)}</td>
+                                      <td className="p-4 text-xs font-bold text-slate-600">{b.operatorName || 'Owner'}</td>
+                                      <td className="p-4 text-right pr-6 flex items-center justify-end gap-2">
+                                         <button onClick={() => setLastBill(b)} className="py-1.5 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-none rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 inline-flex" title="View Invoice"><Receipt size={14} /> View Invoice</button>
+                                         <button onClick={() => downloadInvoicePDF(b)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg cursor-pointer transition-colors border-none inline-flex" title="Download PDF"><Download size={14} /></button>
+                                         <button onClick={() => shareWhatsApp(b)} className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg cursor-pointer transition-colors border-none inline-flex" title="Share on WhatsApp"><Send size={14} /></button>
+                                      </td>
+                                   </tr>
+                                ))}
+                             </tbody>
+                          </table>
+                       </div>
+                    );
+                 })()}
+              </div>
+           </div>
+        )}
 
         {/* Printable Invoice Modal */}
         {lastBill && (() => {
           const showGst = lastBill.hasGst !== undefined ? !!lastBill.hasGst : !!userProfile?.gstNumber;
           return (
-            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[1000] flex items-center justify-center p-4 overflow-y-auto print-modal-overlay">
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[1000] flex items-start justify-center p-4 overflow-y-auto print-modal-overlay md:p-8">
               <div id="printable-invoice" className="rounded-2xl w-full max-w-4xl p-6 md:p-8 shadow-2xl border flex flex-col gap-6" style={{ backgroundColor: 'var(--inv-bg)', borderColor: 'var(--inv-border)', color: 'var(--inv-text-secondary)', transition: 'none' }}>
                 
                 {/* Centered Top Header details */}
@@ -763,11 +808,11 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                    </div>
                    <div style={{ display: 'flex', gap: '2rem', fontSize: '0.75rem', textAlign: 'left', color: 'var(--inv-text-secondary)' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                         <div><strong>Order ID:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--inv-text-primary)' }}>{lastBill.id}</span></div>
+                         <div><strong>Order ID:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--inv-text-primary)' }}>{lastBill.orderId || lastBill.id}</span></div>
                          <div><strong>Order Date:</strong> <span style={{ color: 'var(--inv-text-primary)' }}>{formatDate(lastBill.date)}</span></div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                         <div><strong>Invoice No:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--inv-text-primary)' }}>{lastBill.id}</span></div>
+                         <div><strong>Invoice No:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--inv-text-primary)' }}>{lastBill.invoiceId || lastBill.id}</span></div>
                          {showGst && userProfile?.gstNumber && <div><strong>GSTIN:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--inv-text-primary)', fontWeight: 'bold' }}>{userProfile.gstNumber}</span></div>}
                       </div>
                    </div>
@@ -800,7 +845,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                 </div>
 
                 {/* Invoice Items Table */}
-                <div className="invoice-items-container" style={{ border: '1px solid var(--inv-border)', borderRadius: '12px', overflow: 'hidden' }}>
+                <div className="invoice-items-container" style={{ border: '1px solid var(--inv-border)', borderRadius: '12px' }}>
                    <table className="w-full text-left text-xs" style={{ borderCollapse: 'collapse', margin: 0, backgroundColor: 'var(--inv-bg)' }}>
                       <thead>
                          <tr style={{ background: '#1e3a8a', borderBottom: '1px solid var(--inv-border)' }}>
@@ -857,22 +902,30 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                    </table>
                 </div>
 
-                {/* Professional Signatory and Declaration */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', margin: '1.5rem 0 0 0', padding: '1rem 0 0 0', borderTop: '1px dashed var(--inv-border)', fontSize: '0.7rem', color: 'var(--inv-text-secondary)' }}>
-                   <div style={{ textAlign: 'left', maxWidth: '55%', lineHeight: '1.4' }}>
-                      <strong>Declaration:</strong>
-                      <div>The goods sold are intended for end user consumption and not for resale. All disputes are subject to local jurisdiction.</div>
-                   </div>
-                   <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2rem' }}>
-                      <div style={{ fontWeight: 'bold', color: 'var(--inv-text-primary)' }}>For {userProfile?.businessName || 'Warehouse'}</div>
-                      <div style={{ borderTop: '1px solid var(--inv-border)', width: '150px', textAlign: 'center', paddingTop: '0.25rem', fontSize: '0.65rem', color: 'var(--inv-text-muted)' }}>Authorized Signatory</div>
-                   </div>
-                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', margin: '1.5rem 0 0 0', padding: '1rem 0 0 0', fontSize: '0.7rem', color: 'var(--inv-text-secondary)' }}>
+                     <div style={{ textAlign: 'left', maxWidth: '55%', lineHeight: '1.4' }}>
+                        <strong style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>🐜 Powered by Inventory Ant</strong>
+                        <div style={{ color: 'var(--inv-text-muted)', fontStyle: 'italic', fontSize: '0.65rem' }}>Smart Warehouse Intelligence & Inventory System</div>
+                     </div>
+                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                       <div style={{ height: '2.5rem', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', width: '180px' }}>
+                          {userProfile?.businessSignature ? (
+                             <img src={userProfile.businessSignature} alt="Signature" style={{ maxHeight: '2.5rem', maxWidth: '100%', objectFit: 'contain' }} />
+                          ) : <div style={{ height: '1.5rem' }}></div>}
+                       </div>
+                       <div style={{ borderTop: '1px solid var(--inv-border)', width: '180px', textAlign: 'center', paddingTop: '0.25rem', fontSize: '0.65rem', color: 'var(--inv-text-muted)' }}>
+                          <div>Authorized Signatory</div>
+                          <div style={{ marginTop: '0.15rem', fontWeight: 'bold', color: 'var(--inv-text-primary)' }}>
+                             Billed By: {(lastBill.operatorName && lastBill.operatorName !== 'Owner') ? lastBill.operatorName : (userProfile?.name || 'Owner')}
+                          </div>
+                       </div>
+                    </div>
+                 </div>
 
                 <div className="flex flex-wrap gap-3 pt-2 no-print-btn">
-                  <button onClick={handlePrint} className="flex-1 min-w-[140px] py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer border-none"><Download size={16} /> Download PDF / Print</button>
+                  <button onClick={() => downloadInvoicePDF(lastBill)} className="flex-1 min-w-[140px] py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer border-none"><Download size={16} /> Download PDF</button>
+                  <button onClick={handlePrint} className="flex-1 min-w-[140px] py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer border-none"><Printer size={16} /> Print Receipt</button>
                   <button onClick={() => shareWhatsApp(lastBill)} className="flex-1 min-w-[140px] py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer border-none"><Send size={16} /> Share on WhatsApp</button>
-                  {navigator.share && <button onClick={() => shareSystem(lastBill)} className="flex-1 min-w-[140px] py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer border-none"><Share2 size={16} /> Share Bill</button>}
                   <button onClick={() => setLastBill(null)} className="py-3 px-5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer border-none"><X size={14} /> Close</button>
                 </div>
               </div>

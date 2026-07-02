@@ -3,6 +3,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { PrismaService } from '../prisma.service';
 import * as bcrypt from 'bcryptjs';
+import PDFDocument from 'pdfkit';
 
 export interface Product {
   id: string;
@@ -397,11 +398,68 @@ export class ProductsService {
 
     const billedItems: any[] = [];
     let subtotal = 0;
+    const cleanUserId = userId.trim().toLowerCase();
     const billId = 'TXN-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+
+    const now = new Date();
+    const yyyy = now.getFullYear().toString();
+    const mm = (now.getMonth() + 1).toString().padStart(2, '0');
+    const dd = now.getDate().toString().padStart(2, '0');
+    const yyyymmdd = `${yyyy}${mm}${dd}`;
+
+    // Generate Order ID sequence: ORD-YYYYMMDD-Sequence
+    const prefixOrder = `ORD-${yyyymmdd}-`;
+    const billsForDay = await this.prisma.bill.findMany({
+      where: {
+        userId: cleanUserId,
+        orderId: {
+          startsWith: prefixOrder
+        }
+      },
+      select: { orderId: true }
+    });
+
+    let nextOrderSeq = 1;
+    if (billsForDay && billsForDay.length > 0) {
+      const sequences = billsForDay.map(b => {
+        if (!b.orderId) return 0;
+        const parts = b.orderId.split('-');
+        const seqStr = parts[parts.length - 1];
+        const seq = parseInt(seqStr, 10);
+        return isNaN(seq) ? 0 : seq;
+      });
+      nextOrderSeq = Math.max(...sequences) + 1;
+    }
+    const orderId = `${prefixOrder}${nextOrderSeq.toString().padStart(4, '0')}`;
+
+    // Generate Invoice ID sequence: INV-YYYY-Sequence
+    const prefixInvoice = `INV-${yyyy}-`;
+    const billsForYear = await this.prisma.bill.findMany({
+      where: {
+        userId: cleanUserId,
+        invoiceId: {
+          startsWith: prefixInvoice
+        }
+      },
+      select: { invoiceId: true }
+    });
+
+    let nextInvoiceSeq = 1;
+    if (billsForYear && billsForYear.length > 0) {
+      const sequences = billsForYear.map(b => {
+        if (!b.invoiceId) return 0;
+        const parts = b.invoiceId.split('-');
+        const seqStr = parts[parts.length - 1];
+        const seq = parseInt(seqStr, 10);
+        return isNaN(seq) ? 0 : seq;
+      });
+      nextInvoiceSeq = Math.max(...sequences) + 1;
+    }
+    const invoiceId = `${prefixInvoice}${nextInvoiceSeq.toString().padStart(4, '0')}`;
 
     for (const c of cart) {
       const product = await this.prisma.product.findFirst({
-        where: { userId, id: c.id }
+        where: { userId: cleanUserId, id: c.id }
       });
       if (product) {
         const qtyToSell = parseInt(c.quantity, 10) || 1;
@@ -414,7 +472,7 @@ export class ProductsService {
         });
 
         await this.logInventoryChange(
-          userId,
+          cleanUserId,
           'STOCK_OUT',
           product.name || 'Unknown Item',
           product.productId,
@@ -446,7 +504,7 @@ export class ProductsService {
     const newBill = await this.prisma.bill.create({
       data: {
         id: billId,
-        userId,
+        userId: cleanUserId,
         date: Date.now(),
         items: billedItems,
         subtotal,
@@ -457,7 +515,9 @@ export class ProductsService {
         buyerAddress,
         hasGst,
         hasBuyerInfo: !!(buyerName || buyerPhone || buyerAddress),
-        operatorName
+        operatorName,
+        orderId,
+        invoiceId
       }
     });
 
@@ -648,6 +708,400 @@ export class ProductsService {
     return this.prisma.scanHistory.findMany({
       where: { userId: cleanUserId },
       orderBy: { timestamp: 'desc' }
+    });
+  }
+
+  private formatDate(timestamp: number): string {
+    const d = new Date(timestamp);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const date = d.getDate();
+    const month = months[d.getMonth()];
+    const year = d.getFullYear();
+    let hours = d.getHours();
+    const minutes = d.getMinutes();
+    const ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+    return `${date < 10 ? '0' + date : date} ${month} ${year}, ${hours}:${minutesStr} ${ampm}`;
+  }
+
+  async generateInvoicePdf(userId: string, billId: string): Promise<Buffer> {
+    const cleanUserId = userId.trim().toLowerCase();
+    const bill = await this.prisma.bill.findFirst({
+      where: { id: billId, userId: cleanUserId }
+    });
+    if (!bill) throw new NotFoundException('Bill not found');
+
+    let seller = await this.prisma.user.findUnique({
+      where: { email: cleanUserId }
+    });
+    if (!seller) throw new NotFoundException('Seller not found');
+
+    if (seller.role === 'staff' && seller.parentEmail) {
+      const parent = await this.prisma.user.findUnique({
+        where: { email: seller.parentEmail.toLowerCase() }
+      });
+      if (parent) {
+        seller = parent;
+      }
+    }
+
+    const userProducts = await this.prisma.product.findMany({
+      where: { userId: seller.email }
+    });
+    const productsMap = new Map(userProducts.map(p => [p.id, p]));
+
+    return new Promise<Buffer>((resolve, reject) => {
+      const doc = new PDFDocument({ margin: 30, size: 'A4', layout: 'landscape' });
+      const buffers: Buffer[] = [];
+      doc.on('data', buffers.push.bind(buffers));
+      doc.on('end', () => {
+        resolve(Buffer.concat(buffers));
+      });
+      doc.on('error', reject);
+
+      const showGst = bill.hasGst !== undefined ? !!bill.hasGst : !!seller.gstNumber;
+
+      // Header section
+      doc.fillColor('#1e3a8a')
+         .fontSize(22)
+         .font('Helvetica-Bold')
+         .text(seller.businessName || 'Warehouse', { align: 'center' });
+      
+      doc.moveDown(0.2);
+
+      const contactDetails = [
+        seller.businessAddress || '',
+        (seller.phone && seller.showPhoneOnBills !== false) ? `Phone: ${seller.phone}` : '',
+        (seller.email && seller.showEmailOnBills !== false) ? `Email: ${seller.email}` : ''
+      ].filter(Boolean).join(' | ');
+
+      doc.fillColor('#475569')
+         .fontSize(9)
+         .font('Helvetica')
+         .text(contactDetails, { align: 'center' });
+
+      if (seller.businessNote) {
+        doc.moveDown(0.3);
+        doc.fillColor('#475569')
+           .fontSize(8.5)
+           .font('Helvetica-Oblique')
+           .text(`"${seller.businessNote}"`, { align: 'center' });
+      }
+
+      if (showGst && seller.gstNumber) {
+        doc.moveDown(0.3);
+        doc.fillColor('#1e293b')
+           .fontSize(9.5)
+           .font('Helvetica-Bold')
+           .text(`GSTIN: ${seller.gstNumber}`, { align: 'center' });
+      }
+
+      doc.moveDown(0.5);
+
+      // Solid blue line separator
+      let y = doc.y + 2;
+      doc.strokeColor('#1e3a8a')
+         .lineWidth(1.5)
+         .moveTo(30, y)
+         .lineTo(812, y)
+         .stroke();
+
+      y += 10;
+
+      // Invoice Details Grid
+      doc.fillAndStroke('#f8fafc', '#e2e8f0')
+         .lineWidth(1)
+         .roundedRect(30, y, 782, 45, 6)
+         .fillAndStroke();
+
+      doc.fillColor('#1e3a8a')
+         .fontSize(14)
+         .font('Helvetica-Bold')
+         .text(showGst ? 'TAX INVOICE' : 'INVOICE', 45, y + 10);
+      
+      doc.fillColor('#64748b')
+         .fontSize(6.5)
+         .font('Helvetica-Bold')
+         .text('ORIGINAL FOR RECIPIENT', 45, y + 27);
+
+      doc.fillColor('#475569').fontSize(8).font('Helvetica');
+      
+      doc.text('Order ID:', 400, y + 10);
+      doc.fillColor('#1e293b').font('Helvetica-Bold').text(bill.orderId || bill.id, 460, y + 10);
+      
+      doc.fillColor('#475569').font('Helvetica').text('Order Date:', 400, y + 25);
+      doc.fillColor('#1e293b').font('Helvetica-Bold').text(this.formatDate(bill.date), 460, y + 25);
+
+      doc.fillColor('#475569').font('Helvetica').text('Invoice No:', 620, y + 10);
+      doc.fillColor('#1e293b').font('Helvetica-Bold').text(bill.invoiceId || bill.id, 680, y + 10);
+      
+      if (showGst && seller.gstNumber) {
+        doc.fillColor('#475569').font('Helvetica').text('GSTIN:', 620, y + 25);
+        doc.fillColor('#1e293b').font('Helvetica-Bold').text(seller.gstNumber, 680, y + 25);
+      }
+
+      y += 55;
+
+      // Sold By Card
+      doc.fillAndStroke('#ffffff', '#e2e8f0')
+         .roundedRect(30, y, 381, 75, 6)
+         .fillAndStroke();
+
+      doc.fillColor('#1e3a8a')
+         .fontSize(6.5)
+         .font('Helvetica-Bold')
+         .text('SOLD BY', 42, y + 10);
+
+      doc.strokeColor('#e2e8f0').lineWidth(1).moveTo(42, y + 19).lineTo(399, y + 19).stroke();
+
+      doc.fillColor('#1e293b')
+         .fontSize(9.5)
+         .font('Helvetica-Bold')
+         .text(seller.businessName || 'Warehouse', 42, y + 24);
+
+      doc.fillColor('#475569')
+         .fontSize(8)
+         .font('Helvetica')
+         .text(seller.businessAddress || '', 42, y + 37, { width: 350 });
+
+      let soldContactY = doc.y + 2;
+      let soldContactStr = '';
+      if (seller.phone && seller.showPhoneOnBills !== false) soldContactStr += `Phone: ${seller.phone}`;
+      if (seller.email && seller.showEmailOnBills !== false) soldContactStr += (soldContactStr ? ' | ' : '') + `Email: ${seller.email}`;
+      if (soldContactStr) {
+         doc.text(soldContactStr, 42, soldContactY);
+      }
+
+      // Billed To Card
+      doc.fillAndStroke('#ffffff', '#e2e8f0')
+         .roundedRect(431, y, 381, 75, 6)
+         .fillAndStroke();
+
+      doc.fillColor('#1e3a8a')
+         .fontSize(6.5)
+         .font('Helvetica-Bold')
+         .text('BILLED TO', 443, y + 10);
+
+      doc.strokeColor('#e2e8f0').lineWidth(1).moveTo(443, y + 19).lineTo(800, y + 19).stroke();
+
+      if (bill.buyerName || bill.buyerPhone || bill.buyerAddress) {
+        doc.fillColor('#1e293b')
+           .fontSize(9.5)
+           .font('Helvetica-Bold')
+           .text(bill.buyerName || 'Walk-in Customer', 443, y + 24);
+
+        let billContactY = y + 37;
+        if (bill.buyerAddress) {
+          doc.fillColor('#475569')
+             .fontSize(8)
+             .font('Helvetica')
+             .text(bill.buyerAddress, 443, billContactY, { width: 350 });
+          billContactY = doc.y + 2;
+        }
+        if (bill.buyerPhone) {
+          doc.fillColor('#475569')
+             .fontSize(8)
+             .font('Helvetica')
+             .text(`Phone: ${bill.buyerPhone}`, 443, billContactY);
+        }
+      } else {
+        doc.fillColor('#1e293b')
+           .fontSize(9.5)
+           .font('Helvetica-Bold')
+           .text('Walk-in Customer', 443, y + 24);
+        
+        doc.fillColor('#64748b')
+           .fontSize(8)
+           .font('Helvetica-Oblique')
+           .text('Retail Invoice', 443, y + 37);
+        doc.text('Counter Sale', 443, y + 49);
+      }
+
+      y += 85;
+
+      const drawTableHeader = (currentY: number) => {
+        doc.fillColor('#1e3a8a')
+           .rect(30, currentY, 782, 22)
+           .fill();
+
+        doc.fillColor('#ffffff')
+           .fontSize(7)
+           .font('Helvetica-Bold');
+        
+        doc.text('PRODUCT', 40, currentY + 7, { width: 280, align: 'left' });
+        doc.text('SKU', 325, currentY + 7, { width: 100, align: 'left' });
+        doc.text('QTY', 435, currentY + 7, { width: 60, align: 'center' });
+        doc.text('RATE (Rs.)', 505, currentY + 7, { width: 90, align: 'right' });
+        if (showGst) {
+          doc.text(`GST (${bill.subtotal > 0 ? Math.round((bill.gst / bill.subtotal) * 100) : 18}%)`, 605, currentY + 7, { width: 90, align: 'right' });
+        }
+        doc.text('TOTAL', 705, currentY + 7, { width: 97, align: 'right' });
+      };
+
+      // Table Header row (First Page)
+      drawTableHeader(y);
+
+      let rowY = y + 22;
+
+      // Table rows
+      const items = (bill.items as any[]) || [];
+      items.forEach((item, idx) => {
+        // If rowY exceeds printable table boundary (480px), insert page break
+        if (rowY > 480) {
+          doc.strokeColor('#cbd5e1')
+             .lineWidth(0.5)
+             .moveTo(30, rowY)
+             .lineTo(812, rowY)
+             .stroke();
+
+          // Create new landscape A4 page
+          doc.addPage({ size: 'A4', layout: 'landscape', margin: 30 });
+          
+          // Print continuation header
+          doc.fillColor('#475569')
+             .fontSize(8)
+             .font('Helvetica-Oblique')
+             .text(`Invoice No: ${bill.invoiceId || bill.id} (Continued)`, 30, 20);
+
+          // Draw table header at y = 35 on new page
+          drawTableHeader(35);
+          rowY = 57; // 35 + 22
+        }
+
+        const rate = parseFloat(item.salePrice || item.manualPrice || item.mrp || '0');
+        const qty = item.quantity || 1;
+        const gross = rate * qty;
+        const gstRateFactor = showGst && bill.subtotal > 0 ? (bill.gst / bill.subtotal) : 0;
+        const itemGst = gross * gstRateFactor;
+        const itemTotal = gross + itemGst;
+        const matchingProduct = productsMap.get(item.id);
+        const skuCode = item.productId || matchingProduct?.productId || '---';
+
+        if (idx % 2 === 1) {
+           doc.fillColor('#f8fafc').rect(30, rowY, 782, 20).fill();
+        }
+
+        doc.fillColor('#1e293b')
+           .fontSize(8)
+           .font('Helvetica-Bold')
+           .text(item.name || 'Unnamed Item', 40, rowY + 6, { width: 280, align: 'left', height: 10, ellipsis: true });
+
+        doc.fillColor('#1e293b')
+           .fontSize(8)
+           .font('Helvetica-Bold')
+           .text(skuCode, 325, rowY + 6, { width: 100, align: 'left', height: 10, ellipsis: true });
+
+        doc.fillColor('#1e293b')
+           .fontSize(8)
+           .font('Helvetica-Bold')
+           .text(String(qty), 435, rowY + 6, { width: 60, align: 'center' });
+
+        doc.fillColor('#475569')
+           .fontSize(8)
+           .font('Helvetica')
+           .text(`Rs. ${rate.toFixed(2)}`, 505, rowY + 6, { width: 90, align: 'right' });
+
+        if (showGst) {
+          doc.fillColor('#10b981')
+             .fontSize(8)
+             .font('Helvetica')
+             .text(`Rs. ${itemGst.toFixed(2)}`, 605, rowY + 6, { width: 90, align: 'right' });
+        }
+
+        doc.fillColor('#1e293b')
+           .fontSize(8)
+           .font('Helvetica-Bold')
+           .text(`Rs. ${itemTotal.toFixed(2)}`, 705, rowY + 6, { width: 97, align: 'right' });
+
+        doc.strokeColor('#cbd5e1')
+           .lineWidth(0.5)
+           .moveTo(30, rowY + 20)
+           .lineTo(812, rowY + 20)
+           .stroke();
+
+        rowY += 20;
+      });
+
+      const totalQty = items.reduce((acc, it) => acc + (it.quantity || 0), 0);
+
+      // Check if totals + signatory (approx 130px height) fit on current page.
+      // If not, push summary details and signature cards to a clean next page.
+      if (rowY + 130 > 540) {
+        doc.addPage({ size: 'A4', layout: 'landscape', margin: 30 });
+        doc.fillColor('#475569')
+           .fontSize(8)
+           .font('Helvetica-Oblique')
+           .text(`Invoice No: ${bill.invoiceId || bill.id} (Summary & Signature)`, 30, 20);
+        rowY = 40;
+      }
+
+      if (showGst) {
+         doc.fillColor('#f8fafc').rect(30, rowY, 782, 18).fill();
+         doc.fillColor('#475569').fontSize(8).font('Helvetica-Bold').text('Subtotal:', 30, rowY + 5, { width: 665, align: 'right' });
+         doc.fillColor('#475569').fontSize(8).font('Helvetica-Bold').text(`Rs. ${bill.subtotal.toFixed(2)}`, 705, rowY + 5, { width: 97, align: 'right' });
+         doc.strokeColor('#cbd5e1').lineWidth(0.5).moveTo(30, rowY + 18).lineTo(812, rowY + 18).stroke();
+         rowY += 18;
+
+         doc.fillColor('#f8fafc').rect(30, rowY, 782, 18).fill();
+         doc.fillColor('#475569').fontSize(8).font('Helvetica-Bold').text(`GST (${bill.subtotal > 0 ? Math.round((bill.gst / bill.subtotal) * 100) : 18}%):`, 30, rowY + 5, { width: 665, align: 'right' });
+         doc.fillColor('#10b981').fontSize(8).font('Helvetica-Bold').text(`+Rs. ${bill.gst.toFixed(2)}`, 705, rowY + 5, { width: 97, align: 'right' });
+         doc.strokeColor('#cbd5e1').lineWidth(0.5).moveTo(30, rowY + 18).lineTo(812, rowY + 18).stroke();
+         rowY += 18;
+      }
+
+      doc.fillColor('#1e3a8a').rect(30, rowY, 782, 22).fill();
+      doc.fillColor('#ffffff').fontSize(8.5).font('Helvetica-Bold');
+      doc.text(`TOTAL QTY: ${totalQty}`, 40, rowY + 7);
+      
+      const grandTotal = showGst ? bill.total : bill.subtotal;
+      doc.text(`TOTAL: Rs. ${grandTotal.toFixed(2)}`, 605, rowY + 7, { width: 197, align: 'right' });
+      
+      rowY += 27;
+
+      const operatorDisplay = (bill.operatorName && bill.operatorName !== 'Owner') ? bill.operatorName : (seller.name || 'Owner');
+
+      // Left Side Credits with Brand Logo
+      let logoDrawn = false;
+      try {
+         const logoPath = path.resolve(__dirname, '../../../../inventory-ant-frontend/public/logo.png');
+         const fsSync = require('fs');
+         if (fsSync.existsSync(logoPath)) {
+            doc.image(logoPath, 30, rowY + 9, { width: 11, height: 11 });
+            logoDrawn = true;
+         }
+      } catch (e) {
+         console.error("Failed to draw brand logo in PDF:", e);
+      }
+
+      const textX = logoDrawn ? 45 : 30;
+      doc.fillColor('#1e3a8a').fontSize(8.5).font('Helvetica-Bold').text('Powered by Inventory Ant', textX, rowY + 10);
+      doc.fillColor('#64748b').fontSize(7.5).font('Helvetica-Oblique').text('Smart Warehouse Intelligence & Inventory System', 30, rowY + 20);
+
+      // Right Side Signatory
+      const sigY = rowY + 25;
+      const sigX = 670;
+      const sigWidth = 140;
+
+      // Draw signature image if present in seller profile
+      if (seller.businessSignature) {
+         try {
+            const matches = seller.businessSignature.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+            if (matches && matches.length === 3) {
+               const buffer = Buffer.from(matches[2], 'base64');
+               doc.image(buffer, sigX, sigY - 24, { fit: [sigWidth, 22], align: 'center', valign: 'bottom' });
+            }
+         } catch (e) {
+            console.error("Failed to render signature in PDF:", e);
+         }
+      }
+
+      doc.strokeColor('#cbd5e1').lineWidth(0.5).moveTo(sigX, sigY).lineTo(sigX + sigWidth, sigY).stroke();
+      doc.fillColor('#64748b').fontSize(7.5).font('Helvetica').text('Authorized Signatory', sigX, sigY + 5, { width: sigWidth, align: 'center' });
+      doc.fillColor('#1e293b').fontSize(8).font('Helvetica-Bold').text(`Billed By: ${operatorDisplay}`, sigX, sigY + 15, { width: sigWidth, align: 'center' });
+
+      doc.end();
     });
   }
 }

@@ -150,6 +150,8 @@ async function run() {
         hasGst: b.hasGst !== undefined ? !!b.hasGst : true,
         hasBuyerInfo: b.hasBuyerInfo !== undefined ? !!b.hasBuyerInfo : false,
         operatorName: b.operatorName || 'Owner',
+        orderId: b.orderId || null,
+        invoiceId: b.invoiceId || null,
       },
       create: {
         id: b.id,
@@ -165,6 +167,8 @@ async function run() {
         hasGst: b.hasGst !== undefined ? !!b.hasGst : true,
         hasBuyerInfo: b.hasBuyerInfo !== undefined ? !!b.hasBuyerInfo : false,
         operatorName: b.operatorName || 'Owner',
+        orderId: b.orderId || null,
+        invoiceId: b.invoiceId || null,
       },
     });
   }

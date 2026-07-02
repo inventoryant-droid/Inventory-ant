@@ -85,13 +85,12 @@ export default function AntXTerminal({ userId, token, onUpdate, onNavigate, onLo
   }, []);
 
   return (
-    <div className="antx-terminal-container" style={{ 
+    <div className="antx-terminal-container bg-[#F8FAFC]" style={{ 
       flex: 1, 
       display: 'flex', 
       flexDirection: 'column', 
       height: '100vh', 
       overflow: 'hidden',
-      backgroundColor: 'var(--bg-dark)',
       backgroundImage: 'radial-gradient(circle at 10% 10%, rgba(59, 130, 246, 0.05) 0%, transparent 50%)',
       color: 'var(--text-main)',
       position: 'relative'

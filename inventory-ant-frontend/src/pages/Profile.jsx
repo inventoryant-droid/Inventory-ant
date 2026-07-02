@@ -6,6 +6,7 @@ import '../App.css';
 
 export default function Profile({ token, userProfile, onProfileUpdate, theme, userRole }) {
   const logoInputRef = useRef(null);
+  const signatureInputRef = useRef(null);
 
   if (userRole === 'staff') {
     return (
@@ -29,6 +30,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
   const [showPhoneOnBills, setShowPhoneOnBills] = useState(true);
   const [showEmailOnBills, setShowEmailOnBills] = useState(true);
   const [logoBase64, setLogoBase64] = useState('');
+  const [signatureBase64, setSignatureBase64] = useState('');
   const [businessNote, setBusinessNote] = useState('');
 
   // Password update states
@@ -58,6 +60,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
       setShowPhoneOnBills(userProfile.showPhoneOnBills !== false);
       setShowEmailOnBills(userProfile.showEmailOnBills !== false);
       setLogoBase64(userProfile.businessLogo || '');
+      setSignatureBase64(userProfile.businessSignature || '');
       setBusinessNote(userProfile.businessNote || '');
     }
   }, [userProfile]);
@@ -84,6 +87,31 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
     setLogoBase64('');
     if (logoInputRef.current) {
       logoInputRef.current.value = '';
+    }
+  };
+
+  const handleSignatureUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setProfileError('Supported formats: JPG, PNG, WEBP only.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setSignatureBase64(event.target.result);
+      setProfileError('');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveSignature = () => {
+    setSignatureBase64('');
+    if (signatureInputRef.current) {
+      signatureInputRef.current.value = '';
     }
   };
 
@@ -133,6 +161,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
           businessName,
           businessType,
           businessLogo: logoBase64,
+          businessSignature: signatureBase64,
           gstNumber,
           businessAddress,
           showPhoneOnBills,
@@ -282,44 +311,86 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
               )}
 
               <form onSubmit={handleProfileSave} className="flex flex-col gap-6">
-                {/* Photo upload row */}
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col sm:flex-row items-center gap-4">
-                  <div className="w-16 h-16 rounded-full border border-slate-200 bg-white flex items-center justify-center overflow-hidden shrink-0">
-                    {logoBase64 ? (
-                      <img src={logoBase64} alt="Preview" className="w-full h-full object-cover" />
-                    ) : (
-                      <Building size={24} className="text-slate-400" />
-                    )}
-                  </div>
-                  <div className="flex-1 flex flex-col gap-1 items-center sm:items-start text-center sm:text-left">
-                    <span className="text-xs font-bold text-slate-700">Business Logo / Profile Photo</span>
-                    <div className="flex items-center gap-2 mt-1">
-                      <input 
-                        type="file" 
-                        ref={logoInputRef} 
-                        accept=".jpg,.jpeg,.png,.webp" 
-                        onChange={handleLogoUpload} 
-                        className="hidden" 
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => logoInputRef.current.click()} 
-                        className="py-1.5 px-3 bg-white hover:bg-slate-50 text-indigo-600 border border-slate-200 rounded-md text-xs font-bold transition-colors cursor-pointer shadow-sm"
-                      >
-                        {logoBase64 ? 'Update Logo' : 'Select Photo'}
-                      </button>
-                      {logoBase64 && (
-                        <button 
-                          type="button" 
-                          onClick={handleRemoveLogo} 
-                          className="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 border-none rounded-md text-xs font-bold transition-colors cursor-pointer"
-                        >
-                          Remove
-                        </button>
-                      )}
+                 {/* Logo & Signature Upload Cards Side-by-side */}
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Logo upload block */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-4">
+                       <div className="w-14 h-14 rounded-xl border border-slate-200 bg-white flex items-center justify-center overflow-hidden shrink-0">
+                         {logoBase64 ? (
+                           <img src={logoBase64} alt="Preview" className="w-full h-full object-cover" />
+                         ) : (
+                           <Building size={20} className="text-slate-400" />
+                         )}
+                       </div>
+                       <div className="flex-1 flex flex-col gap-1 text-left">
+                         <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Business Logo</span>
+                         <div className="flex items-center gap-1.5 mt-1">
+                           <input 
+                             type="file" 
+                             ref={logoInputRef} 
+                             accept=".jpg,.jpeg,.png,.webp" 
+                             onChange={handleLogoUpload} 
+                             className="hidden" 
+                           />
+                           <button 
+                             type="button" 
+                             onClick={() => logoInputRef.current.click()} 
+                             className="py-1 px-2.5 bg-white hover:bg-slate-50 text-indigo-600 border border-slate-200 rounded-md text-[10px] font-bold transition-colors cursor-pointer shadow-sm"
+                           >
+                             {logoBase64 ? 'Update Logo' : 'Select Photo'}
+                           </button>
+                           {logoBase64 && (
+                             <button 
+                               type="button" 
+                               onClick={handleRemoveLogo} 
+                               className="py-1 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border-none rounded-md text-[10px] font-bold transition-colors cursor-pointer"
+                             >
+                               Remove
+                             </button>
+                           )}
+                         </div>
+                       </div>
                     </div>
-                  </div>
-                </div>
+
+                    {/* Signature upload block */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center gap-4">
+                       <div className="w-14 h-14 rounded-xl border border-slate-200 bg-white flex items-center justify-center overflow-hidden shrink-0">
+                         {signatureBase64 ? (
+                           <img src={signatureBase64} alt="Preview" className="w-full h-full object-contain" />
+                         ) : (
+                           <span className="text-xs text-slate-400 font-bold italic">Sign</span>
+                         )}
+                       </div>
+                       <div className="flex-1 flex flex-col gap-1 text-left">
+                         <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Bill Signature (Optional)</span>
+                         <div className="flex items-center gap-1.5 mt-1">
+                           <input 
+                             type="file" 
+                             ref={signatureInputRef} 
+                             accept=".jpg,.jpeg,.png,.webp" 
+                             onChange={handleSignatureUpload} 
+                             className="hidden" 
+                           />
+                           <button 
+                             type="button" 
+                             onClick={() => signatureInputRef.current.click()} 
+                             className="py-1 px-2.5 bg-white hover:bg-slate-50 text-indigo-600 border border-slate-200 rounded-md text-[10px] font-bold transition-colors cursor-pointer shadow-sm"
+                           >
+                             {signatureBase64 ? 'Update Sign' : 'Select Sign'}
+                           </button>
+                           {signatureBase64 && (
+                             <button 
+                               type="button" 
+                               onClick={handleRemoveSignature} 
+                               className="py-1 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border-none rounded-md text-[10px] font-bold transition-colors cursor-pointer"
+                             >
+                               Remove
+                             </button>
+                           )}
+                         </div>
+                       </div>
+                    </div>
+                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">

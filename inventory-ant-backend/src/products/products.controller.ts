@@ -85,6 +85,22 @@ export class ProductsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('bills/:id/download')
+  async downloadInvoicePdf(@Req() req: any, @Param('id') id: string, @Res() res: any) {
+    try {
+      const tenantEmail = this.validateUser(req);
+      const pdfBuffer = await this.productsService.generateInvoicePdf(tenantEmail, id);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=Invoice_${id}.pdf`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error('Invoice PDF download failed:', error);
+      res.status((error as any).status || 500).json({ message: (error as any).message || 'Failed to download PDF invoice' });
+    }
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post()
   async create(@Req() req: any, @Body() createProductDto: any) {
     return this.productsService.create(this.validateUser(req), createProductDto);

@@ -33,6 +33,7 @@ export interface User {
   adminRole?: 'super_admin' | 'support_admin' | 'finance_admin' | 'tech_admin';
   businessNote?: string;
   lowStockThreshold?: number;
+  businessSignature?: string;
 }
 
 @Injectable()
@@ -253,7 +254,8 @@ export class UsersService implements OnModuleInit {
       lastLogin: dbUser.lastLogin || undefined,
       adminRole: (dbUser.adminRole as any) || undefined,
       businessNote: dbUser.businessNote || undefined,
-      lowStockThreshold: dbUser.lowStockThreshold !== undefined && dbUser.lowStockThreshold !== null ? dbUser.lowStockThreshold : 20,
+      lowStockThreshold: dbUser.lowStockThreshold || 20,
+      businessSignature: dbUser.businessSignature || undefined
     };
   }
 
@@ -652,6 +654,7 @@ export class UsersService implements OnModuleInit {
         mapped.businessLogo = parent.businessLogo || undefined;
         mapped.businessAddress = parent.businessAddress || undefined;
         mapped.gstNumber = parent.gstNumber || undefined;
+        mapped.businessSignature = parent.businessSignature || undefined;
       }
     }
 
@@ -730,6 +733,7 @@ export class UsersService implements OnModuleInit {
         profileCompleted: profileData.profileCompleted !== undefined ? !!profileData.profileCompleted : undefined,
         businessNote: profileData.businessNote !== undefined ? profileData.businessNote : undefined,
         lowStockThreshold: profileData.lowStockThreshold !== undefined ? Number(profileData.lowStockThreshold) : undefined,
+        businessSignature: profileData.businessSignature !== undefined ? profileData.businessSignature : undefined,
         updatedAt: Date.now()
       }
     });
