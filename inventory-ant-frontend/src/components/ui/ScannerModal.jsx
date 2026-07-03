@@ -559,23 +559,42 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                  ) : (
                     <div className="p-6 bg-red-50 rounded-xl border border-red-100 text-center flex flex-col items-center">
                         <X size={48} className="text-red-500 mb-4" />
-                        <h3 className="m-0 text-red-700 text-lg font-bold mb-2">SYNC FAILED</h3>
+                        <h3 className="m-0 text-red-700 text-lg font-bold mb-2">ANALYSIS FAILED</h3>
                         <div className="text-sm text-red-600 font-medium">{scanResult.message || "Unknown AI error occurred."}</div>
                     </div>
                  )}
                  <div className="flex flex-col sm:flex-row gap-3 mt-6">
-                    <button 
-                       className="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none transition-colors" 
-                       onClick={() => onNavigate ? onNavigate('dashboard') : onClose()}
-                    >
-                       Go to Overview
-                    </button>
-                    <button 
-                       className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none shadow-sm transition-colors" 
-                       onClick={() => onNavigate ? onNavigate('inventory') : onClose()}
-                    >
-                       Go to Master Inventory
-                    </button>
+                    {!scanResult.success ? (
+                       <>
+                          <button 
+                             className="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none transition-colors" 
+                             onClick={() => { setScanResult(null); setFile(null); }}
+                          >
+                             Retry Scan 🔄
+                          </button>
+                          <button 
+                             className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none shadow-sm transition-colors" 
+                             onClick={() => onNavigate ? onNavigate('inventory') : onClose()}
+                          >
+                             Go to Inventory
+                          </button>
+                       </>
+                    ) : (
+                       <>
+                          <button 
+                             className="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none transition-colors" 
+                             onClick={() => onNavigate ? onNavigate('dashboard') : onClose()}
+                          >
+                             Go to Overview
+                          </button>
+                          <button 
+                             className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none shadow-sm transition-colors" 
+                             onClick={() => onNavigate ? onNavigate('inventory') : onClose()}
+                          >
+                             Go to Master Inventory
+                          </button>
+                       </>
+                    )}
                  </div>
               </div>
            )}

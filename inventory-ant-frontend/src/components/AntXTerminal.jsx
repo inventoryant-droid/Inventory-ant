@@ -57,6 +57,9 @@ export default function AntXTerminal({ userId, token, onUpdate, onNavigate, onLo
         if (onUpdate && data.shouldUpdateUI) onUpdate();
         if (onNavigate && data.action === 'NAVIGATE' && data.page) onNavigate(data.page);
         if (onLogin && data.action === 'LOGIN' && data.loginId) onLogin(data.loginId);
+      } else {
+        const errorMsg = data.message || "Unknown error occurred.";
+        setMessages([...newMsgs, { role: 'ai', text: `Error: ${errorMsg}` }]);
       }
     } catch (e) {}
     setIsThinking(false);

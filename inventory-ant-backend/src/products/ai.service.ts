@@ -149,7 +149,7 @@ export class AiService {
 
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
       const model = genAI.getGenerativeModel({ 
-        model: 'gemini-2.5-flash',
+        model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
         generationConfig: { responseMimeType: 'application/json' }
       });
       const prompt = `
@@ -204,110 +204,11 @@ export class AiService {
         const raw = (await res.response).text().trim();
         data = JSON.parse(raw);
       } catch (e: any) {
-        console.error("⚠️ Ant X Neural Backup Triggered:", e.message);
-        const text = payload.text.toLowerCase();
-        data = { success: true, action: 'CHAT', speechText: "Theek hai! Main samajh gayi.", shouldUpdateUI: false };
-
-        // Parse Code and Qty for Stock Updates (prioritize code keyword)
-        const codeMatch = text.match(/code\s+(?:number\s+|no\s+)?[:\-]?\s*([0-9a-zA-Z-]+)/i) || text.match(/(?:item|id)\s+(?:number\s+|no\s+)?[:\-]?\s*([0-9a-zA-Z-]+)/i);
-        let parsedCode = codeMatch ? codeMatch[1] : null;
-
-        const qtyMatch = text.match(/(?:qty|quantity|kitna|ty|count)\s*(\d+)/i) || text.match(/(\d+)\s*(?:item|piece|unit|pc|quantity|qty)/i);
-        let parsedQty = qtyMatch ? parseInt(qtyMatch[1]) : null;
-        
-        // If no explicit qty match, just find the first number that isn't the code
-        if (!parsedQty) {
-           const allNumbers = text.match(/\b\d+\b/g);
-           if (allNumbers) {
-             const nums = allNumbers.filter(n => n !== parsedCode);
-             if (nums.length > 0) parsedQty = parseInt(nums[0]);
-           }
-        }
-        
-        // Handle Hindi transcription errors for "100" (sau -> sai)
-        if (!parsedQty && (text.toLowerCase().includes('sai') || text.toLowerCase().includes('sau'))) {
-           parsedQty = 100;
-        }
-
-        parsedQty = parsedQty || 1; // Default to 1
-
-        if (text.includes('add') || text.includes('plus') || text.includes('dalo') || text.includes('jama')) {
-          data.action = 'IN';
-          data.qty = parsedQty;
-          if (parsedCode) {
-            data.productId = parsedCode;
-            data.speechText = `Theek hai! Code ${data.productId} ke ${data.qty} items add kar diye hain. Kuch aur update karna hai?`;
-          } else {
-            const match = text.match(/add\s+(?:karo\s+)?([a-zA-Z0-9\s]+)/i);
-            data.itemName = match ? match[1].trim() : 'unknown';
-            data.speechText = `Theek hai! ${data.itemName} ke ${data.qty} items add kar diye hain. Kuch aur update karna hai?`;
-          }
-          data.shouldUpdateUI = true;
-        } else if (text.includes('remove') || text.includes('minus') || text.includes('nikalo') || text.includes('kam')) {
-          data.action = 'OUT';
-          data.qty = parsedQty;
-          if (parsedCode) {
-            data.productId = parsedCode;
-            data.speechText = `Ok! Code ${data.productId} ke ${data.qty} items kam kar diye hain. Inventory check karu?`;
-          } else {
-            const match = text.match(/remove\s+(?:karo\s+)?([a-zA-Z0-9\s]+)/i);
-            data.itemName = match ? match[1].trim() : 'unknown';
-            data.speechText = `Ok! ${data.itemName} ke ${data.qty} items kam kar diye hain. Inventory check karu?`;
-          }
-          data.shouldUpdateUI = true;
-        } else if (text.includes('hi') || text.includes('hello') || text.includes('namaste')) {
-          const nameMatch = text.match(/(?:main|naam|hun|am|is)\s+([a-zA-Z]+)/i);
-          const name = nameMatch ? nameMatch[1] : '';
-          data.speechText = name 
-            ? `Namaste ${name} ji! Aapka swagat hai. Main Ant X hoon, aapki smart warehouse assistant. Aaj kya help karu?`
-            : "Namaste! Main Ant X hoon. Aapka warehouse engine ekdum ready hai. Aaj kya kaam karein?";
-        } else if (text.includes('kaun ho') || text.includes('who are you') || text.includes('tera naam')) {
-          data.speechText = "Main Ant X hoon, Inventory Ant ki highly intelligent Neural AI! Main aapka warehouse manage karne mein madad karti hoon. Aapko kya jaanna hai?";
-        } else if (text.includes('owner') || text.includes('creator') || text.includes('kisne banaya') || text.includes('malik') || text.includes('deepak')) {
-          data.speechText = "Inventory Ant ke malik aur mere creator Deepak Raj hain! Unhone mujhe aapke warehouse ko smart banane ke liye banaya hai. Kya aapko inventory check karni hai?";
-        } else if (text.includes('dost') || text.includes('friend')) {
-          const nameMatch = text.match(/(?:dost|sahil|friend|is)\s+([a-zA-Z]+)/i);
-          const name = nameMatch ? nameMatch[1] : 'Sahil';
-          data.speechText = `Hello ${name}! Aapka bhi swagat hai. Aap mere host ke saath warehouse visit kar sakte hain. Kuch jaanna hai?`;
-        } else if (text.includes('inventory') || text.includes('stock') || text.includes('maal')) {
-          data.action = 'NAVIGATE'; data.page = 'inventory';
-          data.speechText = "Theek hai, Inventory page khul gaya hai! Yahan aap pura stock dekh sakte hain aur edit kar sakte hain. Kuch search karna hai?";
-        } else if (text.includes('billing') || text.includes('sale') || text.includes('becho') || text.includes('bill')) {
-          data.action = 'NAVIGATE'; data.page = 'billing';
-          data.speechText = "Billing screen active ho gayi hai! Bas items select kijiye aur checkout dabaiye. POS mode start karein?";
-        } else if (text.includes('dashboard') || text.includes('overview') || text.includes('stats') || text.includes('home')) {
-          data.action = 'NAVIGATE'; data.page = 'dashboard';
-          data.speechText = "Dashboard ready hai! Yahan aapka total stock aur alerts dikh rahe hain. Kya main koi specific stats dikhau?";
-        } else if (text.includes('about') || text.includes('tumhare baare mein') || text.includes('mission')) {
-          if (text.includes('open') || text.includes('page') || text.includes('kholo')) {
-            data.action = 'NAVIGATE'; data.page = 'about';
-            data.speechText = "About Us page open kar diya hai! Yahan aap Inventory Ant ki story aur features dekh sakte hain.";
-          } else {
-            data.speechText = "Inventory Ant ek smart warehouse system hai jo stock tracking, POS billing, aur AI automation handle karta hai. Iska main mission expiry alerts dekar wastage kam karna hai. Aur main, Ant X, aapki neural assistant hoon. Kya main aapko apne owner ke baare mein batau, ya inventory check karein?";
-          }
-        } else if (text.includes('scanner') || text.includes('scan') || text.includes('lab') || text.includes('ai')) {
-          data.action = 'NAVIGATE'; data.page = 'ai_lab';
-          data.speechText = "Smart Scanner open kar diya hai! Bill upload kijiye, main saara stock auto-add kar dungi. Ready?";
-        } else if (text.includes('about') || text.includes('mission') || text.includes('vision')) {
-          data.action = 'NAVIGATE'; data.page = 'about';
-          data.speechText = "About Us page khul gaya hai. Yahan hamari team aur mission ke baare mein jaankari hai. Aur kuch jaanna hai?";
-        } else if (text.includes('guide') || text.includes('help') || text.includes('madad')) {
-          data.action = 'NAVIGATE'; data.page = 'guide';
-          data.speechText = "User Guide open ho gayi hai. Ismein app use karne ka pura tareeka hai. Kya main help karu?";
-        } else if (text.includes('setting') || text.includes('config')) {
-          data.action = 'NAVIGATE'; data.page = 'settings';
-          data.speechText = "Settings page active hai. Yahan se aap profile aur inventory settings change kar sakte hain. Kya badalna hai?";
-        } else if (text.includes('terminal') || text.includes('ant x') || text.includes('core')) {
-          data.action = 'NAVIGATE'; data.page = 'ant_x';
-          data.speechText = "Neural Terminal active! Main aapke direct voice commands ke liye ready hoon. Kya help chahiye?";
-        } else {
-          // Context fallback support in backup regex
-          if (session.lastProductName && (text.includes('usmein') || text.includes('iska') || text.includes('ispe') || text.includes('wo'))) {
-            data.itemName = session.lastProductName;
-            data.productId = session.lastProductId;
-          }
-          data.speechText = `Theek hai! Aapne "${payload.text}" bola, main samajh gayi. Kya main Inventory page dikhau ya Billing start karein?`;
-        }
+        console.error("⚠️ Gemini API Command Error:", e.message);
+        return {
+          success: false,
+          message: `Gemini API Error: ${e.message || 'Unknown Gemini Error'}`
+        };
       }
 
       // --- 3. EXCEPTION & CONFIRMATION STAGING INTERCEPTION ---
@@ -436,11 +337,12 @@ export class AiService {
   async processBillWithGemini(userId: string, payload: any, operatorName = 'Owner'): Promise<any> {
     let items: any[] = [];
     let ocrText = '';
+    let rawResponse = '';
 
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
       const model = genAI.getGenerativeModel({ 
-        model: 'gemini-2.5-flash',
+        model: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
         generationConfig: { responseMimeType: 'application/json' }
       });
       const prompt = `
@@ -476,9 +378,9 @@ export class AiService {
       };
       
       const result = await model.generateContent([prompt, imagePart]);
-      const responseText = result.response.text().trim();
-      console.log(">>> [GEMINI BILL ANALYSIS RESULT]:", responseText);
-      const parsed = JSON.parse(responseText);
+      rawResponse = result.response.text().trim();
+      console.log(">>> [GEMINI BILL ANALYSIS RESULT]:", rawResponse);
+      const parsed = JSON.parse(rawResponse);
       if (Array.isArray(parsed)) {
         items = parsed.map(item => ({
           productId: item.productId ? String(item.productId) : '',
@@ -490,90 +392,24 @@ export class AiService {
         }));
       }
     } catch (geminiError: any) {
-      console.error('⚠️ [GEMINI BILL PARSE FAILED, FALLING BACK TO OCR]:', geminiError.message);
-    }
-
-    if (items.length === 0) {
-      // ── STEP 1: Tesseract.js OCR (FREE, No API!) ──
-      try {
-        const { createWorker } = require('tesseract.js');
-        const worker = await createWorker('eng');
-        const imageBuffer = Buffer.from(payload.base64Image, 'base64');
-        const { data } = await worker.recognize(imageBuffer);
-        ocrText = data.text || '';
-        await worker.terminate();
-        console.log(`>>> [OCR] ${ocrText.length} chars extracted`);
-        console.log(`>>> [OCR TEXT]:\n${ocrText}`);
-      } catch (e: any) {
-        console.error('!!! [OCR FAILED]:', e.message);
-      }
-
-      // ── STEP 2: Smart Bill Parser (No API needed!) ──
-      if (ocrText.length > 10) {
-        const SKIP_PATTERNS = [
-          /^(billing|receipt|invoice|date|to:|from:|address|phone|total|subtotal|gst|sgst|cgst|tax|amount|rate|item\s*code|item\s*name|qty|quantity|sl\.?\s*no|grand|discount|payment|thank|www\.|@)/i,
-          /^\s*[-=*#]+\s*$/,
-        ];
-
-        const lines = ocrText.split('\n').map(l => l.trim()).filter(l => l.length > 2);
-
-        for (const line of lines) {
-          if (SKIP_PATTERNS.some(p => p.test(line))) continue;
-
-          const numbers = [...line.matchAll(/\b(\d+(?:\.\d+)?)\b/g)].map(m => ({ val: parseFloat(m[1]), idx: m.index }));
-          
-          if (numbers.length === 0) continue;
-
-          let namePart = line.replace(/\b\d+(?:[.,]\d+)?\b/g, '').replace(/[|\\\/]/g, ' ').replace(/\s+/g, ' ').trim();
-          namePart = namePart.replace(/[^a-zA-Z0-9 ()]/g, '').trim();
-
-          if (namePart.length < 3) continue;
-
-          if (/^(total|sub|gst|tax|amt|amount|rate|qty|no|sno|sr|sl|item|code|name|rs|inr|date|time|bill|inv)/i.test(namePart)) continue;
-
-          let qty = 1;
-          let productId = '';
-
-          if (numbers.length >= 2 && numbers[0].val < 1000 && Number.isInteger(numbers[0].val)) {
-            productId = String(Math.round(numbers[0].val));
-            for (let i = 1; i < numbers.length; i++) {
-              if (numbers[i].val < 1000 && numbers[i].val >= 1 && Number.isInteger(numbers[i].val)) {
-                qty = Math.round(numbers[i].val);
-                break;
-              }
-            }
-          } else {
-            for (const n of numbers) {
-              if (n.val >= 1 && n.val < 1000 && Number.isInteger(n.val)) {
-                qty = Math.round(n.val);
-                break;
-              }
-            }
-          }
-
-          const mrpNum = numbers.find(n => n.val.toString().includes('.') || n.val > 50);
-          const mrp = mrpNum ? mrpNum.val.toString() : '0';
-
-          if (namePart.length > 2 && qty > 0) {
-            items.push({ productId, name: namePart, qty, mrp });
-            console.log(`>>> [PARSED]: code="${productId}" name="${namePart}" qty=${qty}`);
-          }
-        }
-
-        console.log(`>>> [PARSER] Total ${items.length} items found`);
-      }
+      console.error('⚠️ [GEMINI BILL PARSE FAILED]:', geminiError.message);
+      return {
+        success: false,
+        message: `Gemini API Error: ${geminiError.message || 'Unknown Error'}${rawResponse ? `. Raw Response: ${rawResponse}` : ''}`,
+        parsedItems: [],
+        ocrText: ''
+      };
     }
 
     if (items.length === 0) {
       return {
         success: false,
-        message: ocrText.length < 10 && !process.env.GEMINI_API_KEY
-          ? 'Bill image clear nahi hai. Zyada close-up photo lein.'
-          : 'Bill se koi product nahi nikla. Bill format check karein.',
+        message: `Gemini did not find any products in this bill. Raw Response: ${rawResponse || 'No response'}`,
         parsedItems: [],
-        ocrText
+        ocrText: ''
       };
     }
+
 
     if (payload.parseOnly) {
       return { success: true, action: payload.actionType, parsedItems: items };
