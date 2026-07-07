@@ -40,11 +40,8 @@ export default function App() {
   const [view, setView] = useState('dashboard');
   const [inventoryFilter, setInventoryFilter] = useState('all');
   const [products, setProducts] = useState([]);
-  const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem('ant_theme');
-    if (saved) return saved;
-    return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
-  });
+  // Temporarily forced to 'light' to disable dark theme
+  const [theme, setTheme] = useState('light');
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const [hasShownWelcome, setHasShownWelcome] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
@@ -56,9 +53,7 @@ export default function App() {
   const [globalStatus, setGlobalStatus] = useState('');
 
   const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    localStorage.setItem('ant_theme', newTheme);
+    // Temporarily disabled
   };
 
   const handleLogin = (id, role = 'user', accessToken = '', refreshToken = '') => {
@@ -113,26 +108,7 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e) => {
-      if (!localStorage.getItem('ant_theme')) {
-        setTheme(e.matches ? 'dark' : 'light');
-      }
-    };
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleChange);
-    } else if (mediaQuery.addListener) {
-      mediaQuery.addListener(handleChange);
-    }
-    return () => {
-      if (mediaQuery.removeEventListener) {
-        mediaQuery.removeEventListener('change', handleChange);
-      } else if (mediaQuery.removeListener) {
-        mediaQuery.removeListener(handleChange);
-      }
-    };
-  }, []);
+  // System theme listener disabled temporarily
 
   const handleSwitchAccount = () => {
      handleLogout();
