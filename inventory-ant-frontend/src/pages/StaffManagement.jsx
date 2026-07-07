@@ -200,7 +200,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
   return (
     <div className="p-4 md:p-8 flex-1 overflow-y-auto bg-[#F8FAFC]">
       <div className="flex flex-col mb-8 text-left">
-        <h1 className="m-0 text-3xl font-extrabold tracking-tight text-indigo-600 flex items-center gap-3">
+        <h1 className="m-0 text-3xl font-extrabold tracking-tight text-emerald-600 flex items-center gap-3">
           <Users size={32} /> Staff Management
         </h1>
         <p className="text-slate-500 mt-1 text-sm font-medium">Create, configure, and monitor roles and access permissions for your warehouse loaders and billing staff.</p>
@@ -211,7 +211,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
         {/* Creation Panel */}
         <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-[0_2px_10px_rgba(0,0,0,0.01)] text-left flex flex-col self-start">
           <h3 className="m-0 mb-4 text-[15px] font-bold text-slate-800 flex items-center gap-2">
-            <UserPlus size={18} className="text-indigo-500" /> Add Staff Member
+            <UserPlus size={18} className="text-emerald-500" /> Add Staff Member
           </h3>
           <p className="text-slate-500 text-xs leading-relaxed mb-6">
             Staff members will get custom credentials linked to your business. They will only have access to Billing, Catalog Inventory, AI Terminal, and Smart Scanner.
@@ -254,7 +254,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
                 <button 
                   type="button" 
                   onClick={() => fileInputRef.current.click()} 
-                  className="py-1 px-3.5 bg-white hover:bg-slate-50 text-indigo-600 border border-slate-200 rounded-md text-[10px] font-bold transition-colors cursor-pointer shadow-sm self-start mt-1"
+                  className="py-1 px-3.5 bg-white hover:bg-slate-50 text-emerald-600 border border-slate-200 rounded-md text-[10px] font-bold transition-colors cursor-pointer shadow-sm self-start mt-1"
                 >
                   Upload File
                 </button>
@@ -268,7 +268,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
                 placeholder="e.g. Rajesh Kumar"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                className="p-3 border border-slate-200 rounded-xl outline-none text-slate-800 focus:border-indigo-500 transition-colors text-xs"
+                className="p-3 border border-slate-200 rounded-xl outline-none text-slate-800 focus:border-emerald-500 transition-colors text-xs"
                 required
               />
             </div>
@@ -280,7 +280,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
                 placeholder="e.g. 9876543210"
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
-                className="p-3 border border-slate-200 rounded-xl outline-none text-slate-800 focus:border-indigo-500 transition-colors text-xs"
+                className="p-3 border border-slate-200 rounded-xl outline-none text-slate-800 focus:border-emerald-500 transition-colors text-xs"
               />
             </div>
 
@@ -291,22 +291,22 @@ export default function StaffManagement({ token, userProfile, userId }) {
                 placeholder="Set password for staff"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="p-3 border border-slate-200 rounded-xl outline-none text-slate-800 focus:border-indigo-500 transition-colors text-xs"
+                className="p-3 border border-slate-200 rounded-xl outline-none text-slate-800 focus:border-emerald-500 transition-colors text-xs"
                 required
               />
             </div>
 
             {/* Generated Login ID preview */}
             {generatedLoginId && (
-              <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-left">
-                <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest block mb-1">Generated Login ID</span>
-                <span className="text-xs font-mono font-bold text-indigo-700 break-all">{generatedLoginId}</span>
+              <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-left">
+                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest block mb-1">Generated Login ID</span>
+                <span className="text-xs font-mono font-bold text-emerald-700 break-all">{generatedLoginId}</span>
               </div>
             )}
 
             <button 
               type="submit"
-              className="py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold border-none shadow-sm transition-colors cursor-pointer w-full mt-2"
+              className="py-3 bg-[#0f9d63] hover:bg-emerald-700 text-white rounded-xl text-xs font-bold border-none shadow-sm transition-colors cursor-pointer w-full mt-2"
             >
               CREATE STAFF ACCOUNT
             </button>
@@ -318,7 +318,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
           <div className="bg-white rounded-3xl border border-slate-200 shadow-[0_2px_10px_rgba(0,0,0,0.01)] overflow-hidden">
             <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white text-left">
               <h3 className="m-0 text-[15px] font-bold text-slate-800">Active Staff Registries</h3>
-              <span className="bg-indigo-50 text-indigo-600 text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
+              <span className="bg-emerald-50 text-emerald-600 text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
                 {staffList.length} Accounts
               </span>
             </div>
@@ -338,7 +338,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
                   {loading ? (
                     <tr>
                       <td colSpan="5" className="p-8 text-center text-slate-400 text-xs">
-                        <Loader2 className="animate-spin inline mr-2 text-indigo-500" size={16} /> Loading registries...
+                        <Loader2 className="animate-spin inline mr-2 text-emerald-500" size={16} /> Loading registries...
                       </td>
                     </tr>
                   ) : staffList.length === 0 ? (
@@ -356,7 +356,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
                               {staff.picture ? (
                                 <img src={staff.picture} alt={staff.name} className="w-full h-full object-cover" />
                               ) : (
-                                <div className="w-full h-full font-bold text-indigo-500 bg-indigo-50 flex items-center justify-center text-xs">
+                                <div className="w-full h-full font-bold text-emerald-500 bg-emerald-50 flex items-center justify-center text-xs">
                                   {staff.name.substring(0, 2).toUpperCase()}
                                 </div>
                               )}
@@ -364,7 +364,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
                             <span className="font-bold text-slate-800 text-xs">{staff.name}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 font-mono text-xs font-bold text-indigo-600 select-all">
+                        <td className="px-6 py-4 font-mono text-xs font-bold text-emerald-600 select-all">
                           {staff.email}
                         </td>
                         <td className="px-6 py-4 text-slate-500 font-semibold text-xs">
@@ -418,7 +418,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[1000] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md p-6 border border-slate-200 text-left shadow-2xl flex flex-col gap-5 relative animate-in fade-in zoom-in-95 duration-200">
             <h3 className="m-0 text-base font-bold text-slate-800 flex items-center gap-2">
-              <Key size={18} className="text-indigo-500" /> Reset Password
+              <Key size={18} className="text-emerald-500" /> Reset Password
             </h3>
             <p className="text-slate-500 text-xs m-0">
               Updating login password for staff: <strong className="text-slate-800">{selectedStaff.name}</strong> ({selectedStaff.email})
@@ -446,7 +446,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
                   placeholder="At least 4 characters"
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
-                  className="p-3 border border-slate-200 rounded-xl outline-none text-slate-800 focus:border-indigo-500 transition-colors text-xs"
+                  className="p-3 border border-slate-200 rounded-xl outline-none text-slate-800 focus:border-emerald-500 transition-colors text-xs"
                   required
                 />
               </div>
@@ -462,7 +462,7 @@ export default function StaffManagement({ token, userProfile, userId }) {
                 <button 
                   type="submit" 
                   disabled={passLoading}
-                  className="py-2 px-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all border-none cursor-pointer flex items-center gap-1.5"
+                  className="py-2 px-5 bg-[#0f9d63] hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all border-none cursor-pointer flex items-center gap-1.5"
                 >
                   {passLoading ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                   Confirm Update

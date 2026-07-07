@@ -220,24 +220,24 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                     <button 
                        type="button"
                        onClick={() => { setSourceMode('file'); stopCamera(); }}
-                       className={`flex-1 border-none font-bold py-2.5 px-4 rounded-lg text-sm cursor-pointer transition-all ${sourceMode === 'file' ? 'bg-white text-indigo-600 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'}`}
+                       className={`flex-1 border-none font-bold py-2.5 px-4 rounded-lg text-sm cursor-pointer transition-all ${sourceMode === 'file' ? 'bg-white text-emerald-600 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'}`}
                     >
                        File Upload
                     </button>
                     <button 
                        type="button"
                        onClick={() => { setSourceMode('camera'); startCamera(); }}
-                       className={`flex-1 border-none font-bold py-2.5 px-4 rounded-lg text-sm cursor-pointer transition-all ${sourceMode === 'camera' ? 'bg-white text-indigo-600 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'}`}
+                       className={`flex-1 border-none font-bold py-2.5 px-4 rounded-lg text-sm cursor-pointer transition-all ${sourceMode === 'camera' ? 'bg-white text-emerald-600 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'}`}
                     >
                        Use Camera
                     </button>
                  </div>
 
                  {sourceMode === 'file' && (
-                    <div className="bg-slate-50 p-10 border-2 border-dashed border-indigo-200 rounded-xl text-center cursor-pointer hover:bg-indigo-50 hover:border-indigo-400 transition-all duration-300">
+                    <div className="bg-slate-50 p-10 border-2 border-dashed border-emerald-200 rounded-xl text-center cursor-pointer hover:bg-emerald-50 hover:border-emerald-400 transition-all duration-300">
                        <input type="file" id="ai-file" onChange={(e) => setFile(e.target.files[0])} className="hidden" />
                        <label htmlFor="ai-file" className="cursor-pointer flex flex-col items-center justify-center h-full w-full">
-                           <div className="mb-4 text-indigo-400">
+                           <div className="mb-4 text-emerald-400">
                               {scanType === 'IN' ? <Inbox size={48} strokeWidth={1.5} /> : <Flame size={48} strokeWidth={1.5} />}
                            </div>
                            <div className="text-slate-700 font-bold text-sm md:text-base break-all mb-1">
@@ -261,7 +261,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3">
                                 <button 
                                    onClick={capturePhoto} 
-                                   className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full w-12 h-12 flex items-center justify-center border-none shadow-md cursor-pointer transition-colors"
+                                   className="bg-[#0f9d63] hover:bg-emerald-700 text-white rounded-full w-12 h-12 flex items-center justify-center border-none shadow-md cursor-pointer transition-colors"
                                 >
                                    <Camera size={22} />
                                 </button>
@@ -282,7 +282,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                                    </div>
                                    <button 
                                       onClick={startCamera} 
-                                      className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-2 px-4 text-xs font-bold border-none cursor-pointer transition-colors mt-2"
+                                      className="bg-[#0f9d63] hover:bg-emerald-700 text-white rounded-xl py-2 px-4 text-xs font-bold border-none cursor-pointer transition-colors mt-2"
                                    >
                                       Retake Photo
                                    </button>
@@ -290,7 +290,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                              ) : (
                                 <button 
                                    onClick={startCamera} 
-                                   className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3 px-6 text-sm font-bold border-none cursor-pointer transition-colors"
+                                   className="bg-[#0f9d63] hover:bg-emerald-700 text-white rounded-xl py-3 px-6 text-sm font-bold border-none cursor-pointer transition-colors"
                                 >
                                    Start Camera Feed
                                  </button>
@@ -302,7 +302,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                  )}
 
                  <button 
-                    className={`py-4 px-6 w-full rounded-xl text-sm font-bold flex items-center justify-center gap-2 border-none shadow-sm transition-colors ${file ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                    className={`py-4 px-6 w-full rounded-xl text-sm font-bold flex items-center justify-center gap-2 border-none shadow-sm transition-colors ${file ? 'bg-[#0f9d63] hover:bg-emerald-700 text-white cursor-pointer' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
                     disabled={!file} 
                     onClick={processBill}
                  >
@@ -315,7 +315,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
               <div className="mt-8 text-slate-700">
                 <div className="flex items-center gap-4 mb-8 bg-slate-50 p-4 rounded-xl border border-slate-100">
                    <div className="bg-white p-3 rounded-lg shadow-sm">
-                     <FileText size={24} className="text-indigo-500" />
+                     <FileText size={24} className="text-emerald-500" />
                    </div>
                    <div>
                      <h4 className="m-0 text-sm font-bold text-slate-800">Processing {file?.name || 'document'}...</h4>
@@ -329,17 +329,17 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                       <span className={`text-sm font-bold ${loadingStep >= 1 ? 'text-slate-800' : 'text-slate-400'}`}>Text extraction</span>
                    </div>
                    <div className="flex items-center gap-4">
-                      {loadingStep > 1 ? <CheckCircle2 size={20} className="text-emerald-500" /> : (loadingStep === 1 ? <Loader2 size={20} className="text-indigo-500 animate-spin" /> : <Circle size={20} className="text-slate-200" />)}
-                      <span className={`text-sm font-bold ${loadingStep > 1 ? 'text-slate-800' : (loadingStep === 1 ? 'text-indigo-600' : 'text-slate-400')}`}>Quantity mapping</span>
+                      {loadingStep > 1 ? <CheckCircle2 size={20} className="text-emerald-500" /> : (loadingStep === 1 ? <Loader2 size={20} className="text-emerald-500 animate-spin" /> : <Circle size={20} className="text-slate-200" />)}
+                      <span className={`text-sm font-bold ${loadingStep > 1 ? 'text-slate-800' : (loadingStep === 1 ? 'text-emerald-600' : 'text-slate-400')}`}>Quantity mapping</span>
                    </div>
                    <div className="flex items-center gap-4">
-                      {loadingStep > 2 ? <CheckCircle2 size={20} className="text-emerald-500" /> : (loadingStep === 2 ? <Loader2 size={20} className="text-indigo-500 animate-spin" /> : <Circle size={20} className="text-slate-200" />)}
-                      <span className={`text-sm font-bold ${loadingStep > 2 ? 'text-slate-800' : (loadingStep === 2 ? 'text-indigo-600' : 'text-slate-400')}`}>Registry sync</span>
+                      {loadingStep > 2 ? <CheckCircle2 size={20} className="text-emerald-500" /> : (loadingStep === 2 ? <Loader2 size={20} className="text-emerald-500 animate-spin" /> : <Circle size={20} className="text-slate-200" />)}
+                      <span className={`text-sm font-bold ${loadingStep > 2 ? 'text-slate-800' : (loadingStep === 2 ? 'text-emerald-600' : 'text-slate-400')}`}>Registry sync</span>
                    </div>
                 </div>
 
                 <div className="w-full bg-slate-100 h-1.5 rounded-full mt-8 overflow-hidden">
-                   <div className="bg-indigo-500 h-full rounded-full transition-all duration-500" style={{ width: `${(loadingStep / 3) * 100}%` }}></div>
+                   <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${(loadingStep / 3) * 100}%` }}></div>
                 </div>
               </div>
            )}
@@ -350,7 +350,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                  {/* Header bar */}
                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                       <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-xs font-extrabold">
+                       <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 text-xs font-extrabold">
                           {parsedItems.length}
                        </span>
                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -360,7 +360,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                     <button
                        type="button"
                        onClick={handleAddItem}
-                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-dashed border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 bg-transparent cursor-pointer transition-all"
+                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-dashed border-emerald-300 dark:border-emerald-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 bg-transparent cursor-pointer transition-all"
                     >
                        <Plus size={12} /> Add Row
                     </button>
@@ -383,7 +383,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                           className="group grid grid-cols-[2rem_1fr_5rem_5rem_2.5rem] gap-2 items-center px-3 py-2.5 rounded-xl
                              bg-white dark:bg-slate-800/60
                              border border-slate-100 dark:border-slate-700/60
-                             hover:border-indigo-200 dark:hover:border-indigo-700/60
+                             hover:border-emerald-200 dark:hover:border-emerald-700/60
                              hover:shadow-sm transition-all duration-200"
                        >
                           {/* Row number badge */}
@@ -399,7 +399,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                              placeholder="Product name..."
                              className="w-full min-w-0 bg-transparent border-0 border-b border-transparent
                                 group-hover:border-slate-200 dark:group-hover:border-slate-600
-                                focus:border-indigo-400 dark:focus:border-indigo-500
+                                focus:border-emerald-400 dark:focus:border-emerald-500
                                 text-sm font-semibold text-slate-800 dark:text-slate-100
                                 placeholder:text-slate-300 dark:placeholder:text-slate-600
                                 focus:outline-none py-0.5 transition-colors truncate"
@@ -413,7 +413,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                              placeholder="0"
                              className="w-full bg-slate-50 dark:bg-slate-700/60
                                 border border-slate-200 dark:border-slate-600
-                                focus:border-indigo-400 dark:focus:border-indigo-500
+                                focus:border-emerald-400 dark:focus:border-emerald-500
                                 text-xs font-bold text-slate-700 dark:text-slate-200
                                 focus:outline-none rounded-lg px-2 py-1.5 text-center
                                 transition-colors"
@@ -427,7 +427,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                              placeholder={scanType === 'IN' ? 'Cost Price' : '0.00'}
                              className="w-full bg-slate-50 dark:bg-slate-700/60
                                 border border-slate-200 dark:border-slate-600
-                                focus:border-indigo-400 dark:focus:border-indigo-500
+                                focus:border-emerald-400 dark:focus:border-emerald-500
                                 text-xs font-bold text-slate-700 dark:text-slate-200
                                 focus:outline-none rounded-lg px-2 py-1.5 text-center
                                 transition-colors"
@@ -467,7 +467,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                        className={`flex-1 rounded-xl py-3 px-5 text-sm font-bold border-none cursor-pointer
                           transition-all shadow-md flex items-center justify-center gap-2
                           ${isSyncing
-                             ? 'bg-indigo-400 dark:bg-indigo-600 text-white cursor-wait opacity-80'
+                             ? 'bg-emerald-400 dark:bg-[#0f9d63] text-white cursor-wait opacity-80'
                              : 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-indigo-200 dark:shadow-indigo-900/40'
                           }`}
                     >
@@ -507,7 +507,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
                                                  : res.status === 'NEW_OUTBOUND'
                                                  ? 'bg-orange-100 text-orange-800 border border-orange-200'
-                                                 : 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                                                 : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                                            }`}>
                                               {res.status === 'NEW' ? 'NEW ITEM' : res.status === 'NEW_OUTBOUND' ? 'NEW (OUT)' : 'UPDATED'}
                                            </span>
@@ -515,7 +515,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                                         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-slate-500 font-medium">
                                            <span>SKU Code: <strong className="text-slate-700">{res.productId || 'N/A'}</strong></span>
                                            {res.csvRow && <span>CSV Row: <strong className="text-slate-700">{res.csvRow}</strong></span>}
-                                           <span>Change: <strong className={res.status === 'SUCCESS' ? 'text-indigo-600' : 'text-emerald-600'}>{scanType === 'IN' ? '+' : '-'}{res.qty}</strong></span>
+                                           <span>Change: <strong className={res.status === 'SUCCESS' ? 'text-emerald-600' : 'text-emerald-600'}>{scanType === 'IN' ? '+' : '-'}{res.qty}</strong></span>
                                            <span>Total Stock: <strong className="text-slate-700">{res.newQty}</strong></span>
                                         </div>
                                      </div>
@@ -539,7 +539,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                         Go to Overview
                      </button>
                      <button 
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none shadow-sm transition-colors" 
+                        className="bg-[#0f9d63] hover:bg-emerald-700 text-white rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none shadow-sm transition-colors" 
                         onClick={() => onNavigate ? onNavigate('inventory') : onClose()}
                      >
                         Go to Master Inventory
@@ -573,7 +573,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                              Retry Scan 🔄
                           </button>
                           <button 
-                             className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none shadow-sm transition-colors" 
+                             className="bg-[#0f9d63] hover:bg-emerald-700 text-white rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none shadow-sm transition-colors" 
                              onClick={() => onNavigate ? onNavigate('inventory') : onClose()}
                           >
                              Go to Inventory
@@ -588,7 +588,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                              Go to Overview
                           </button>
                           <button 
-                             className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none shadow-sm transition-colors" 
+                             className="bg-[#0f9d63] hover:bg-emerald-700 text-white rounded-xl py-3.5 px-6 flex-1 text-sm font-bold cursor-pointer border-none shadow-sm transition-colors" 
                              onClick={() => onNavigate ? onNavigate('inventory') : onClose()}
                           >
                              Go to Master Inventory

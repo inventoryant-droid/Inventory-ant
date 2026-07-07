@@ -70,7 +70,7 @@ function UserGuide() {
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 text-left">
         <div>
-          <h1 className="m-0 text-3xl font-extrabold tracking-tight text-indigo-600 mb-1 flex items-center gap-2">
+          <h1 className="m-0 text-3xl font-extrabold tracking-tight text-emerald-600 mb-1 flex items-center gap-2">
             <BookOpen size={28} /> Interactive User Guide
           </h1>
           <p className="text-slate-500 text-sm font-medium m-0">
@@ -88,19 +88,19 @@ function UserGuide() {
               <button
                 key={ch.id}
                 onClick={() => setActiveChapter(ch.id)}
-                className={`p-4 rounded-2xl border text-left flex items-start gap-4 transition-all duration-300 cursor-pointer ${isActive ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/10' : 'bg-white border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/20 text-slate-700'}`}
+                className={`p-4 rounded-2xl border text-left flex items-start gap-4 transition-all duration-300 cursor-pointer ${isActive ? 'bg-[#0f9d63] border-[#0f9d63] text-white shadow-lg shadow-emerald-600/10' : 'bg-white border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/20 text-slate-700'}`}
               >
-                <div className={`p-2.5 rounded-xl border shrink-0 ${isActive ? 'bg-indigo-500 border-indigo-400 text-white' : ch.color}`}>
+                <div className={`p-2.5 rounded-xl border shrink-0 ${isActive ? 'bg-emerald-500 border-emerald-400 text-white' : ch.color}`}>
                   {ch.icon}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className={`font-extrabold text-sm ${isActive ? 'text-white' : 'text-slate-800'}`}>
                     {ch.title}
                   </div>
-                  <div className={`text-[10px] uppercase font-black tracking-wider ${isActive ? 'text-indigo-200' : 'text-slate-400'}`}>
+                  <div className={`text-[10px] uppercase font-black tracking-wider ${isActive ? 'text-slate-100' : 'text-slate-400'}`}>
                     {ch.hindiTitle}
                   </div>
-                  <p className={`text-[11px] mt-1 leading-normal line-clamp-2 ${isActive ? 'text-indigo-100' : 'text-slate-400'}`}>
+                  <p className={`text-[11px] mt-1 leading-normal line-clamp-2 ${isActive ? 'text-slate-50' : 'text-slate-400'}`}>
                     {ch.description}
                   </p>
                 </div>
@@ -115,11 +115,11 @@ function UserGuide() {
           {activeChapter === 'profile' && (
             <div className="flex flex-col gap-6 animate-fadeIn">
               <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl border border-indigo-100">
+                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100">
                   <User size={24} />
                 </div>
                 <div>
-                  <span className="text-[10px] font-black uppercase text-indigo-500 tracking-widest block">Chapter 01</span>
+                  <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest block">Chapter 01</span>
                   <h2 className="m-0 text-xl font-black text-slate-800">Business Profile & Onboarding</h2>
                 </div>
               </div>
@@ -132,7 +132,7 @@ function UserGuide() {
               <div className="flex flex-col gap-6 mt-2">
                 <div className="flex gap-4">
                   <div className="flex flex-col items-center">
-                    <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 font-bold text-sm flex items-center justify-center shrink-0">1</div>
+                    <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 font-bold text-sm flex items-center justify-center shrink-0">1</div>
                     <div className="w-0.5 flex-1 bg-slate-100 mt-2"></div>
                   </div>
                   <div className="flex-1 pb-4">
@@ -145,7 +145,7 @@ function UserGuide() {
 
                 <div className="flex gap-4">
                   <div className="flex flex-col items-center">
-                    <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 font-bold text-sm flex items-center justify-center shrink-0">2</div>
+                    <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 font-bold text-sm flex items-center justify-center shrink-0">2</div>
                     <div className="w-0.5 flex-1 bg-slate-100 mt-2"></div>
                   </div>
                   <div className="flex-1 pb-4">
@@ -158,7 +158,7 @@ function UserGuide() {
 
                 <div className="flex gap-4">
                   <div className="flex flex-col items-center">
-                    <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 font-bold text-sm flex items-center justify-center shrink-0">3</div>
+                    <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 font-bold text-sm flex items-center justify-center shrink-0">3</div>
                   </div>
                   <div className="flex-1">
                     <h4 className="m-0 text-sm font-bold text-slate-800 mb-1">Invoice options set karein</h4>
@@ -170,10 +170,10 @@ function UserGuide() {
               </div>
 
               {/* Informative Tip Box */}
-              <div className="bg-amber-50/70 border border-amber-100 rounded-2xl p-4 flex gap-3 text-slate-700 mt-4">
-                <Sparkles className="text-amber-500 shrink-0 mt-0.5" size={18} />
+              <div className="bg-[#E6F4EA] border border-emerald-200 rounded-2xl p-4 flex gap-3 text-slate-700 mt-4">
+                <Sparkles className="text-emerald-600 shrink-0 mt-0.5" size={18} />
                 <div className="text-xs">
-                  <strong className="block text-amber-800 mb-0.5">Quick Pro-Tip:</strong>
+                  <strong className="block text-[#137333] mb-0.5">Quick Pro-Tip:</strong>
                   Agar aapka profile incomplete hai, to app automatically onboarding page par redirect karega. Profile validation settings checkout calculation me madad karti hain.
                 </div>
               </div>

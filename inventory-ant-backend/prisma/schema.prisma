@@ -50,6 +50,8 @@ model Product {
   quantity         String?
   timestamp        Float    @map("_timestamp")
   extraAttributes  Json?    // dynamic fields (expiry, pkg, etc.)
+
+  @@index([userId])
 }
 
 model Bill {
@@ -68,6 +70,8 @@ model Bill {
   operatorName   String   @default("Owner")
   orderId        String?
   invoiceId      String?
+
+  @@index([userId])
 }
 
 model ScanHistory {
@@ -78,6 +82,8 @@ model ScanHistory {
   operatorName String   @default("Owner")
   items        Json
   auditLog     Json
+
+  @@index([userId])
 }
 
 model SupportTicket {
@@ -133,4 +139,27 @@ model InventoryHistory {
   beforeQty    String?
   afterQty     String?
   details      String?  // Description of changes
+
+  @@index([userId])
+}
+
+model ChatThread {
+  id        String        @id
+  userId    String
+  title     String
+  timestamp Float
+  messages  ChatMessage[]
+
+  @@index([userId])
+}
+
+model ChatMessage {
+  id        String     @id
+  threadId  String
+  role      String     // "user" | "ai"
+  text      String
+  timestamp Float
+  thread    ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
 }

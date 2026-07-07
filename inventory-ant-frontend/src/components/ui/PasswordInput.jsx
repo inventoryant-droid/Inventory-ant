@@ -26,7 +26,7 @@ export default function PasswordInput({
   const baseBg   = dark ? 'bg-[#0b0f19] text-white border-[#1e293b] placeholder-slate-600'
                         : 'bg-white text-slate-800 border-slate-200 placeholder-slate-400';
   const focusCls = dark ? 'focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed]'
-                        : 'focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200';
+                        : 'focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200';
   const eyeColor = dark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-400 hover:text-slate-600';
 
   return (
@@ -63,7 +63,7 @@ export default function PasswordInput({
           'border-none bg-transparent cursor-pointer transition-all duration-200',
           'hover:bg-slate-100/80 active:scale-90',
           eyeColor,
-          'focus:outline-none focus:ring-2 focus:ring-indigo-300',
+          'focus:outline-none focus:ring-2 focus:ring-emerald-300',
         ].join(' ')}
         aria-label={visible ? 'Hide password' : 'Show password'}
       >

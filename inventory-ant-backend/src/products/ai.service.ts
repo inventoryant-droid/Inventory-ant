@@ -31,9 +31,9 @@ export class AiService {
     }
   }
 
-  async processAgentCommandV2(
+  async processAgentCommandV2Internal(
     userId: string, 
-    payload: { text: string; currentView?: string; role?: string; wakeWordActive?: boolean },
+    payload: { text: string; currentView?: string; role?: string; wakeWordActive?: boolean; isVoice?: boolean; threadId?: string },
     operatorName = 'Owner'
   ): Promise<any> {
     try {
@@ -147,9 +147,14 @@ export class AiService {
         ? 'You are speaking to a Manager. Your tone should be polite, professional, and you should provide detailed stats, recommendations, and expirations.'
         : 'You are speaking to an Operator/Loader. Keep your responses extremely short, snappy, fast-paced, and focus on direct confirmations (e.g. "notebook add ho gaya. Next?").';
 
+      const isVoice = !!payload.isVoice;
+      const modelName = isVoice 
+        ? (process.env.GEMINI_MODEL_VOICE || 'gemini-2.0-flash')
+        : (process.env.GEMINI_MODEL_TEXT || 'gemini-2.5-flash');
+
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
       const model = genAI.getGenerativeModel({ 
-        model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+        model: modelName,
         generationConfig: { responseMimeType: 'application/json' }
       });
       const prompt = `
@@ -342,7 +347,7 @@ export class AiService {
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
       const model = genAI.getGenerativeModel({ 
-        model: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
+        model: process.env.GEMINI_MODEL_SCANNER || 'gemini-2.5-flash',
         generationConfig: { responseMimeType: 'application/json' }
       });
       const prompt = `
@@ -492,5 +497,150 @@ export class AiService {
     }
 
     return { success: true, action: actionType, parsedItems: items, auditLog: log, syncResults };
+  }
+
+  async processAgentCommandV2(
+    userId: string, 
+    payload: { text: string; currentView?: string; role?: string; wakeWordActive?: boolean; isVoice?: boolean; threadId?: string },
+    operatorName = 'Owner'
+  ): Promise<any> {
+    const res = await this.processAgentCommandV2Internal(userId, payload, operatorName);
+    
+    // Save to database chat history if threadId is provided and response was successful
+    if (payload.threadId && res && res.success) {
+      try {
+        const speechText = res.speechText || res.message || '';
+        await this.saveChatMessageToDb(userId, payload.threadId, payload.text, speechText);
+      } catch (err) {
+        console.error('Error saving chat message to DB:', err);
+      }
+    }
+    return res;
+  }
+
+  private async saveChatMessageToDb(userId: string, threadId: string, userText: string, aiText: string): Promise<void> {
+    try {
+      const thread = await this.prisma.chatThread.findUnique({
+        where: { id: threadId }
+      });
+      if (thread && thread.userId === userId) {
+        // Auto-update thread title if it was default
+        let titleUpdate = {};
+        if (thread.title === 'New Session' || thread.title === 'Neural Core Linked') {
+          const newTitle = userText.trim().substring(0, 24) + (userText.trim().length > 24 ? '...' : '');
+          titleUpdate = { title: newTitle };
+        }
+
+        await this.prisma.chatThread.update({
+          where: { id: thread.id },
+          data: {
+            timestamp: Date.now(),
+            ...titleUpdate
+          }
+        });
+
+        // Save user message
+        await this.prisma.chatMessage.create({
+          data: {
+            id: `msg_user_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            threadId: thread.id,
+            role: 'user',
+            text: userText,
+            timestamp: Date.now()
+          }
+        });
+
+        // Save AI message
+        await this.prisma.chatMessage.create({
+          data: {
+            id: `msg_ai_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            threadId: thread.id,
+            role: 'ai',
+            text: aiText,
+            timestamp: Date.now() + 1
+          }
+        });
+      }
+    } catch (err) {
+      console.error('saveChatMessageToDb DB Error:', err);
+    }
+  }
+
+  async getChatThreads(userId: string): Promise<any[]> {
+    try {
+      return this.prisma.chatThread.findMany({
+        where: { userId },
+        orderBy: { timestamp: 'desc' },
+        take: 10,
+        include: {
+          messages: {
+            orderBy: { timestamp: 'asc' }
+          }
+        }
+      });
+    } catch (e) {
+      console.error('Error fetching chat threads:', e);
+      return [];
+    }
+  }
+
+  async createChatThread(userId: string, title = 'New Session'): Promise<any> {
+    try {
+      // Limit to 10 active chat threads
+      const count = await this.prisma.chatThread.count({ where: { userId } });
+      if (count >= 10) {
+        const oldest = await this.prisma.chatThread.findFirst({
+          where: { userId },
+          orderBy: { timestamp: 'asc' }
+        });
+        if (oldest) {
+          await this.prisma.chatThread.delete({ where: { id: oldest.id } });
+        }
+      }
+
+      const threadId = `thread_${Date.now()}`;
+      const thread = await this.prisma.chatThread.create({
+        data: {
+          id: threadId,
+          userId,
+          title: title || 'New Session',
+          timestamp: Date.now()
+        }
+      });
+
+      // Seeding default welcome message in DB
+      const welcomeText = title === 'Neural Core Linked'
+        ? 'Neural Core Linked. Ant X is ready for your commands.'
+        : 'New neural link established. Ready for instructions.';
+
+      const welcomeMsg = await this.prisma.chatMessage.create({
+        data: {
+          id: `msg_welcome_${Date.now()}`,
+          threadId: thread.id,
+          role: 'ai',
+          text: welcomeText,
+          timestamp: Date.now()
+        }
+      });
+
+      return {
+        ...thread,
+        messages: [welcomeMsg]
+      };
+    } catch (e) {
+      console.error('Error creating chat thread:', e);
+      throw e;
+    }
+  }
+
+  async deleteChatThread(userId: string, threadId: string): Promise<any> {
+    try {
+      return this.prisma.chatThread.deleteMany({
+        where: { id: threadId, userId }
+      });
+    } catch (e) {
+      console.error('Error deleting chat thread:', e);
+      throw e;
+    }
   }
 }

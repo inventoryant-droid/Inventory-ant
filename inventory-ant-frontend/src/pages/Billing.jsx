@@ -27,7 +27,7 @@ const parseQty = (qty) => {
 };
 
 function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
-  const [activeTab, setActiveTab] = useState('terminal'); // 'terminal' or 'history'
+   // 'terminal' or 'history'
   const [cart, setCart] = useState(() => {
     try {
       const uid = userId || localStorage.getItem('ant_user') || 'default';
@@ -40,8 +40,8 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [lastBill, setLastBill] = useState(null);
-  const [bills, setBills] = useState([]);
-  const [historySearchQuery, setHistorySearchQuery] = useState('');
+  
+  
 
   const saveAndSetCart = (newCart) => {
     setCart(newCart);
@@ -132,26 +132,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
      }
   }, [searchTerm, products]);
 
-  const fetchBills = async () => {
-    if (!token) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/user/products/bills`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setBills(data);
-      }
-    } catch(e) {
-      console.error("Failed to fetch billing history:", e);
-    }
-  };
 
-  useEffect(() => {
-    if (activeTab === 'history') {
-      fetchBills();
-    }
-  }, [activeTab]);
 
   const addToCart = (product) => {
      const maxQty = parseQty(product.quantity);
@@ -254,7 +235,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
             saveAndSetCart([]);
             setLastBill(data.bill);
             onSaleSuccess();
-            fetchBills();
+            
          }
      } catch (e) {
         console.error("Checkout failed:", e);
@@ -451,14 +432,11 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
 
         {/* Header */}
         <div className="flex flex-col mb-4 no-print-btn text-left">
-           <h1 className="m-0 text-3xl font-extrabold tracking-tight text-indigo-600">Sales Terminal</h1>
-           <div className="flex gap-6 border-b border-slate-100 pb-3 mt-4">
-             <button onClick={() => setActiveTab('terminal')} className={`pb-1 text-sm font-bold border-none bg-transparent cursor-pointer transition-all ${activeTab === 'terminal' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} style={{ borderBottom: activeTab === 'terminal' ? '2px solid #6366f1' : '2px solid transparent', borderRadius: 0 }}>Terminal</button>
-             <button onClick={() => setActiveTab('history')} className={`pb-1 text-sm font-bold border-none bg-transparent cursor-pointer transition-all ${activeTab === 'history' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} style={{ borderBottom: activeTab === 'history' ? '2px solid #6366f1' : '2px solid transparent', borderRadius: 0 }}>Billing History</button>
-           </div>
+           <h1 className="m-0 text-3xl font-extrabold tracking-tight text-emerald-600">Sales Terminal</h1>
+
         </div>
 
-        {activeTab === 'terminal' ? (
+        
            <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 flex-1">
               {/* Search Panel */}
               <div className="flex-[2] min-w-[320px] no-print-btn text-left">
@@ -484,7 +462,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                                }
                              }
                            }}
-                          className="w-full p-4 pl-12 text-sm text-slate-800 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-xl outline-none transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
+                          className="w-full p-4 pl-12 text-sm text-slate-800 bg-white border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 rounded-xl outline-none transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
                        />
                     </div>
                     {searchResults.length > 0 && (
@@ -510,12 +488,12 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                                         SKU: {p.productId || '---'}
                                         {(() => { const d = getProductDetailsText(p); return d ? ` • ${d}` : ''; })()}
                                      </div>
-                                     <div className="text-[11px] text-indigo-600 font-semibold mt-0.5">
+                                     <div className="text-[11px] text-emerald-600 font-semibold mt-0.5">
                                         Available Stock: {p.quantity || '0'} units
                                      </div>
                                   </div>
                                   <div className="text-right">
-                                    <div className={`${isOutOfStock ? 'text-red-500' : 'text-indigo-600'} font-bold text-sm`}>{p.mrp && parseFloat(p.mrp) > 0 ? `₹${parseFloat(p.mrp).toFixed(2)}` : 'Not Set'}</div>
+                                    <div className={`${isOutOfStock ? 'text-red-500' : 'text-emerald-600'} font-bold text-sm`}>{p.mrp && parseFloat(p.mrp) > 0 ? `₹${parseFloat(p.mrp).toFixed(2)}` : 'Not Set'}</div>
                                     <div className="text-[10px] text-slate-400">Selling Price</div>
                                   </div>
                                </div>
@@ -527,10 +505,10 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
 
                  {/* Instruction Banner */}
                  {cart.length === 0 && (
-                   <div className="mt-8 bg-indigo-50 border border-indigo-100 rounded-2xl p-6 text-center">
-                     <ShoppingCart size={32} className="text-indigo-300 mx-auto mb-3" />
-                     <p className="text-sm font-semibold text-indigo-500">Search for a product above to add it to the cart.</p>
-                     <p className="text-xs text-indigo-400 mt-1">You can set a custom Sale Price for each item before checkout.</p>
+                   <div className="mt-8 bg-emerald-50 border border-emerald-100 rounded-2xl p-6 text-center">
+                     <ShoppingCart size={32} className="text-emerald-300 mx-auto mb-3" />
+                     <p className="text-sm font-semibold text-emerald-500">Search for a product above to add it to the cart.</p>
+                     <p className="text-xs text-emerald-400 mt-1">You can set a custom Sale Price for each item before checkout.</p>
                    </div>
                  )}
               </div>
@@ -539,8 +517,8 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
               <div className="bg-white border border-slate-200 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] flex-1 min-w-[320px] p-6 flex flex-col justify-between no-print-btn">
                  <div>
                     <h2 className="m-0 text-slate-800 text-lg font-bold mb-4 flex items-center gap-2 text-left">
-                       <ShoppingCart size={20} className="text-indigo-500" /> Payload Batch
-                       {cart.length > 0 && <span className="ml-auto text-xs font-bold bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">{cart.length} items</span>}
+                       <ShoppingCart size={20} className="text-emerald-500" /> Payload Batch
+                       {cart.length > 0 && <span className="ml-auto text-xs font-bold bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full">{cart.length} items</span>}
                     </h2>
                     <div className="flex flex-col gap-3 cart-items-container">
                        {cart.length === 0 ? (
@@ -553,17 +531,17 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                                    <div className="text-[10px] text-slate-400 font-semibold mt-0.5">SKU: {item.productId || '---'}</div>
                                    {(() => { const d = getProductDetailsText(item); return d ? <div className="text-[10px] text-slate-400 mt-0.5 truncate">{d}</div> : null; })()}
                                    <div className="text-[10px] text-slate-400 mt-1">Selling Price: {item.mrp && parseFloat(item.mrp) > 0 ? `₹${parseFloat(item.mrp).toFixed(2)}` : 'Not Set'}</div>
-                                   <div className="text-[10px] text-indigo-600 font-bold mt-0.5">Available Stock: {item.availableStock || '0'} units</div>
+                                   <div className="text-[10px] text-emerald-600 font-bold mt-0.5">Available Stock: {item.availableStock || '0'} units</div>
                                    {/* Manual Sale Price Input */}
                                    <div className="flex items-center gap-2 mt-2">
-                                     <label className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider whitespace-nowrap">Sale Price (₹)</label>
+                                     <label className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider whitespace-nowrap">Sale Price (₹)</label>
                                      <input
                                        type="number"
                                        min="0"
                                        step="0.01"
                                        value={item.manualPrice !== undefined ? item.manualPrice : (item.mrp || '')}
                                        onChange={e => saveAndSetCart(cart.map(ci => ci.id === item.id ? {...ci, manualPrice: e.target.value} : ci))}
-                                       className="w-24 text-xs font-bold text-indigo-700 bg-white border border-indigo-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 rounded-lg px-2 py-1 outline-none transition-all"
+                                       className="w-24 text-xs font-bold text-emerald-700 bg-white border border-emerald-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 rounded-lg px-2 py-1 outline-none transition-all"
                                        placeholder="Enter price"
                                      />
                                    </div>
@@ -614,9 +592,9 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                     {cart.length > 0 && (
                       <div className="border-t border-slate-100 mt-4 pt-4 flex flex-col gap-3 text-left">
                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Buyer Info (Optional)</span>
-                         <input type="text" placeholder="Buyer Name" value={buyerName} onChange={e => setBuyerName(e.target.value)} className="w-full p-3 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl outline-none transition-all placeholder-slate-400" />
-                         <input type="text" placeholder="Buyer Phone Number" value={buyerPhone} onChange={e => setBuyerPhone(e.target.value)} className="w-full p-3 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl outline-none transition-all placeholder-slate-400" />
-                         <input type="text" placeholder="Shipping / Billing Address" value={buyerAddress} onChange={e => setBuyerAddress(e.target.value)} className="w-full p-3 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl outline-none transition-all placeholder-slate-400" />
+                         <input type="text" placeholder="Buyer Name" value={buyerName} onChange={e => setBuyerName(e.target.value)} className="w-full p-3 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl outline-none transition-all placeholder-slate-400" />
+                         <input type="text" placeholder="Buyer Phone Number" value={buyerPhone} onChange={e => setBuyerPhone(e.target.value)} className="w-full p-3 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl outline-none transition-all placeholder-slate-400" />
+                         <input type="text" placeholder="Shipping / Billing Address" value={buyerAddress} onChange={e => setBuyerAddress(e.target.value)} className="w-full p-3 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl outline-none transition-all placeholder-slate-400" />
                       </div>
                     )}
                  </div>
@@ -631,7 +609,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                                    type="checkbox" 
                                    checked={applyGst} 
                                    onChange={(e) => setApplyGst(e.target.checked)} 
-                                   className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                   className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                                 />
                                 Apply GST (Tax)
                              </label>
@@ -647,7 +625,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                                       step="0.1"
                                       value={gstRate} 
                                       onChange={(e) => setGstRate(e.target.value)} 
-                                      className="w-20 p-2 text-xs text-slate-800 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg outline-none transition-all font-mono font-bold"
+                                      className="w-20 p-2 text-xs text-slate-800 bg-white border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-lg outline-none transition-all font-mono font-bold"
                                    />
                                 </div>
                                 <div className="flex gap-1.5 flex-wrap">
@@ -656,7 +634,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                                          key={r}
                                          type="button" 
                                          onClick={() => setGstRate(r)}
-                                         className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer border ${parseFloat(gstRate) === r ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                         className={`px-2.5 py-1 text-[10px] font-bold rounded cursor-pointer border ${parseFloat(gstRate) === r ? 'bg-[#0f9d63] border-emerald-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
                                       >
                                          {r}%
                                       </button>
@@ -679,10 +657,10 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                     </div>
                     <div className="flex justify-between items-center text-xl font-extrabold text-slate-800 border-t border-slate-100 pt-4">
                        <span>Total:</span>
-                       <span className="text-indigo-600 font-mono">₹{totalAmount.toFixed(2)}</span>
+                       <span className="text-emerald-600 font-mono">₹{totalAmount.toFixed(2)}</span>
                     </div>
                     <button
-                      className={`w-full mt-5 py-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all border-none ${cart.length === 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-md hover:shadow-lg'}`}
+                      className={`w-full mt-5 py-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all border-none ${cart.length === 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-[#0f9d63] hover:bg-emerald-700 text-white cursor-pointer shadow-md hover:shadow-lg'}`}
                       disabled={cart.length === 0}
                       onClick={handleCheckout}
                     >
@@ -691,84 +669,6 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                  </div>
               </div>
            </div>
-        ) : (
-           <div className="w-full no-print-btn text-left">
-              <div className="bg-white border border-slate-200 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6">
-                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 m-0">
-                       <Receipt size={22} className="text-indigo-500" /> Billing Transaction History
-                    </h2>
-                    {bills.length > 0 && (
-                       <div className="relative w-full md:w-80">
-                          <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
-                          <input
-                             type="text"
-                             placeholder="Search by Invoice ID or Order ID..."
-                             value={historySearchQuery}
-                             onChange={e => setHistorySearchQuery(e.target.value)}
-                             className="w-full py-2.5 pl-10 pr-4 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-xl outline-none transition-all shadow-sm"
-                          />
-                       </div>
-                    )}
-                 </div>
-                 {bills.length === 0 ? (
-                    <p className="text-slate-500 italic bg-slate-50 p-6 rounded-xl text-center border border-slate-100">No billing transactions recorded yet.</p>
-                 ) : (() => {
-                    const filteredBills = bills.filter(b => {
-                       const query = historySearchQuery.toLowerCase().trim();
-                       if (!query) return true;
-                       const billId = (b.id || '').toLowerCase();
-                       const invoiceId = (b.invoiceId || '').toLowerCase();
-                       const orderId = (b.orderId || '').toLowerCase();
-return billId.includes(query) || invoiceId.includes(query) || orderId.includes(query);
-                    });
-                    return filteredBills.length === 0 ? (
-                       <p className="text-slate-500 italic bg-slate-50 p-6 rounded-xl text-center border border-slate-100">No matching transactions found.</p>
-                    ) : (
-                       <div className="overflow-x-auto">
-                          <table className="w-full text-left text-sm border-collapse">
-                             <thead>
-                                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
-                                   <th className="p-4 pl-6">Invoice ID</th>
-                                   <th className="p-4">Date</th>
-                                   <th className="p-4">Buyer Details</th>
-                                   <th className="p-4">Items Count</th>
-                                   <th className="p-4">Total Amount</th>
-                                   <th className="p-4">Generated By</th>
-                                   <th className="p-4 text-right pr-6">Action</th>
-                                </tr>
-                             </thead>
-                             <tbody className="divide-y divide-slate-100">
-                                {filteredBills.map(b => (
-                                   <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
-                                      <td className="p-4 pl-6 font-mono font-bold text-xs text-indigo-600">{b.invoiceId || b.id}</td>
-                                      <td className="p-4 text-xs text-slate-600">{formatDate(b.date)}</td>
-                                      <td className="p-4 text-xs">
-                                         {b.buyerName ? (
-                                            <div className="flex flex-col gap-0.5">
-                                               <span className="font-bold text-slate-800">{b.buyerName}</span>
-                                               {b.buyerPhone && <span className="text-[10px] text-slate-400">{b.buyerPhone}</span>}
-                                            </div>
-                                         ) : <span className="text-slate-400 italic">None</span>}
-                                      </td>
-                                      <td className="p-4 text-xs font-bold text-slate-700">{b.items?.reduce((acc, it) => acc + (it.quantity || 0), 0) || 0} units</td>
-                                      <td className="p-4 text-sm font-extrabold text-slate-800">₹{b.total?.toFixed(2)}</td>
-                                      <td className="p-4 text-xs font-bold text-slate-600">{b.operatorName || 'Owner'}</td>
-                                      <td className="p-4 text-right pr-6 flex items-center justify-end gap-2">
-                                         <button onClick={() => setLastBill(b)} className="py-1.5 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-none rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 inline-flex" title="View Invoice"><Receipt size={14} /> View Invoice</button>
-                                         <button onClick={() => downloadInvoicePDF(b)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg cursor-pointer transition-colors border-none inline-flex" title="Download PDF"><Download size={14} /></button>
-                                         <button onClick={() => shareWhatsApp(b)} className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg cursor-pointer transition-colors border-none inline-flex" title="Share on WhatsApp"><Send size={14} /></button>
-                                      </td>
-                                   </tr>
-                                ))}
-                             </tbody>
-                          </table>
-                       </div>
-                    );
-                 })()}
-              </div>
-           </div>
-        )}
 
         {/* Printable Invoice Modal */}
         {lastBill && (() => {
@@ -923,7 +823,7 @@ return billId.includes(query) || invoiceId.includes(query) || orderId.includes(q
                  </div>
 
                 <div className="flex flex-wrap gap-3 pt-2 no-print-btn">
-                  <button onClick={() => downloadInvoicePDF(lastBill)} className="flex-1 min-w-[140px] py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer border-none"><Download size={16} /> Download PDF</button>
+                  <button onClick={() => downloadInvoicePDF(lastBill)} className="flex-1 min-w-[140px] py-3 bg-[#0f9d63] hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer border-none"><Download size={16} /> Download PDF</button>
                   <button onClick={handlePrint} className="flex-1 min-w-[140px] py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer border-none"><Printer size={16} /> Print Receipt</button>
                   <button onClick={() => shareWhatsApp(lastBill)} className="flex-1 min-w-[140px] py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-colors cursor-pointer border-none"><Send size={16} /> Share on WhatsApp</button>
                   <button onClick={() => setLastBill(null)} className="py-3 px-5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer border-none"><X size={14} /> Close</button>

@@ -1,10 +1,13 @@
 import { API_BASE_URL } from '../utils/config';
 import React, { useState, useEffect, useRef } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Mail, Lock, Phone, User, ArrowRight, CheckCircle2, ShieldCheck, RefreshCw, ShieldAlert, Cpu, Sparkles, KeyRound, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Mail, Lock, Phone, User, ArrowRight, CheckCircle2, ShieldCheck, RefreshCw, ShieldAlert, Cpu, Sparkles, KeyRound, Eye, EyeOff, Loader2, Star } from 'lucide-react';
 import PasswordInput from '../components/ui/PasswordInput';
 import '../App.css';
+import { InventoryAntLogoMark, InventoryAntLogoText } from '../components/ui/InventoryAntLogo';
+
 
 // ─── OTP Input Component ───────────────────────────────────────────────────
 function OtpInput({ value, onChange }) {
@@ -85,10 +88,17 @@ function useCountdown(seconds) {
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────
-function AuthScreen({ onLogin }) {
+function AuthScreen({ onLogin, defaultView }) {
+  const navigate = useNavigate();
   // 'landing' | 'login' | 'otp' | 'signup' | 'admin'
   // | 'verify-otp' | 'forgot-password' | 'verify-reset-otp' | 'set-new-password'
-  const [view, setView] = useState('landing');
+  const [view, setView] = useState(defaultView || 'login');
+
+  useEffect(() => {
+    if (defaultView) {
+      setView(defaultView);
+    }
+  }, [defaultView]);
 
   // Form fields
   const [name, setName] = useState('');
@@ -113,10 +123,15 @@ function AuthScreen({ onLogin }) {
 
   // ─── Navigate helpers ──────────────────────────────────────────────────
   const goTo = (v) => {
-    setView(v);
-    setOtpDigits(['', '', '', '', '', '']);
-    setLoading(false);
+    if (v === 'landing') {
+      navigate('/');
+    } else {
+      setView(v);
+      setOtpDigits(['', '', '', '', '', '']);
+      setLoading(false);
+    }
   };
+
 
   // ─── Signup: Step 1 — Send OTP ──────────────────────────────────────
   const handleSignupSubmit = async (e) => {
@@ -385,7 +400,7 @@ function AuthScreen({ onLogin }) {
     <button
       type="submit"
       disabled={loading}
-      className="w-full py-3.5 mt-2 text-base font-bold bg-[#7c3aed] hover:bg-[#6d28d9] disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-md shadow-[#7c3aed]/20 border-none cursor-pointer flex items-center justify-center gap-2"
+      className="w-full py-3.5 mt-2 text-base font-bold bg-primary hover:opacity-95 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-md shadow-primary/10 border-none cursor-pointer flex items-center justify-center gap-2"
     >
       {loading ? <Loader2 size={18} className="animate-spin" /> : (icon || <ArrowRight size={18} />)}
       {loading ? 'Please wait...' : label}
@@ -411,477 +426,500 @@ function AuthScreen({ onLogin }) {
   const isDark = view === 'admin';
 
   return (
-    <div
-      className={`w-screen h-screen overflow-auto m-0 transition-colors duration-300 ${isDark ? 'bg-[#030712]' : 'bg-[#f8fafc]'} ${view !== 'landing' ? 'flex flex-col items-center justify-center p-4' : ''}`}
-      style={{
-        backgroundImage: view !== 'landing' ? (isDark
-          ? 'radial-gradient(#1e293b 1px, transparent 1px)'
-          : 'radial-gradient(#cbd5e1 1px, transparent 1px)') : 'none',
-        backgroundSize: '24px 24px',
-      }}
-    >
+    <div className="marketing-site w-screen h-screen flex flex-row overflow-hidden bg-white text-slate-800 dark:bg-slate-950 dark:text-slate-100 font-sans">
+      
+      {/* ── Left Panel: Marketing Pitch (Visible only on desktop) ────────────────── */}
+      <div className="hidden lg:flex w-1/2 h-full bg-[#e2f2e9] dark:bg-slate-900 border-r border-slate-200/50 dark:border-slate-800/50 flex-col justify-between p-12 relative overflow-hidden shrink-0">
+        {/* Background Decorative Grid */}
+        <div 
+          className="absolute inset-0 opacity-[0.08] dark:opacity-[0.03]"
+          style={{
+            backgroundImage: `linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)`,
+            backgroundSize: '24px 24px'
+          }}
+        />
 
-      {/* ── Landing ──────────────────────────────────────────────────────── */}
-      {view === 'landing' && (
-        <div className="w-full flex flex-col m-0 p-0 overflow-x-hidden relative">
-          <div
-            className="w-full min-h-screen flex flex-col items-center justify-center px-4 py-12"
-            style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '24px 24px', backgroundColor: '#f8fafc' }}
-          >
-            <div className="max-w-3xl text-center space-y-6">
-              {savedId && savedToken && (
-                <div className="inline-flex bg-white/80 backdrop-blur-md border border-slate-200 rounded-xl p-3 mb-8 text-left items-center justify-between gap-6 shadow-sm">
-                  <div>
-                    <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Authorized Node</div>
-                    <div className="font-bold text-slate-700 text-sm">{savedId}</div>
-                  </div>
-                  <button
-                    onClick={() => onLogin(savedId, savedRole, savedToken)}
-                    className="px-4 py-2 text-xs font-bold bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-lg transition-colors border-none cursor-pointer"
-                  >Resume Session</button>
-                </div>
-              )}
-
-              <LogoIcon />
-
-              <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight leading-tight mt-6">
-                Your Warehouse. <span className="text-[#7c3aed]">Simplified.</span>
-              </h1>
-              <p className="text-slate-500 text-lg md:text-xl max-w-2xl mx-auto font-medium leading-relaxed mt-6">
-                Artificial Intelligence powered B2B Warehouse Intelligence. Control your master records, billing invoices, and barcode registers with natural language commands.
-              </p>
-
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
-                <button
-                  onClick={() => setView('login')}
-                  className="w-full sm:w-auto bg-[#7c3aed] hover:bg-[#6d28d9] text-white px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-3 transition-all shadow-lg shadow-[#7c3aed]/20 border-none cursor-pointer text-base"
-                >
-                  Login as User <ArrowRight size={18} />
-                </button>
-                <button
-                  onClick={() => setView('signup')}
-                  className="w-full sm:w-auto bg-[#7c3aed]/10 hover:bg-[#7c3aed]/20 text-[#7c3aed] px-8 py-4 rounded-xl font-bold transition-all border-none cursor-pointer text-base"
-                >
-                  Sign Up
-                </button>
-              </div>
+        {/* Isometric Glassmorphism UI Preview */}
+        <div className="absolute top-1/4 right-[-10%] w-[380px] h-[340px] bg-white/40 dark:bg-slate-800/20 rounded-[2rem] border border-white/60 dark:border-slate-700/20 backdrop-blur-md shadow-2xl rotate-[-6deg] flex flex-col p-6 space-y-4 pointer-events-none">
+          <div className="flex items-center gap-2">
+            <span className="size-3 rounded-full bg-red-400" />
+            <span className="size-3 rounded-full bg-amber-400" />
+            <span className="size-3 rounded-full bg-emerald-400" />
+          </div>
+          <div className="h-6 w-1/3 bg-slate-400/20 rounded-full" />
+          <div className="h-3 w-full bg-slate-400/10 rounded-full" />
+          <div className="h-3 w-5/6 bg-slate-400/10 rounded-full" />
+          <div className="grid grid-cols-3 gap-3 pt-4 flex-1">
+            <div className="rounded-xl border border-primary/20 bg-primary/5 flex flex-col justify-center p-3">
+              <span className="text-[10px] text-slate-400 font-bold uppercase">Stock</span>
+              <span className="text-sm font-bold text-primary">12,450</span>
+            </div>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-950/40 flex flex-col justify-center p-3">
+              <span className="text-[10px] text-slate-400 font-bold uppercase">Alerts</span>
+              <span className="text-sm font-bold text-red-500">3 Low</span>
+            </div>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-950/40 flex flex-col justify-center p-3">
+              <span className="text-[10px] text-slate-400 font-bold uppercase">Sales</span>
+              <span className="text-sm font-bold text-slate-850 dark:text-slate-200">₹8,320</span>
             </div>
           </div>
-
-          <div className="bg-[#0b0f19] w-full py-24 px-4 flex flex-col items-center relative z-10">
-            <h4 className="text-[#d946ef] text-xs font-bold tracking-[0.2em] uppercase mb-4 text-center">Enterprise Core Challenges</h4>
-            <h2 className="text-white text-3xl md:text-5xl font-extrabold mb-4 text-center">Warehouse Management ke 3 bade Mudde</h2>
-            <p className="text-slate-400 text-base md:text-lg mb-16 max-w-3xl text-center">Manual documentation leads to hidden operational bleed. Inventory Ant provides intelligent automation.</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl w-full mx-auto">
-              <div className="bg-[#111827] border border-slate-800 rounded-2xl p-8 flex flex-col text-left hover:bg-[#1f2937] transition-colors">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-6 bg-red-500/10 border border-red-500/20 text-red-500"><ShieldAlert size={24} /></div>
-                <h3 className="text-white font-bold text-xl mb-3">1. Manual Chaos</h3>
-                <p className="text-slate-400 text-sm leading-relaxed mb-8 flex-1">Excel sheets and registers manual maintenance me multiple entries aur formatting mistakes ho hi jaati hain. This causes massive reconciliation headaches.</p>
-                <div className="w-full h-px bg-slate-800 mb-4"></div>
-                <div className="flex items-center gap-3"><CheckCircle2 size={16} className="text-green-500 shrink-0" /><span className="text-[#d946ef] text-xs font-bold tracking-wide">Ant X Terminal handles NLP commands</span></div>
-              </div>
-
-              <div className="bg-[#111827] border border-slate-800 rounded-2xl p-8 flex flex-col text-left hover:bg-[#1f2937] transition-colors">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-6 bg-orange-500/10 border border-orange-500/20 text-orange-500"><Cpu size={24} /></div>
-                <h3 className="text-white font-bold text-xl mb-3">2. Invisible Losses</h3>
-                <p className="text-slate-400 text-sm leading-relaxed mb-8 flex-1">Inventory leakage aur undocumented outbound entry stock updates ke lack me identify nahi ho pate. Margin losses are difficult to pinpoint.</p>
-                <div className="w-full h-px bg-slate-800 mb-4"></div>
-                <div className="flex items-center gap-3"><CheckCircle2 size={16} className="text-green-500 shrink-0" /><span className="text-[#d946ef] text-xs font-bold tracking-wide">Live Sales Checkout syncs terminal stocks</span></div>
-              </div>
-
-              <div className="bg-[#111827] border border-slate-800 rounded-2xl p-8 flex flex-col text-left hover:bg-[#1f2937] transition-colors">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-6 bg-purple-500/10 border border-purple-500/20 text-purple-500"><Sparkles size={24} /></div>
-                <h3 className="text-white font-bold text-xl mb-3">3. Expiry & Reorder Ignores</h3>
-                <p className="text-slate-400 text-sm leading-relaxed mb-8 flex-1">Low stock levels and batch expiration dates check karna miss ho jata hai. Business loses order momentum when core stocks run dry.</p>
-                <div className="w-full h-px bg-slate-800 mb-4"></div>
-                <div className="flex items-center gap-3"><CheckCircle2 size={16} className="text-green-500 shrink-0" /><span className="text-[#d946ef] text-xs font-bold tracking-wide">Smart metrics and automated low-stock warnings</span></div>
-              </div>
-            </div>
-          </div>
-
-          <footer className="w-full bg-[#030712] py-8 border-t border-slate-800 flex flex-col items-center justify-center gap-4 relative z-10">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-[#7c3aed] rounded-lg flex items-center justify-center shadow-lg"><span className="text-sm grayscale brightness-150 relative top-[-1px]">🐜</span></div>
-              <span className="text-white font-bold tracking-widest text-sm">INVENTORY ANT</span>
-            </div>
-            <p className="text-slate-500 text-xs text-center px-4">© 2026 Inventory Ant. B2B Warehouse Intelligence SaaS. All rights reserved.</p>
-          </footer>
         </div>
-      )}
+        
+        {/* Top Header Logo */}
+        <div className="relative flex items-center z-10">
+          <InventoryAntLogoMark className="h-9 w-auto" />
+        </div>
 
-      {/* ── Login ─────────────────────────────────────────────────────────── */}
-      {view === 'login' && (
-        <div className="bg-white rounded-[2rem] shadow-xl p-8 w-full max-w-md mx-auto border border-slate-100 text-center relative z-10 my-8">
-          <LogoIcon />
-          <h2 className="text-2xl font-black text-[#7c3aed] m-0 tracking-tight">INVENTORY ANT</h2>
-          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 mb-8">B2B Warehouse Intelligence</p>
+        {/* Middle Copy Block */}
+        <div className="relative my-auto space-y-6 z-10 text-left max-w-md">
+          <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary">
+            India&apos;s simplest inventory & billing software
+          </span>
+          <h1 className="text-balance font-display text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-900 dark:text-white">
+            Manage stock, billing & orders from one dashboard.
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
+            Trusted by 12,000+ Indian shops, wholesalers and distributors to run their entire operation without the guesswork.
+          </p>
 
-          <form onSubmit={handleLoginSubmit} className="flex flex-col gap-5 text-left">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input
-                  type="email"
-                  placeholder="amit@warehouse.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3.5 bg-white text-slate-800 border border-slate-200 focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] rounded-xl text-sm outline-none transition-all"
-                  required
-                />
+          <div className="space-y-4 pt-4">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <CheckCircle2 className="size-3" />
+              </span>
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm m-0">Real-time stock tracking</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-0.5">Never run out of stock again across every warehouse.</p>
               </div>
             </div>
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <CheckCircle2 className="size-3.5" />
+              </span>
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm m-0">GST-ready billing</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-0.5">Create compliant invoices and reports in seconds.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <CheckCircle2 className="size-3.5" />
+              </span>
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm m-0">Bank-grade security</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-0.5">Your business data stays encrypted and private.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Ratings Block */}
+        <div className="relative z-10 flex flex-col gap-3 pt-6 border-t border-slate-200/50 dark:border-slate-800/50">
+          <div className="flex items-center gap-4">
+            <div className="flex -space-x-2">
+              {['A', 'R', 'S', 'K'].map((ch, idx) => (
+                <span 
+                  key={idx}
+                  className="flex size-8 items-center justify-center rounded-full border-2 border-[#e2f2e9] dark:border-slate-900 bg-primary font-display text-[10px] font-bold text-white shadow-sm"
+                >
+                  {ch}
+                </span>
+              ))}
+            </div>
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Password</label>
+              <div className="flex">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star key={i} className="size-3.5 fill-primary text-primary" />
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 m-0 mt-0.5">
+                Rated 4.8/5 by growing businesses
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Right Panel: Forms Container ─────────────────────────────────────────── */}
+      <div 
+        className="w-full lg:w-1/2 h-full flex flex-col overflow-auto bg-[#F8FAFC] dark:bg-slate-950 p-6 md:p-12 relative"
+        style={{
+          backgroundImage: 'radial-gradient(#cbd5e1 1.2px, transparent 1.2px)',
+          backgroundSize: '20px 20px',
+        }}
+      >
+        {/* Back Button */}
+        <button
+          onClick={() => goTo('landing')}
+          className="absolute top-6 left-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors bg-transparent border-none cursor-pointer text-xs font-semibold flex items-center gap-1.5"
+        >
+          <span>←</span> Back
+        </button>
+
+        {/* Form Wrap */}
+        <div className="my-auto w-full max-w-md mx-auto py-8 text-left">
+
+          {/* ── Login Form ────────────────────────────────────────────────────────── */}
+          {view === 'login' && (
+            <div>
+              <p className="text-primary text-xs font-bold tracking-[0.1em] uppercase mb-2">B2B WAREHOUSE INTELLIGENCE</p>
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white m-0 tracking-tight">Welcome back</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 mb-8">Sign in to manage your stock, billing and orders in one place.</p>
+
+              <form onSubmit={handleLoginSubmit} className="flex flex-col gap-5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Email Address</label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="email"
+                      placeholder="amit@warehouse.com"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-sm outline-none transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Password</label>
+                    <button
+                      type="button"
+                      onClick={() => { setEmail(email); goTo('forgot-password'); }}
+                      className="text-xs font-bold text-primary hover:opacity-85 bg-transparent border-none cursor-pointer p-0 hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                  <PasswordInput
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    required
+                    iconLeft={<Lock className="text-slate-400" size={18} />}
+                  />
+                </div>
+
+                <div className="flex items-center mt-1">
+                  <input
+                    type="checkbox"
+                    id="keepSignedIn"
+                    className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary h-4 w-4"
+                  />
+                  <label htmlFor="keepSignedIn" className="ml-2 text-xs text-slate-500 dark:text-slate-400 font-medium">Keep me signed in</label>
+                </div>
+
+                <SubmitBtn label="Sign in" />
+
+                <div className="flex items-center gap-4 my-2">
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Or Continue With</span>
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => { setEmail(email); goTo('forgot-password'); }}
-                  className="text-xs font-bold text-[#7c3aed] hover:text-[#6d28d9] bg-transparent border-none cursor-pointer p-0 hover:underline"
+                  onClick={() => handleGoogleAuth()}
+                  className="w-full py-3.5 text-sm font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-250 rounded-xl transition-all shadow-sm flex items-center justify-center gap-3 cursor-pointer"
                 >
-                  Forgot Password?
+                  <GoogleIcon /> Continue with Google
                 </button>
-              </div>
-              <PasswordInput
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                iconLeft={<Lock className="text-slate-400" size={18} />}
-              />
+              </form>
+
+              <p className="mt-8 mb-0 text-sm text-slate-500 dark:text-slate-400 font-medium text-center">
+                New to Inventory Ant?{' '}
+                <button type="button" onClick={() => goTo('signup')} className="text-primary font-bold bg-transparent border-none cursor-pointer p-0 hover:underline">
+                  Create an account
+                </button>
+              </p>
             </div>
+          )}
 
-            <SubmitBtn label="Sign In Karein" />
+          {/* ── Signup Form ────────────────────────────────────────────────────────── */}
+          {view === 'signup' && (
+            <div>
+              <p className="text-primary text-xs font-bold tracking-[0.1em] uppercase mb-2">SAAS WAREHOUSE SIGNUP</p>
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white m-0 tracking-tight">Create your account</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 mb-8">Start free — no card needed. Set up your warehouse in minutes.</p>
 
-            <div className="flex items-center gap-4 my-2">
-              <div className="flex-1 h-px bg-slate-100"></div>
-              <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">Ya Phir</span>
-              <div className="flex-1 h-px bg-slate-100"></div>
+              <form onSubmit={handleSignupSubmit} className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Full Name</label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="text"
+                      placeholder="Amit Sharma"
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-sm outline-none transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Email Address</label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="email"
+                      placeholder="amit@warehouse.com"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-sm outline-none transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Mobile Number <span className="text-slate-450 dark:text-slate-400 font-normal">(optional)</span></label>
+                  <div className="relative flex items-center border border-slate-200 dark:border-slate-800 rounded-xl focus-within:border-primary focus-within:ring-1 focus-within:ring-primary bg-white dark:bg-slate-900 transition-all overflow-hidden">
+                    <span className="pl-4 pr-2 py-3.5 text-slate-450 dark:text-slate-400 font-bold border-r border-slate-100 dark:border-slate-800">+91</span>
+                    <input
+                      type="tel"
+                      placeholder="98765 43210"
+                      value={mobile}
+                      onChange={e => setMobile(e.target.value)}
+                      className="flex-1 px-4 py-3.5 text-slate-800 dark:text-slate-100 text-sm outline-none bg-transparent"
+                    />
+                    <Phone className="absolute right-4 text-slate-450" size={18} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Choose Password</label>
+                  <PasswordInput
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Create a strong password"
+                    required
+                    iconLeft={<Lock className="text-slate-400" size={18} />}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Confirm Password</label>
+                  <PasswordInput
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your password"
+                    required
+                    iconLeft={<Lock className="text-slate-400" size={18} />}
+                  />
+                </div>
+
+                <div className="flex items-start mt-1">
+                  <input
+                    type="checkbox"
+                    id="terms"
+                    className="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary h-4 w-4 mt-0.5"
+                    required
+                  />
+                  <label htmlFor="terms" className="ml-2 text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                    I agree to the <span className="text-primary cursor-pointer hover:underline">Terms</span> and <span className="text-primary cursor-pointer hover:underline">Privacy Policy</span>.
+                  </label>
+                </div>
+
+                <SubmitBtn label="Create free account" />
+
+                <div className="flex items-center gap-4 my-2">
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Or Continue With</span>
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleGoogleAuth()}
+                  className="w-full py-3.5 text-sm font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-250 rounded-xl transition-all shadow-sm flex items-center justify-center gap-3 cursor-pointer"
+                >
+                  <GoogleIcon /> Sign up with Google
+                </button>
+              </form>
+
+              <p className="mt-8 mb-0 text-sm text-slate-500 dark:text-slate-400 font-medium text-center">
+                Already registered?{' '}
+                <button type="button" onClick={() => goTo('login')} className="text-primary font-bold bg-transparent border-none cursor-pointer p-0 hover:underline">
+                  Sign In here
+                </button>
+              </p>
             </div>
+          )}
 
-            <button
-              type="button"
-              onClick={() => handleGoogleAuth()}
-              className="w-full py-3.5 text-sm font-medium bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl transition-all shadow-sm flex items-center justify-center gap-3 cursor-pointer"
-            >
-              <GoogleIcon /> Continue with Google
-            </button>
-          </form>
+          {/* ── Signup OTP Verification ────────────────────────────────────────────────── */}
+          {view === 'verify-otp' && (
+            <div>
+              <p className="text-primary text-xs font-bold tracking-[0.1em] uppercase mb-2">EMAIL VERIFICATION</p>
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white m-0 tracking-tight">Verify Your Email</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 mb-1">We&apos;ve sent a 6-digit OTP to</p>
+              <p className="text-slate-850 dark:text-slate-200 font-bold text-sm mb-8">{email}</p>
 
-          <p className="mt-8 mb-0 text-sm text-slate-500 font-medium">
-            Naye User hain?{' '}
-            <button type="button" onClick={() => goTo('signup')} className="text-[#7c3aed] font-bold bg-transparent border-none cursor-pointer p-0 hover:underline">
-              Sign Up here
-            </button>
-          </p>
+              <form onSubmit={handleSignupOtpSubmit} className="flex flex-col gap-6">
+                <OtpInput value={otpDigits} onChange={setOtpDigits} />
 
-          <CardBack to="landing" />
+                <button
+                  type="submit"
+                  disabled={loading || otpDigits.join('').length < 6}
+                  className="w-full py-4 mt-1 text-base font-bold bg-primary hover:opacity-95 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-md shadow-primary/10 border-none cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {loading ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
+                  {loading ? 'Verifying...' : 'Verify & Create Account'}
+                </button>
+
+                <ResendSection onResend={handleResendSignupOtp} />
+              </form>
+            </div>
+          )}
+
+          {/* ── Forgot Password: Step 1 ─────────────────────────────────────────────────── */}
+          {view === 'forgot-password' && (
+            <div>
+              <p className="text-primary text-xs font-bold tracking-[0.1em] uppercase mb-2">PASSWORD RESET</p>
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white m-0 tracking-tight">Forgot Password?</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 mb-8">Enter your registered email address. We&apos;ll send a 6-digit OTP to reset your password.</p>
+
+              <form onSubmit={handleForgotPasswordSubmit} className="flex flex-col gap-5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Registered Email</label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="email"
+                      placeholder="amit@warehouse.com"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-sm outline-none transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <SubmitBtn label="Send Reset OTP" icon={<Mail size={18} />} />
+              </form>
+            </div>
+          )}
+
+          {/* ── Forgot Password: Step 2 — OTP ───────────────────────────────────────────── */}
+          {view === 'verify-reset-otp' && (
+            <div>
+              <p className="text-primary text-xs font-bold tracking-[0.1em] uppercase mb-2">PASSWORD RESET</p>
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white m-0 tracking-tight">Enter OTP</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 mb-1">We&apos;ve sent a 6-digit OTP to</p>
+              <p className="text-slate-850 dark:text-slate-200 font-bold text-sm mb-8">{email}</p>
+
+              <form onSubmit={handleResetOtpSubmit} className="flex flex-col gap-6">
+                <OtpInput value={otpDigits} onChange={setOtpDigits} />
+
+                <button
+                  type="submit"
+                  disabled={loading || otpDigits.join('').length < 6}
+                  className="w-full py-4 mt-1 text-base font-bold bg-primary hover:opacity-95 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-md shadow-primary/10 border-none cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {loading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
+                  {loading ? 'Please wait...' : 'Continue'}
+                </button>
+
+                <ResendSection onResend={handleResendResetOtp} />
+              </form>
+            </div>
+          )}
+
+          {/* ── Forgot Password: Step 3 — New Password ────────────────────────────────────── */}
+          {view === 'set-new-password' && (
+            <div>
+              <p className="text-primary text-xs font-bold tracking-[0.1em] uppercase mb-2">PASSWORD RESET</p>
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white m-0 tracking-tight">Set New Password</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 mb-8">Choose a strong new password for your account.</p>
+
+              <form onSubmit={handleSetNewPasswordSubmit} className="flex flex-col gap-5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">New Password</label>
+                  <PasswordInput
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    iconLeft={<Lock className="text-slate-400" size={18} />}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Confirm New Password</label>
+                  <PasswordInput
+                    value={confirmNewPassword}
+                    onChange={e => setConfirmNewPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    iconLeft={<Lock className="text-slate-400" size={18} />}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3.5 mt-2 text-base font-bold bg-primary hover:opacity-95 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-md shadow-primary/10 border-none cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {loading ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
+                  {loading ? 'Resetting...' : 'Reset Password'}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* ── Admin Login ─────────────────────────────────────────────────────────── */}
+          {view === 'admin' && (
+            <div>
+              <p className="text-primary text-xs font-bold tracking-[0.1em] uppercase mb-2">SUPER USER ACCESS</p>
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white m-0 tracking-tight">Inventory Ant Admin</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 mb-10">Console access for super users. All actions are logged.</p>
+
+              <form onSubmit={handleAdminSubmit} className="flex flex-col gap-6">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Admin Username</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Enter admin username"
+                      value={adminUsername}
+                      onChange={e => setAdminUsername(e.target.value)}
+                      className="w-full pl-4 pr-11 py-3.5 bg-white dark:bg-slate-900 text-slate-850 dark:text-slate-100 border border-slate-200 dark:border-slate-800 focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-sm outline-none transition-all placeholder-slate-400"
+                      required
+                    />
+                    <User className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Console Password</label>
+                  <PasswordInput
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-4 mt-2 text-sm font-bold bg-primary hover:opacity-95 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-md shadow-primary/10 border-none cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {loading ? <Loader2 size={18} className="animate-spin" /> : null}
+                  {loading ? 'Authenticating...' : 'Console Access verify karein'}
+                </button>
+              </form>
+
+              <p className="mt-8 mb-0 text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed text-center">
+                Dhyan dein: Yaha se plans aur clients database adjust kiye ja sakte hain. Any modification will be logged in the audit-trail.
+              </p>
+            </div>
+          )}
+
         </div>
-      )}
+      </div>
 
-      {/* ── Signup Form ───────────────────────────────────────────────────── */}
-      {view === 'signup' && (
-        <div className="bg-white rounded-[2rem] shadow-xl p-8 w-full max-w-md mx-auto border border-slate-100 text-center relative z-10 my-8">
-          <LogoIcon />
-          <h2 className="text-2xl font-black text-[#7c3aed] m-0 tracking-tight uppercase">Join Inventory Ant</h2>
-          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 mb-8">SaaS Warehouse Signup</p>
-
-          <form onSubmit={handleSignupSubmit} className="flex flex-col gap-5 text-left">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Full Name</label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input
-                  type="text"
-                  placeholder="Amit Sharma"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3.5 bg-white text-slate-800 border border-slate-200 focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] rounded-xl text-sm outline-none transition-all"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input
-                  type="email"
-                  placeholder="amit@warehouse.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3.5 bg-white text-slate-800 border border-slate-200 focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] rounded-xl text-sm outline-none transition-all"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mobile Number (Optional)</label>
-              <div className="relative flex items-center border border-slate-200 rounded-xl focus-within:border-[#7c3aed] focus-within:ring-1 focus-within:ring-[#7c3aed] bg-white transition-all overflow-hidden">
-                <span className="pl-4 pr-2 py-3.5 text-slate-400 font-bold border-r border-slate-100">+91</span>
-                <input
-                  type="tel"
-                  placeholder="98765 43210"
-                  value={mobile}
-                  onChange={e => setMobile(e.target.value)}
-                  className="flex-1 px-4 py-3.5 text-slate-800 text-sm outline-none bg-transparent"
-                />
-                <Phone className="absolute right-4 text-slate-400" size={18} />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Choose Password</label>
-              <PasswordInput
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                iconLeft={<Lock className="text-slate-400" size={18} />}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Confirm Password</label>
-              <PasswordInput
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                iconLeft={<Lock className="text-slate-400" size={18} />}
-              />
-            </div>
-
-            <SubmitBtn label="Email OTP Send Karein" />
-
-            <div className="flex items-center gap-4 my-2">
-              <div className="flex-1 h-px bg-slate-100"></div>
-              <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">Ya Phir</span>
-              <div className="flex-1 h-px bg-slate-100"></div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => handleGoogleAuth()}
-              className="w-full py-3.5 text-sm font-medium bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl transition-all shadow-sm flex items-center justify-center gap-3 cursor-pointer"
-            >
-              <GoogleIcon /> Sign up with Google
-            </button>
-          </form>
-
-          <p className="mt-8 mb-0 text-sm text-slate-500 font-medium">
-            Already registered?{' '}
-            <button type="button" onClick={() => goTo('login')} className="text-[#7c3aed] font-bold bg-transparent border-none cursor-pointer p-0 hover:underline">
-              Sign In Here
-            </button>
-          </p>
-
-          <CardBack to="landing" />
-        </div>
-      )}
-
-      {/* ── Signup OTP Verification ───────────────────────────────────────── */}
-      {view === 'verify-otp' && (
-        <div className="bg-white rounded-[2rem] shadow-xl p-8 w-full max-w-md mx-auto border border-slate-100 text-center relative z-10 my-8">
-          <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-indigo-100">
-            <Mail size={28} className="text-[#7c3aed]" />
-          </div>
-          <h2 className="text-2xl font-black text-[#7c3aed] m-0 tracking-tight uppercase">Verify Your Email</h2>
-          <p className="text-slate-500 text-sm mt-2 mb-1">
-            We've sent a 6-digit OTP to
-          </p>
-          <p className="text-slate-800 font-bold text-sm mb-8">{email}</p>
-
-          <form onSubmit={handleSignupOtpSubmit} className="flex flex-col gap-6 text-left">
-            <OtpInput value={otpDigits} onChange={setOtpDigits} />
-
-            <button
-              type="submit"
-              disabled={loading || otpDigits.join('').length < 6}
-              className="w-full py-4 mt-1 text-base font-bold bg-[#7c3aed] hover:bg-[#6d28d9] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-md shadow-[#7c3aed]/20 border-none cursor-pointer flex items-center justify-center gap-2"
-            >
-              {loading ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
-              {loading ? 'Verifying...' : 'Verify & Create Account'}
-            </button>
-
-            <ResendSection onResend={handleResendSignupOtp} />
-          </form>
-
-          <CardBack to="signup" />
-        </div>
-      )}
-
-      {/* ── Forgot Password: Step 1 — Email ──────────────────────────────── */}
-      {view === 'forgot-password' && (
-        <div className="bg-white rounded-[2rem] shadow-xl p-8 w-full max-w-md mx-auto border border-slate-100 text-center relative z-10 my-8">
-          <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-100">
-            <KeyRound size={28} className="text-amber-500" />
-          </div>
-          <h2 className="text-2xl font-black text-slate-800 m-0 tracking-tight">Forgot Password?</h2>
-          <p className="text-slate-500 text-sm mt-2 mb-8">
-            Enter your registered email address. We'll send a 6-digit OTP to reset your password.
-          </p>
-
-          <form onSubmit={handleForgotPasswordSubmit} className="flex flex-col gap-5 text-left">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Registered Email</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input
-                  type="email"
-                  placeholder="amit@warehouse.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3.5 bg-white text-slate-800 border border-slate-200 focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] rounded-xl text-sm outline-none transition-all"
-                  required
-                />
-              </div>
-            </div>
-
-            <SubmitBtn label="Send Reset OTP" icon={<Mail size={18} />} />
-          </form>
-
-          <CardBack to="login" />
-        </div>
-      )}
-
-      {/* ── Forgot Password: Step 2 — OTP ────────────────────────────────── */}
-      {view === 'verify-reset-otp' && (
-        <div className="bg-white rounded-[2rem] shadow-xl p-8 w-full max-w-md mx-auto border border-slate-100 text-center relative z-10 my-8">
-          <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-100">
-            <ShieldCheck size={28} className="text-amber-500" />
-          </div>
-          <h2 className="text-2xl font-black text-slate-800 m-0 tracking-tight">Enter OTP</h2>
-          <p className="text-slate-500 text-sm mt-2 mb-1">We've sent a 6-digit OTP to</p>
-          <p className="text-slate-800 font-bold text-sm mb-8">{email}</p>
-
-          <form onSubmit={handleResetOtpSubmit} className="flex flex-col gap-6 text-left">
-            <OtpInput value={otpDigits} onChange={setOtpDigits} />
-
-            <button
-              type="submit"
-              disabled={loading || otpDigits.join('').length < 6}
-              className="w-full py-4 mt-1 text-base font-bold bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-md border-none cursor-pointer flex items-center justify-center gap-2"
-            >
-              {loading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
-              {loading ? 'Please wait...' : 'Continue'}
-            </button>
-
-            <ResendSection onResend={handleResendResetOtp} />
-          </form>
-
-          <CardBack to="forgot-password" />
-        </div>
-      )}
-
-      {/* ── Forgot Password: Step 3 — New Password ───────────────────────── */}
-      {view === 'set-new-password' && (
-        <div className="bg-white rounded-[2rem] shadow-xl p-8 w-full max-w-md mx-auto border border-slate-100 text-center relative z-10 my-8">
-          <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-100">
-            <Lock size={28} className="text-emerald-500" />
-          </div>
-          <h2 className="text-2xl font-black text-slate-800 m-0 tracking-tight">Set New Password</h2>
-          <p className="text-slate-500 text-sm mt-2 mb-8">
-            Choose a strong new password for your account.
-          </p>
-
-          <form onSubmit={handleSetNewPasswordSubmit} className="flex flex-col gap-5 text-left">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">New Password</label>
-              <PasswordInput
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                iconLeft={<Lock className="text-slate-400" size={18} />}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Confirm New Password</label>
-              <PasswordInput
-                value={confirmNewPassword}
-                onChange={e => setConfirmNewPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                iconLeft={<Lock className="text-slate-400" size={18} />}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 mt-2 text-base font-bold bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-md border-none cursor-pointer flex items-center justify-center gap-2"
-            >
-              {loading ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
-              {loading ? 'Resetting...' : 'Reset Password'}
-            </button>
-          </form>
-
-          <CardBack to="verify-reset-otp" />
-        </div>
-      )}
-
-      {/* ── Admin Login ───────────────────────────────────────────────────── */}
-      {view === 'admin' && (
-        <div className="bg-[#0f172a] rounded-[2rem] shadow-2xl p-8 w-full max-w-md mx-auto border border-[#1e293b] text-center relative z-10 my-8">
-          <LogoIcon />
-          <h2 className="text-2xl font-black text-white m-0 tracking-tight uppercase">Inventory Ant Admin</h2>
-          <p className="text-[#c084fc] text-[10px] font-bold uppercase tracking-[0.2em] mt-1 mb-10">
-            Super User Security Console
-          </p>
-
-          <form onSubmit={handleAdminSubmit} className="flex flex-col gap-6 text-left">
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Admin Username</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Enter admin username"
-                  value={adminUsername}
-                  onChange={e => setAdminUsername(e.target.value)}
-                  className="w-full pl-4 pr-11 py-3.5 bg-[#0b0f19] text-white border border-[#1e293b] focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] rounded-xl text-sm outline-none transition-all placeholder-slate-600"
-                  required
-                />
-                <User className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Console Password</label>
-              <PasswordInput
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                dark
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 mt-2 text-sm font-bold bg-[#7c3aed] hover:bg-[#6d28d9] disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-lg shadow-[#7c3aed]/20 border-none cursor-pointer flex items-center justify-center gap-2"
-            >
-              {loading ? <Loader2 size={18} className="animate-spin" /> : null}
-              {loading ? 'Authenticating...' : 'Console Access verify karein'}
-            </button>
-          </form>
-
-          <p className="mt-8 mb-0 text-[11px] text-slate-500 font-medium leading-relaxed max-w-[90%] mx-auto">
-            Dhyan dein: Yaha se plans aur clients database adjust kiye ja sakte hain. Any modification will be logged in the audit-trail.
-          </p>
-
-          <button
-            onClick={() => goTo('landing')}
-            className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors bg-transparent border-none cursor-pointer text-xs font-bold"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
     </div>
   );
 }

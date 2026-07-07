@@ -178,13 +178,14 @@ export default function AntAgentV2({ userId, token, onUpdate, onNavigate, onLogi
       window.dispatchEvent(new CustomEvent('ANT_X_THINKING', { detail: { value: true } }));
       window.dispatchEvent(new CustomEvent('ANT_X_VOICE_COMMAND', { detail: { text } }));
 
+      const activeThreadId = localStorage.getItem(`antx_active_thread_${userId}`);
       const res = await fetch(`${API_BASE_URL}/api/user/products/agent-command-v2`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ text, currentView })
+        body: JSON.stringify({ text, currentView, isVoice: true, threadId: activeThreadId || undefined })
       });
       
       const data = await res.json();

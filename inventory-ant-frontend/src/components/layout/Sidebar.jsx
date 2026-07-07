@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import '../../App.css';
-import { LayoutDashboard, TerminalSquare, Receipt, Package, Scan, Settings, BookOpen, Info, ArrowLeftRight, Sun, Moon, LogOut, Menu, X, Shield, Users, Tag } from 'lucide-react';
+import { LayoutDashboard, TerminalSquare, Receipt, Package, Scan, Settings, BookOpen, Info, ArrowLeftRight, Sun, Moon, LogOut, Menu, X, Shield, Users, Tag, Clock } from 'lucide-react';
+import InventoryAntLogo, { InventoryAntLogoMark, InventoryAntLogoText } from '../ui/InventoryAntLogo';
 
 function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, setInventoryFilter, theme, onToggleTheme, userProfile }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -12,6 +13,7 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
       { id: 'billing', label: 'Billing', icon: <Receipt size={18} /> },
       { id: 'inventory', label: 'Master Inventory', icon: <Package size={18} /> },
       { id: 'ai_lab', label: 'Smart Scanner', icon: <Scan size={18} /> },
+      { id: 'history', label: 'History Logs', icon: <Clock size={18} /> },
       { id: 'staff_management', label: 'Staff Management', icon: <Users size={18} /> },
     ] : []),
     ...(userRole === 'staff' ? [
@@ -20,12 +22,12 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
       { id: 'billing', label: 'Billing', icon: <Receipt size={18} /> },
       { id: 'inventory', label: 'Master Inventory', icon: <Package size={18} /> },
       { id: 'ai_lab', label: 'Smart Scanner', icon: <Scan size={18} /> },
+      { id: 'history', label: 'History Logs', icon: <Clock size={18} /> },
     ] : []),
     ...(userRole === 'admin' ? [{ id: 'admin_panel', label: 'Admin Panel', icon: <Shield size={18} /> }] : []),
     ...(userRole !== 'staff' ? [
       { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
       { id: 'guide', label: 'User Guide', icon: <BookOpen size={18} /> },
-      { id: 'about', label: 'About Us', icon: <Info size={18} /> },
     ] : []),
   ];
 
@@ -41,9 +43,8 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
     <>
       {/* Mobile Top Header (Visible only on small screens) */}
       <div className="md:hidden w-full sticky top-0 bg-white border-b border-slate-200 z-50 p-4 flex justify-between items-center shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="text-2xl grayscale brightness-150 drop-shadow-sm">🐜</div> 
-          <span className="tracking-widest font-black text-indigo-900 text-lg leading-none">INVENTORY ANT</span>
+        <div className="flex items-center">
+          <InventoryAntLogoMark className="h-8 w-auto" />
         </div>
         <button 
           onClick={() => setIsMobileOpen(!isMobileOpen)} 
@@ -61,12 +62,9 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
         ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         {/* Desktop Logo (Hidden on mobile) */}
-        <div className="hidden md:flex items-center gap-3 shrink-0 mb-6">
-          <div className="text-3xl grayscale brightness-150 drop-shadow-sm">🐜</div> 
-          <div className="flex flex-col">
-            <span className="tracking-widest font-black text-indigo-900 text-base leading-none">INVENTORY ANT</span>
-            <span className="text-[8px] tracking-widest text-slate-400 font-bold uppercase mt-1">B2B Warehouse Intelligence</span>
-          </div>
+        <div className="hidden md:flex flex-col items-start gap-1 shrink-0 mb-6">
+          <InventoryAntLogoMark className="h-10 w-auto" />
+          <span className="text-[7px] tracking-[3px] text-slate-400 font-bold uppercase mt-1">B2B Warehouse Intelligence</span>
         </div>
         
         {/* User Profile Badge */}
@@ -82,23 +80,23 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
           title={(userRole !== 'admin' && userRole !== 'staff') ? "Edit Business Profile" : ""}
         >
            {userRole === 'admin' ? (
-             <div className="w-10 h-10 rounded-full font-bold flex items-center justify-center text-sm border shrink-0 bg-indigo-600 text-white border-indigo-700">
+             <div className="w-10 h-10 rounded-full font-bold flex items-center justify-center text-sm border shrink-0 bg-[#0f9d63] text-white border-emerald-700">
                <Shield size={18} />
              </div>
            ) : (
              userProfile?.businessLogo ? (
                <img src={userProfile.businessLogo} alt="Logo" className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0" />
              ) : (
-               <div className="w-10 h-10 rounded-full font-bold flex items-center justify-center text-sm border shrink-0 bg-indigo-100 text-indigo-700 border-indigo-200">
-                 {userId ? userId.substring(0,2).toUpperCase() : 'U'}
+               <div className="w-10 h-10 rounded-full font-bold flex items-center justify-center text-sm border shrink-0 bg-[#0f9d63] text-white border-emerald-700">
+                 {userId ? userId.substring(0,1).toUpperCase() : 'U'}
                </div>
              )
            )}
-           <div className="flex flex-col overflow-hidden">
+           <div className="flex flex-col overflow-hidden text-left">
               <div className="text-sm font-bold text-slate-800 overflow-hidden text-ellipsis whitespace-nowrap">
                 {userRole === 'admin' ? 'ADMINISTRATOR' : (userProfile?.businessName || userProfile?.name || userId)}
               </div>
-              <div className="text-[9px] text-slate-400 font-mono mt-0.5 whitespace-nowrap">
+              <div className="text-[10px] text-[#0f9d63] font-bold mt-0.5 whitespace-nowrap">
                 {userRole === 'admin' ? 'ID: SYS-ROOT' : (userRole === 'staff' ? 'Role: Staff' : 'Edit Profile ➔')}
               </div>
            </div>
@@ -113,11 +111,11 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
             <button 
               key={item.id}
               onClick={() => handleNavClick(item.id)} 
-              className={`text-left border-none py-3 px-4 flex items-center gap-3 rounded-r-full text-sm font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap
-                ${isActive ? 'bg-indigo-50 text-indigo-700 border-l-4 border-indigo-600 pl-3' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700 border-l-4 border-transparent pl-3 bg-transparent'}
+              className={`text-left border-none py-2.5 px-4 flex items-center gap-3 rounded-xl text-sm font-bold transition-all duration-200 cursor-pointer whitespace-nowrap
+                ${isActive ? 'bg-emerald-50 text-emerald-800' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700 bg-transparent'}
               `}
             >
-              <span className={isActive ? "text-indigo-600" : "text-slate-400"}>{item.icon}</span>
+              <span className={isActive ? "text-[#0f9d63]" : "text-slate-400"}>{item.icon}</span>
               <span className="inline">{item.label}</span>
             </button>
           )})}
@@ -125,7 +123,8 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
 
          {/* Bottom Action Buttons */}
          <div className="mt-8 md:mt-auto flex flex-col gap-2 shrink-0 pb-4 md:pb-0">
-           <button onClick={onSwitchAccount} className="flex items-center justify-center gap-2 w-full py-3 bg-white border border-slate-200 hover:bg-slate-50 text-indigo-600 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-sm cursor-pointer">
+           {/* Temporarily disabled: Switch Workspace & Dark Mode Toggle
+           <button onClick={onSwitchAccount} className="flex items-center justify-center gap-2 w-full py-3 bg-white border border-slate-200 hover:bg-slate-50 text-emerald-600 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-sm cursor-pointer">
              <ArrowLeftRight size={14} />
              <span className="inline">Switch Workspace</span>
            </button>
@@ -134,12 +133,13 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
              className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none shadow-sm
                ${theme === 'dark' 
                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' 
-                 : 'bg-[#E0E7FF]/60 hover:bg-[#E0E7FF]/90 text-indigo-700'
+                 : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
                }`}
            >
               {theme === 'dark' ? <Sun size={14}/> : <Moon size={14}/>}
               <span className="inline">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
            </button>
+           */}
            <button 
              onClick={onLogout} 
              className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none shadow-sm

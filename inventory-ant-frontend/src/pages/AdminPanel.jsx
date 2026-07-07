@@ -36,11 +36,11 @@ function RevenueChart({ data }) {
     <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-          <CreditCard size={16} className="text-indigo-600" />
+          <CreditCard size={16} className="text-emerald-600" />
           Monthly Revenue Growth (INR)
         </h3>
         {hoveredIdx !== null && (
-          <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+          <span className="text-xs font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
             {data[hoveredIdx].label}: {data[hoveredIdx].value} INR
           </span>
         )}
@@ -664,15 +664,15 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
       {/* Sub Sidebar Navigation Panel */}
       <div className="w-full md:w-[240px] bg-slate-900 text-slate-300 p-5 shrink-0 flex flex-col border-r border-slate-800 shadow-xl font-sans">
         <div className="mb-6">
-          <div className="text-[10px] text-indigo-400 font-black uppercase tracking-widest">Console Domain</div>
+          <div className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">Console Domain</div>
           <h2 className="text-sm font-extrabold text-white mt-1 flex items-center gap-1.5 leading-none">
-            <ShieldAlert size={16} className="text-indigo-400" />
+            <ShieldAlert size={16} className="text-emerald-400" />
             {adminRole === 'super_admin' && 'Super Administrator'}
             {adminRole === 'support_admin' && 'Support Portal'}
             {adminRole === 'finance_admin' && 'Finance Portal'}
             {adminRole === 'tech_admin' && 'Technical Console'}
           </h2>
-          <div className="text-[8px] bg-indigo-950 text-indigo-300 font-bold border border-indigo-900 rounded px-1.5 py-0.5 mt-2 w-max uppercase tracking-wider font-mono">
+          <div className="text-[8px] bg-emerald-950 text-emerald-300 font-bold border border-emerald-900 rounded px-1.5 py-0.5 mt-2 w-max uppercase tracking-wider font-mono">
             Mode: RBAC Active
           </div>
         </div>
@@ -689,7 +689,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2.5 text-left border-none py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   isTabActive
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                    ? 'bg-[#0f9d63] text-white shadow-md shadow-indigo-600/20'
                     : 'bg-transparent text-slate-400 hover:bg-slate-800/60 hover:text-white'
                 }`}
               >
@@ -719,7 +719,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
           <div className="space-y-8">
             <div>
               <h1 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-                <BarChart3 size={32} className="text-indigo-600" />
+                <BarChart3 size={32} className="text-emerald-600" />
                 Administrative Dashboard
               </h1>
               <p className="text-slate-500 text-xs mt-1">Realtime overview of business metrics, registrations, and payment audits.</p>
@@ -728,7 +728,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
             {/* Statistics Cards Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center gap-4 hover:shadow-md transition">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
                   <Building size={20} />
                 </div>
                 <div>
@@ -820,7 +820,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                  <Building size={24} className="text-indigo-600" />
+                  <Building size={24} className="text-emerald-600" />
                   Business Management
                 </h1>
                 <p className="text-xs text-slate-500 mt-0.5">Control business configurations, suspend/activate accounts, and adjust licenses.</p>
@@ -834,7 +834,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
                   placeholder="Search name or email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-xs outline-none transition-all placeholder-slate-400 text-slate-700 font-semibold"
+                  className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-xs outline-none transition-all placeholder-slate-400 text-slate-700 font-semibold"
                 />
               </div>
             </div>
@@ -871,12 +871,12 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
                               {owner.businessLogo ? (
                                 <img src={owner.businessLogo} alt="Logo" className="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0" />
                               ) : (
-                                <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs uppercase shadow-sm shrink-0">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xs uppercase shadow-sm shrink-0">
                                   {owner.businessName ? owner.businessName.charAt(0) : owner.name.charAt(0)}
                                 </div>
                               )}
                               <div className="flex flex-col">
-                                <span className="font-extrabold text-xs text-slate-800 group-hover:text-indigo-600 transition">{owner.businessName || 'Not Onboarded'}</span>
+                                <span className="font-extrabold text-xs text-slate-800 group-hover:text-emerald-600 transition">{owner.businessName || 'Not Onboarded'}</span>
                                 <span className="text-[9px] text-slate-400 font-medium font-mono">{owner.name} ({owner.email})</span>
                               </div>
                             </div>
@@ -895,7 +895,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
                             <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
                               owner.plan === 'pro' ? 'bg-purple-50 text-purple-700 border-purple-100' :
                               owner.plan === 'enterprise' ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                              owner.plan === 'basic' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+                              owner.plan === 'basic' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
                               'bg-slate-50 text-slate-600 border-slate-200'
                             }`}>
                               {owner.plan || 'free'}
@@ -918,7 +918,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
                                 setSelectedUserPlan(owner);
                                 setNewPlanType(owner.plan || 'free');
                               }}
-                              className="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-[10px] font-bold transition border-none cursor-pointer"
+                              className="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-[10px] font-bold transition border-none cursor-pointer"
                               title="Change Plan Settings"
                             >
                               Plan
@@ -972,7 +972,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
           <div className="space-y-8">
             <div>
               <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                <Layers size={24} className="text-indigo-600" />
+                <Layers size={24} className="text-emerald-600" />
                 Subscription Plan Configurator
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">Control pricing tiers, scanner token limits, staff account caps, and repository sizes.</p>
@@ -986,7 +986,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
 
                 return (
                   <div key={planKey} className="bg-white rounded-3xl border border-slate-200 p-6 flex flex-col shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50 rounded-bl-[4rem] -z-10"></div>
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-bl-[4rem] -z-10"></div>
                     <span className="text-[10px] bg-slate-100 text-slate-600 font-extrabold uppercase border rounded px-2 py-0.5 w-max tracking-wide">
                       {planKey}
                     </span>
@@ -1058,7 +1058,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
                             setEditingPlan(null);
                             showToast(`Subscription configuration saved for ${planKey.toUpperCase()}`, 'success');
                           }}
-                          className="w-full py-1.5 bg-indigo-600 text-white rounded text-[10px] font-bold border-none cursor-pointer flex items-center justify-center gap-1"
+                          className="w-full py-1.5 bg-[#0f9d63] text-white rounded text-[10px] font-bold border-none cursor-pointer flex items-center justify-center gap-1"
                         >
                           <Check size={10} />
                           Apply Configuration
@@ -1092,7 +1092,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
 
                         <button
                           onClick={() => setEditingPlan(planKey)}
-                          className="mt-6 w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold border-none cursor-pointer transition flex items-center justify-center gap-1.5"
+                          className="mt-6 w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold border-none cursor-pointer transition flex items-center justify-center gap-1.5"
                         >
                           <Edit2 size={12} />
                           Modify parameters
@@ -1111,7 +1111,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                <Users size={24} className="text-indigo-600" />
+                <Users size={24} className="text-emerald-600" />
                 Staff Analytics Portal
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">Audit staff accounts generated inside the tenant system.</p>
@@ -1183,7 +1183,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                <CreditCard size={24} className="text-indigo-600" />
+                <CreditCard size={24} className="text-emerald-600" />
                 Revenue & Payment Ledger
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">Verify subscription transactions, refund invoices, and extract monthly billing details.</p>
@@ -1261,7 +1261,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                <Mail size={24} className="text-indigo-600" />
+                <Mail size={24} className="text-emerald-600" />
                 Support Center Inbox
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">Track customer support tickets, resolve Gemini parsing queries, and assign tasks.</p>
@@ -1326,7 +1326,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
                             {tck.status === 'open' && (
                               <button
                                 onClick={() => handleAssignTicket(tck.id)}
-                                className="px-2 py-1 bg-indigo-600 text-white rounded text-[9px] font-bold uppercase tracking-wider border-none cursor-pointer hover:bg-indigo-700 transition"
+                                className="px-2 py-1 bg-[#0f9d63] text-white rounded text-[9px] font-bold uppercase tracking-wider border-none cursor-pointer hover:bg-emerald-700 transition"
                               >
                                 Assign
                               </button>
@@ -1358,7 +1358,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                <Cpu size={24} className="text-indigo-600" />
+                <Cpu size={24} className="text-emerald-600" />
                 System Health & Database Sizes
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">Realtime monitoring of CPU, runtime environment, and JSON database volumes.</p>
@@ -1370,7 +1370,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
                 {/* Database Sizes */}
                 <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
                   <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Layers size={16} className="text-indigo-600" />
+                    <Layers size={16} className="text-emerald-600" />
                     Database File Size Indicators
                   </h3>
                   
@@ -1448,7 +1448,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                <Activity size={24} className="text-indigo-600" />
+                <Activity size={24} className="text-emerald-600" />
                 Audit Trail & Logs
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">Verify system operations, administrator logins, deactivations, and client requests.</p>
@@ -1506,7 +1506,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
           <div className="space-y-6 max-w-2xl">
             <div>
               <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                <Bell size={24} className="text-indigo-600" />
+                <Bell size={24} className="text-emerald-600" />
                 Notification Broadcast Center
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">Broadcast push announcements or instructions to users matching specific license tiers.</p>
@@ -1555,7 +1555,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
 
                 <button
                   type="submit"
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition border-none cursor-pointer text-xs uppercase tracking-wider shadow-sm shadow-indigo-600/15 flex items-center justify-center gap-1.5"
+                  className="w-full py-3 bg-[#0f9d63] hover:bg-emerald-700 text-white font-bold rounded-xl transition border-none cursor-pointer text-xs uppercase tracking-wider shadow-sm shadow-indigo-600/15 flex items-center justify-center gap-1.5"
                 >
                   <ArrowUpRight size={14} />
                   Publish Broadcast
@@ -1570,7 +1570,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
           <div className="space-y-8">
             <div>
               <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                <KeyRound size={24} className="text-indigo-600" />
+                <KeyRound size={24} className="text-emerald-600" />
                 Settings & Privileges
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">Control administrative console access and configure RBAC roles.</p>
@@ -1609,7 +1609,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
                   </div>
                   <button 
                     type="submit" 
-                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition border-none cursor-pointer text-xs uppercase"
+                    className="w-full py-2.5 bg-[#0f9d63] hover:bg-emerald-700 text-white font-bold rounded-xl transition border-none cursor-pointer text-xs uppercase"
                   >
                     Submit
                   </button>
@@ -1620,7 +1620,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
               <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
                 <div>
                   <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                    <UserCog className="text-indigo-600" size={18} />
+                    <UserCog className="text-emerald-600" size={18} />
                     Sub-admin Roles Configuration
                   </h2>
                   <p className="text-[10px] text-slate-400 mt-0.5 font-semibold">Test security scoping permissions using seeded credentials.</p>
@@ -1681,7 +1681,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
           <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden animate-scaleIn">
             <div className="p-5 pb-4 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-slate-800 text-sm">
-                <Info className="text-indigo-600" size={18} />
+                <Info className="text-emerald-600" size={18} />
                 Detailed Business Parameters
               </div>
               <button 
@@ -1694,12 +1694,12 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
 
             <div className="p-6 space-y-5">
               <div className="flex items-center gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-                <div className="w-12 h-12 rounded-xl bg-indigo-600 text-white font-black flex items-center justify-center uppercase">
+                <div className="w-12 h-12 rounded-xl bg-[#0f9d63] text-white font-black flex items-center justify-center uppercase">
                   {selectedUser.name.substring(0, 2)}
                 </div>
                 <div>
                   <h3 className="font-extrabold text-sm text-slate-800 m-0">{selectedUser.businessName || 'N/A'}</h3>
-                  <span className="text-[9px] text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded font-bold uppercase mt-1 inline-block">
+                  <span className="text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded font-bold uppercase mt-1 inline-block">
                     {selectedUser.plan || 'free'}
                   </span>
                 </div>
@@ -1752,7 +1752,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
               {/* Roster list of staff inside detailed view */}
               <div className="border-t border-slate-100 pt-4 mt-3">
                 <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Users size={12} className="text-indigo-500" />
+                  <Users size={12} className="text-emerald-500" />
                   Associated Staff ({users.filter(u => u.role === 'staff' && u.parentEmail?.toLowerCase() === selectedUser.email.toLowerCase()).length})
                 </div>
                 {(() => {
@@ -1826,7 +1826,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
               <div className="flex gap-2.5 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold border-none cursor-pointer transition"
+                  className="flex-1 py-2 bg-[#0f9d63] hover:bg-emerald-700 text-white rounded-xl text-xs font-bold border-none cursor-pointer transition"
                 >
                   Save settings
                 </button>
@@ -1869,7 +1869,7 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
               <div className="flex gap-2.5 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold border-none cursor-pointer transition"
+                  className="flex-1 py-2 bg-[#0f9d63] hover:bg-emerald-700 text-white rounded-xl text-xs font-bold border-none cursor-pointer transition"
                 >
                   Apply Change
                 </button>

@@ -113,6 +113,27 @@ export class ProductsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('chat-threads')
+  async getChatThreads(@Req() req: any) {
+    const tenantEmail = this.validateUser(req);
+    return this.aiService.getChatThreads(tenantEmail);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('chat-threads')
+  async createChatThread(@Req() req: any, @Body() body: { title?: string }) {
+    const tenantEmail = this.validateUser(req);
+    return this.aiService.createChatThread(tenantEmail, body.title);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('chat-threads/:id')
+  async deleteChatThread(@Req() req: any, @Param('id') id: string) {
+    const tenantEmail = this.validateUser(req);
+    return this.aiService.deleteChatThread(tenantEmail, id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   async findOne(@Req() req: any, @Param('id') id: string) {
     return this.productsService.findOne(this.validateUser(req), id);

@@ -2,7 +2,7 @@ import { API_BASE_URL } from '../utils/config';
 import React, { useState, useEffect, useMemo } from 'react';
 import '../App.css';
 import { getExpiryInfo, getExpKey } from '../utils/expiryHelpers';
-import { Printer, Trash2, Edit3, Plus, Terminal, Check, X, CheckCircle, Search, History, User, Clock, ArrowRight, Eye, Package, IndianRupee, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { Printer, Trash2, Edit3, Plus, Terminal, Check, X, CheckCircle, Search, History, User, Clock, ArrowRight, Eye, Package, IndianRupee, Info, ChevronDown, ChevronUp, Download } from 'lucide-react';
 
 const parseQty = (qty) => {
   if (!qty) return 0;
@@ -18,12 +18,6 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  // History Log States
-  const [activeSubTab, setActiveSubTab] = useState('catalog'); // 'catalog' or 'history'
-  const [historyLogs, setHistoryLogs] = useState([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [historySearch, setHistorySearch] = useState('');
-  const [selectedLog, setSelectedLog] = useState(null);
   const [expandedProductIds, setExpandedProductIds] = useState(new Set());
   const toggleRowExpand = (productId) => {
     setExpandedProductIds(prev => {
@@ -36,65 +30,6 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
       return next;
     });
   };
-
-  const getLogSourceInfo = (details) => {
-    const text = (details || '').toLowerCase();
-    if (text.includes('inbound scanner')) {
-      return { name: 'Inbound Scanner', badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-100' };
-    }
-    if (text.includes('outbound scanner')) {
-      return { name: 'Outbound Scanner', badgeClass: 'bg-rose-50 text-rose-700 border border-rose-100' };
-    }
-    if (text.includes('sales terminal') || text.includes('billing') || text.includes('sold via')) {
-      return { name: 'Billing Terminal', badgeClass: 'bg-amber-50 text-amber-700 border border-amber-100' };
-    }
-    if (text.includes('voice command') || text.includes('smart scanner / voice')) {
-      return { name: 'Voice Assistant', badgeClass: 'bg-purple-50 text-purple-700 border border-purple-100' };
-    }
-    if (text.includes('bulk import') || text.includes('csv file')) {
-      return { name: 'CSV Import', badgeClass: 'bg-blue-50 text-blue-700 border border-blue-100' };
-    }
-    if (text.includes('quick register') || text.includes('manual registration')) {
-      return { name: 'Manual Register', badgeClass: 'bg-slate-50 text-slate-700 border border-slate-200' };
-    }
-    if (text.includes('manual delete')) {
-      return { name: 'Manual Delete', badgeClass: 'bg-slate-50 text-slate-700 border border-slate-200' };
-    }
-    return { name: 'Manual Update', badgeClass: 'bg-slate-50 text-slate-700 border border-slate-200' };
-  };
-
-  const fetchHistory = async () => {
-    if (!token) return;
-    setHistoryLoading(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/user/products/history`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-        cache: 'no-store'
-      });
-      if (res.ok) {
-        const data = await res.json();
-        console.log("HISTORY API RESPONSE DATA:", data);
-        if (Array.isArray(data)) {
-          console.log("HISTORY API SETTING LOGS, length:", data.length);
-          setHistoryLogs(data);
-        } else {
-          console.log("HISTORY API DATA IS NOT ARRAY");
-        }
-      } else {
-        console.log("HISTORY API FAILED", res.status);
-      }
-    } catch (e) {
-      console.error('Failed to fetch history logs:', e);
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeSubTab === 'history') {
-      fetchHistory();
-    }
-  }, [activeSubTab, token, products]);
 
   const handleEditClick = (p) => {
     setEditingProductId(p.id);
@@ -269,55 +204,102 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
     { key: 'quantity', placeholder: 'AVAILABLE STOCK', className: 'w-24' },
   ];
 
+  const handleDownloadCSV = () => {
+    const realProds = products.filter(p => !p._headers);
+    if (realProds.length === 0) {
+      alert("No stock items available to download.");
+      return;
+    }
+
+    // Sort products by SKU Code (productId) ascending using natural alphanumeric sort
+    const sortedProds = [...realProds].sort((a, b) => {
+      const valA = String(a.productId || '').trim();
+      const valB = String(b.productId || '').trim();
+      
+      const numA = Number(valA);
+      const numB = Number(valB);
+      
+      if (valA !== '' && valB !== '' && !isNaN(numA) && !isNaN(numB)) {
+        return numA - numB;
+      }
+      return valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    const standardKeys = ['productId', 'name', ...dynamicColumns, 'costPrice', 'mrp', 'quantity'];
+    const standardLabels = [
+      headers.productId || 'SKU CODE',
+      headers.name || 'PRODUCT DESCRIPTION',
+      ...dynamicColumns.map(col => col.toUpperCase()),
+      headers.costPrice || 'COST PRICE',
+      headers.mrp || 'SELLING PRICE',
+      headers.quantity || 'AVAILABLE STOCK'
+    ];
+
+    let csvContent = '\uFEFF'; // UTF-8 BOM
+    
+    // Header
+    csvContent += standardLabels.map(label => `"${label.replace(/"/g, '""')}"`).join(',') + '\r\n';
+
+    // Rows
+    sortedProds.forEach(p => {
+      const values = standardKeys.map(key => {
+        let val = p[key];
+        if (val === undefined || val === null) {
+          val = '';
+        }
+        return `"${String(val).replace(/"/g, '""')}"`;
+      });
+      csvContent += values.join(',') + '\r\n';
+    });
+
+    const rawBizName = userProfile?.businessName || '';
+    const cleanBizName = rawBizName.trim().replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_') || 'Master_Inventory_Stock';
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${cleanBizName}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="p-4 md:p-8 h-full overflow-y-auto flex-1 bg-[#F8FAFC]">
        
        {/* Master Inventory Header & Actions */}
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 text-left border-b border-slate-100 pb-4">
-          <h1 className="m-0 text-3xl font-extrabold tracking-tight text-indigo-600">
+          <h1 className="m-0 text-3xl font-extrabold tracking-tight text-emerald-600">
              Master Inventory
           </h1>
           <div className="flex flex-wrap gap-3 items-center sm:ml-auto">
-             {activeSubTab === 'catalog' ? (
-                <>
-                   {isFiltered && (
-                     <button onClick={() => setFilterMode('all')} className="py-2 px-4 text-xs font-bold whitespace-nowrap bg-white border border-slate-200 text-slate-600 rounded-full hover:bg-slate-50 cursor-pointer transition-all shadow-sm">✕ RESET</button>
-                   )}
-                   <button onClick={() => window.print()} className="flex items-center gap-2 py-2 px-4 text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-full cursor-pointer transition-all shadow-sm">
-                       <Printer size={14} /> Print Report
-                   </button>
-                   <button 
-                     onClick={() => setActiveSubTab('history')}
-                     className="flex items-center gap-2 py-2 px-4 text-xs font-bold bg-indigo-50 border border-indigo-100 text-indigo-600 hover:bg-indigo-100 rounded-full cursor-pointer transition-all shadow-sm"
-                   >
-                     <History size={14} /> View History Logs
-                   </button>
-                </>
-             ) : (
-                <button 
-                  onClick={() => setActiveSubTab('catalog')}
-                  className="flex items-center gap-2 py-2 px-4 text-xs font-bold bg-indigo-600 border border-indigo-600 text-white hover:bg-indigo-700 rounded-full cursor-pointer transition-all shadow-sm"
-                >
-                  <ArrowRight size={14} className="rotate-180" /> Back to Catalog
-                </button>
+             {isFiltered && (
+               <button onClick={() => setFilterMode('all')} className="py-2 px-4 text-xs font-bold whitespace-nowrap bg-white border border-slate-200 text-slate-600 rounded-full hover:bg-slate-50 cursor-pointer transition-all shadow-sm">✕ RESET</button>
              )}
+             <button onClick={handleDownloadCSV} className="flex items-center gap-2 py-2 px-4 text-xs font-bold bg-[#0f9d63] border border-emerald-600 text-white hover:bg-emerald-700 rounded-full cursor-pointer transition-all shadow-sm">
+                 <Download size={14} /> Download CSV
+             </button>
+             <button onClick={() => window.print()} className="flex items-center gap-2 py-2 px-4 text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-full cursor-pointer transition-all shadow-sm">
+                 <Printer size={14} /> Print Report
+             </button>
           </div>
        </div>
- 
-        {activeSubTab === 'catalog' ? (
-          <>
+  
+       <>
             <div className={`grid grid-cols-2 md:grid-cols-3 ${userRole === 'staff' ? 'lg:grid-cols-3' : 'lg:grid-cols-5'} gap-4 mb-6`}>
               {/* Total Items Card */}
               <div 
                 onClick={() => setFilterMode('all')}
-                className={`rounded-2xl border p-5 flex items-center gap-4 cursor-pointer transition-all shadow-sm ${filterMode === 'all' || !filterMode ? 'bg-indigo-50/50 border-indigo-400 ring-2 ring-indigo-100' : 'bg-white border-slate-100 hover:border-indigo-200'}`}
+                className={`rounded-2xl border p-5 flex items-center gap-4 cursor-pointer transition-all shadow-sm ${filterMode === 'all' || !filterMode ? 'bg-emerald-50/50 border-emerald-400 ring-2 ring-emerald-100' : 'bg-white border-slate-100 hover:border-emerald-200'}`}
               >
-                <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600">
+                <div className="bg-emerald-100 p-3 rounded-full text-emerald-600 shrink-0">
                   <Package size={20} />
                 </div>
                 <div className="text-left">
-                  <div className="text-2xl font-extrabold text-slate-800">{stats.total}</div>
                   <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Items</div>
+                  <div className="text-2xl font-extrabold text-slate-800">{stats.total}</div>
                 </div>
               </div>
 
@@ -327,12 +309,12 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                   onClick={() => setFilterMode('withCostPrice')}
                   className={`rounded-2xl border p-5 flex items-center gap-4 cursor-pointer transition-all shadow-sm ${filterMode === 'withCostPrice' ? 'bg-emerald-50/50 border-emerald-400 ring-2 ring-emerald-100' : 'bg-white border-slate-100 hover:border-emerald-200'}`}
                 >
-                  <div className="bg-emerald-100 p-3 rounded-xl text-emerald-600">
+                  <div className="bg-emerald-100 p-3 rounded-full text-emerald-600 shrink-0">
                     <IndianRupee size={20} />
                   </div>
                   <div className="text-left">
-                    <div className="text-2xl font-extrabold text-slate-800">{stats.withCostPrice}</div>
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">With Cost Price</div>
+                    <div className="text-2xl font-extrabold text-slate-800">{stats.withCostPrice}</div>
                   </div>
                 </div>
               )}
@@ -343,12 +325,12 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                   onClick={() => setFilterMode('missingCostPrice')}
                   className={`rounded-2xl border p-5 flex items-center gap-4 cursor-pointer transition-all shadow-sm ${filterMode === 'missingCostPrice' ? 'bg-amber-50/50 border-amber-400 ring-2 ring-amber-100' : 'bg-white border-slate-100 hover:border-amber-200'}`}
                 >
-                  <div className="bg-amber-100 p-3 rounded-xl text-amber-600">
+                  <div className="bg-amber-100 p-3 rounded-full text-amber-600 shrink-0">
                     <Info size={20} />
                   </div>
                   <div className="text-left">
-                    <div className="text-2xl font-extrabold text-slate-800">{stats.missingCostPrice}</div>
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Missing Cost Price</div>
+                    <div className="text-2xl font-extrabold text-slate-800">{stats.missingCostPrice}</div>
                   </div>
                 </div>
               )}
@@ -356,14 +338,14 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
               {/* With Selling Price Card */}
               <div 
                 onClick={() => setFilterMode('withSellingPrice')}
-                className={`rounded-2xl border p-5 flex items-center gap-4 cursor-pointer transition-all shadow-sm ${filterMode === 'withSellingPrice' ? 'bg-teal-50/50 border-teal-400 ring-2 ring-teal-100' : 'bg-white border-slate-100 hover:border-teal-200'}`}
+                className={`rounded-2xl border p-5 flex items-center gap-4 cursor-pointer transition-all shadow-sm ${filterMode === 'withSellingPrice' ? 'bg-emerald-50/50 border-emerald-400 ring-2 ring-emerald-100' : 'bg-white border-slate-100 hover:border-emerald-200'}`}
               >
-                <div className="bg-teal-100 p-3 rounded-xl text-teal-600">
+                <div className="bg-emerald-100 p-3 rounded-full text-emerald-600 shrink-0">
                   <IndianRupee size={20} />
                 </div>
                 <div className="text-left">
-                  <div className="text-2xl font-extrabold text-slate-800">{stats.withSellingPrice}</div>
                   <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">With Selling Price</div>
+                  <div className="text-2xl font-extrabold text-slate-800">{stats.withSellingPrice}</div>
                 </div>
               </div>
 
@@ -372,19 +354,19 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                 onClick={() => setFilterMode('missingSellingPrice')}
                 className={`rounded-2xl border p-5 flex items-center gap-4 cursor-pointer transition-all shadow-sm ${filterMode === 'missingSellingPrice' ? 'bg-rose-50/50 border-rose-400 ring-2 ring-rose-100' : 'bg-white border-slate-100 hover:border-rose-200'}`}
               >
-                <div className="bg-rose-100 p-3 rounded-xl text-rose-600">
+                <div className="bg-rose-100 p-3 rounded-full text-rose-600 shrink-0">
                   <Info size={20} />
                 </div>
                 <div className="text-left">
-                  <div className="text-2xl font-extrabold text-slate-800">{stats.missingSellingPrice}</div>
                   <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Missing Selling Price</div>
+                  <div className="text-2xl font-extrabold text-slate-800">{stats.missingSellingPrice}</div>
                 </div>
               </div>
             </div>
 
            {isFiltered && (
              <div className="mb-4 text-left">
-               <p className="m-0 text-slate-500 text-xs font-semibold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full inline-block">
+               <p className="m-0 text-slate-500 text-xs font-semibold bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full inline-block">
                  Showing {displayProducts.length} items • Filter: {
                    filterMode === 'outOfStock' ? 'OUT OF STOCK' :
                    filterMode === 'lowStock' ? 'LOW STOCK' :
@@ -396,8 +378,8 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
            )}
 
       <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] mb-8">
-          <h4 className="m-0 mb-4 text-sm font-bold text-slate-800 flex items-center gap-2">
-            <Plus size={16} className="text-indigo-500" /> Quick Register
+          <h4 className="m-0 mb-4 text-sm font-bold text-slate-800 flex items-center gap-2 text-left">
+            <Plus size={16} className="text-emerald-500" /> Quick Register
           </h4>
           <form onSubmit={handleSubmit} className="flex flex-col md:flex-row flex-wrap gap-3 items-stretch md:items-center">
             {standardFields.map(f => (
@@ -407,7 +389,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                 placeholder={f.placeholder} 
                 value={formData[f.key] || ''} 
                 onChange={e => setFormData({...formData, [f.key]: e.target.value})} 
-                className={`bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-3 py-2.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all w-full md:w-auto flex-1 min-w-[100px]`}
+                className={`bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-3 py-2.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all w-full md:w-auto flex-1 min-w-[100px]`}
               />
             ))}
             {dynamicColumns.map(col => (
@@ -417,10 +399,10 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                 placeholder={col.toUpperCase()} 
                 value={formData[col] || ''} 
                 onChange={e => setFormData({...formData, [col]: e.target.value})} 
-                className="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-3 py-2.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all w-full md:w-32 flex-1 md:flex-none min-w-[100px]"
+                className="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-3 py-2.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all w-full md:w-32 flex-1 md:flex-none min-w-[100px]"
               />
             ))}
-            <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white border-none py-2.5 px-6 rounded-lg text-xs font-bold cursor-pointer shadow-sm transition-all whitespace-nowrap w-full md:w-auto mt-2 md:mt-0">ADD ITEM</button>
+            <button type="submit" className="bg-[#0f9d63] hover:bg-emerald-700 text-white border-none py-2.5 px-6 rounded-lg text-xs font-bold cursor-pointer shadow-sm transition-all whitespace-nowrap w-full md:w-auto mt-2 md:mt-0">Add Item</button>
           </form>
       </div>
 
@@ -434,11 +416,11 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                placeholder="Search SKU or Description..."
                value={searchTerm}
                onChange={e => setSearchTerm(e.target.value)}
-               className="w-full pl-9 pr-4 py-2 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 rounded-lg outline-none transition-all placeholder-slate-400"
+               className="w-full pl-9 pr-4 py-2 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 rounded-lg outline-none transition-all placeholder-slate-400"
              />
            </div>
         </div>
-        <div className="overflow-x-hidden md:overflow-x-auto max-h-[650px] overflow-y-auto custom-scrollbar">
+        <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left text-sm whitespace-normal md:whitespace-nowrap table-fixed md:table-auto">
             <thead>
               <tr className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
@@ -474,7 +456,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                             value={editFormData.productId || ''} 
                             onChange={(e) => setEditFormData({...editFormData, productId: e.target.value})}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
+                            className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none w-20"
                           />
                         ) : (p.productId || '-')}
                       </td>
@@ -482,7 +464,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                       {/* PRODUCT DESCRIPTION / DETAILS */}
                       <td className="px-3 md:px-6 py-3.5 md:py-5 font-bold text-slate-800 text-sm whitespace-normal max-w-md">
                         {/* Mobile SKU code displayed above product name */}
-                        <div className="text-[10px] font-extrabold text-indigo-500 uppercase tracking-wider mb-0.5 md:hidden">
+                        <div className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider mb-0.5 md:hidden">
                           SKU: {p.productId || '-'}
                         </div>
                         {editingProductId === p.id ? (
@@ -491,7 +473,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                             value={editFormData.name || ''} 
                             onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-full"
+                            className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none w-full"
                             placeholder="Product Description"
                           />
                         ) : (
@@ -509,7 +491,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                                 type="text" 
                                 value={editFormData[col] || ''} 
                                 onChange={(e) => setEditFormData({...editFormData, [col]: e.target.value})}
-                                className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
+                                className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none w-20"
                               />
                             ) : (
                               displayValue ? (
@@ -530,7 +512,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                               type="text" 
                               value={editFormData.costPrice || ''} 
                               onChange={(e) => setEditFormData({...editFormData, costPrice: e.target.value})}
-                              className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
+                              className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none w-20"
                             />
                           ) : (() => {
                             const v = parseFloat(p.costPrice);
@@ -549,7 +531,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                             type="text" 
                             value={editFormData.mrp || ''} 
                             onChange={(e) => setEditFormData({...editFormData, mrp: e.target.value})}
-                            className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
+                            className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none w-20"
                           />
                         ) : (() => {
                           const v = parseFloat(p.mrp);
@@ -567,11 +549,16 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                             type="number" 
                             value={editFormData.quantity || ''} 
                             onChange={(e) => setEditFormData({...editFormData, quantity: e.target.value})}
-                            className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none w-20"
+                            className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded px-2 py-1.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none w-20"
                           />
-                        ) : (
-                          <div className="font-bold text-slate-700 text-sm">{p.quantity}</div>
-                        )}
+                        ) : (() => {
+                          const q = parseQty(p.quantity);
+                          return (
+                            <div className={`font-bold text-sm ${q === 0 ? 'text-red-600 font-extrabold' : 'text-slate-700'}`}>
+                              {p.quantity}
+                            </div>
+                          );
+                        })()}
                       </td>
                       
                       {/* Actions Cell */}
@@ -586,9 +573,9 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
                             </button>
                           </div>
                         ) : (
-                          <div className="flex justify-end gap-3 md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                            <button onClick={() => handleEditClick(p)} className="bg-transparent border-none text-indigo-500 hover:text-indigo-700 cursor-pointer p-1">
-                               <Edit3 size={16} />
+                          <div className="flex justify-end gap-3" onClick={(e) => e.stopPropagation()}>
+                            <button onClick={() => handleEditClick(p)} className="bg-transparent border-none text-[#0f9d63] hover:text-emerald-700 font-bold text-xs cursor-pointer hover:underline">
+                              Edit
                             </button>
                             {userRole !== 'staff' && (
                               <button 
@@ -727,272 +714,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
           </table>
         </div>
       </div>
-         </>
-             ) : (
-          /* History Log Panel */
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden text-left animate-in fade-in duration-200">
-             <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h3 className="m-0 text-[15px] font-bold text-slate-800 flex items-center gap-2">
-                   <History size={16} className="text-indigo-500" /> Audit Log History
-                </h3>
-                {/* History Search */}
-                <div className="relative w-full sm:w-64">
-                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={14} />
-                   <input 
-                      type="text" 
-                      placeholder="Search Logs..." 
-                      value={historySearch} 
-                      onChange={e => setHistorySearch(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2 text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-lg outline-none transition-all placeholder-slate-400"
-                   />
-                </div>
-             </div>
- 
-             <div className="overflow-x-auto">
-                {historyLoading ? (
-                   <div className="px-6 py-12 text-center text-slate-400 text-sm">
-                      Loading history logs...
-                   </div>
-                ) : (() => {
-                   const filteredLogs = historyLogs.filter(log => {
-                      const term = historySearch.toLowerCase();
-                      return (
-                         (log.productName || '').toLowerCase().includes(term) ||
-                         (log.productId || '').toLowerCase().includes(term) ||
-                         (log.operatorName || '').toLowerCase().includes(term) ||
-                         (log.actionType || '').toLowerCase().includes(term) ||
-                         (log.details || '').toLowerCase().includes(term)
-                      );
-                   });
- 
-                   if (filteredLogs.length === 0) {
-                      return (
-                         <div className="px-6 py-12 text-center text-slate-400 text-sm">
-                            No logs found matching your filters.
-                         </div>
-                      );
-                   }
- 
-                   return (
-                      <table className="w-full text-left text-sm whitespace-nowrap">
-                         <thead>
-                            <tr className="bg-slate-50 border-b border-slate-100">
-                               <th className="px-6 py-4 text-slate-400 text-[10px] tracking-wider uppercase font-bold w-48">Timestamp</th>
-                               <th className="px-6 py-4 text-slate-400 text-[10px] tracking-wider uppercase font-bold">Product</th>
-                               <th className="px-6 py-4 text-slate-400 text-[10px] tracking-wider uppercase font-bold w-32">Action</th>
-                               <th className="px-6 py-4 text-slate-400 text-[10px] tracking-wider uppercase font-bold w-36">Stock Change</th>
-                               <th className="px-6 py-4 text-slate-400 text-[10px] tracking-wider uppercase font-bold w-32">Operator</th>
-                               <th className="px-6 py-4 text-slate-400 text-[10px] tracking-wider uppercase font-bold w-40">Source</th>
-                               <th className="px-6 py-4 text-slate-400 text-[10px] tracking-wider uppercase font-bold">Details</th>
-                               <th className="px-6 py-4 text-slate-400 text-[10px] tracking-wider uppercase font-bold text-right w-24">Actions</th>
-                            </tr>
-                         </thead>
-                         <tbody className="divide-y divide-slate-50">
-                            {filteredLogs.map((log) => {
-                               let actionBadge = 'bg-slate-100 text-slate-700';
-                               if (log.actionType === 'CREATE' || log.actionType === 'STOCK_IN') {
-                                  actionBadge = 'bg-emerald-50 text-emerald-700 border border-emerald-100';
-                               } else if (log.actionType === 'DELETE' || log.actionType === 'STOCK_OUT') {
-                                  actionBadge = 'bg-rose-50 text-rose-700 border border-rose-100';
-                               } else if (log.actionType === 'UPDATE') {
-                                  actionBadge = 'bg-blue-50 text-blue-700 border border-blue-100';
-                               } else if (log.actionType === 'BULK_IMPORT') {
-                                  actionBadge = 'bg-amber-50 text-amber-700 border border-amber-100';
-                               }
- 
-                               const dateStr = new Date(log.timestamp).toLocaleString('en-IN', {
-                                  day: '2-digit',
-                                  month: 'short',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  hour12: true
-                               });
-                               const sourceInfo = getLogSourceInfo(log.details);
- 
-                               return (
-                                  <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                                     <td className="px-6 py-4.5 text-xs text-slate-500 font-medium">
-                                        <span className="flex items-center gap-1.5"><Clock size={12} className="text-slate-400" /> {dateStr}</span>
-                                     </td>
-                                     <td className="px-6 py-4.5 text-left">
-                                        <div className="font-bold text-slate-800 text-xs">{log.productName}</div>
-                                        {log.productId && <div className="text-[10px] text-slate-400 mt-0.5">SKU: {log.productId}</div>}
-                                     </td>
-                                     <td className="px-6 py-4.5">
-                                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${actionBadge}`}>
-                                           {log.actionType}
-                                        </span>
-                                     </td>
-                                     <td className="px-6 py-4.5 font-mono text-xs text-slate-600 font-bold">
-                                        {log.beforeQty !== null && log.afterQty !== null ? (
-                                           <span className="flex items-center gap-1">
-                                              {log.beforeQty} <ArrowRight size={10} className="text-slate-400" /> {log.afterQty}
-                                           </span>
-                                        ) : '-'}
-                                     </td>
-                                     <td className="px-6 py-4.5 text-xs font-bold text-slate-600">
-                                        <span className="flex items-center gap-1.5"><User size={12} className="text-slate-400" /> {log.operatorName}</span>
-                                     </td>
-                                     <td className="px-6 py-4.5 text-xs font-bold">
-                                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${sourceInfo.badgeClass}`}>
-                                           {sourceInfo.name}
-                                        </span>
-                                     </td>
-                                     <td className="px-6 py-4.5 text-xs text-slate-500 whitespace-normal max-w-xs font-medium">
-                                        {log.details || '-'}
-                                     </td>
-                                     <td className="px-6 py-4.5 text-right">
-                                        <button
-                                           onClick={() => setSelectedLog(log)}
-                                           className="py-1.5 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-none rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 inline-flex"
-                                           title="View Details"
-                                        >
-                                           <Eye size={12} /> Details
-                                        </button>
-                                     </td>
-                                  </tr>
-                               );
-                            })}
-                         </tbody>
-                      </table>
-                   );
-                })()}
-             </div>
-          </div>
-        )}
- 
-       {/* Premium Detail Log Modal */}
-       {selectedLog && (
-         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-[1000] p-4 font-sans">
-           <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-[550px] border border-slate-100 relative shadow-2xl text-left animate-in fade-in zoom-in-95 duration-200">
-             {/* Close button */}
-             <button 
-               onClick={() => setSelectedLog(null)} 
-               className="absolute top-6 right-6 bg-slate-100 hover:bg-slate-200 border-none rounded-full w-8 h-8 flex items-center justify-center text-slate-500 cursor-pointer transition-colors"
-             >
-               <X size={18} />
-             </button>
- 
-             {/* Header */}
-             <h2 className="m-0 flex items-center gap-2 text-slate-800 text-xl font-extrabold tracking-tight mb-2">
-               <History className="text-indigo-500" size={22} /> Audit Log Details
-             </h2>
-             <p className="text-xs text-slate-400 font-mono mb-6">LOG ID: {selectedLog.id}</p>
- 
-             <div className="flex flex-col gap-6">
-               {/* Product Info Block */}
-               <div className="bg-slate-50 p-4.5 rounded-2xl border border-slate-100">
-                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Product Details</div>
-                 <div className="font-extrabold text-slate-800 text-base">{selectedLog.productName}</div>
-                 {selectedLog.productId && (
-                   <div className="text-xs text-indigo-600 font-bold mt-1 bg-indigo-50/50 px-2 py-0.5 rounded-md inline-block">
-                     SKU Code: {selectedLog.productId}
-                   </div>
-                 )}
-               </div>
- 
-               {/* Grid Metadata */}
-               <div className="grid grid-cols-2 gap-4">
-                 <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100/80">
-                   <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Action Type</div>
-                   <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-extrabold uppercase tracking-wider inline-block mt-1 ${
-                     selectedLog.actionType === 'CREATE' || selectedLog.actionType === 'STOCK_IN' 
-                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
-                       : selectedLog.actionType === 'DELETE' || selectedLog.actionType === 'STOCK_OUT'
-                       ? 'bg-rose-50 text-rose-700 border border-rose-100'
-                       : selectedLog.actionType === 'UPDATE'
-                       ? 'bg-blue-50 text-blue-700 border border-blue-100'
-                       : 'bg-amber-50 text-amber-700 border border-amber-100'
-                   }`}>
-                     {selectedLog.actionType}
-                   </span>
-                 </div>
- 
-                 <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100/80">
-                   <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Channel / Source</div>
-                   <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-extrabold uppercase tracking-wider inline-block mt-1 ${
-                     getLogSourceInfo(selectedLog.details).badgeClass
-                   }`}>
-                     {getLogSourceInfo(selectedLog.details).name}
-                   </span>
-                 </div>
- 
-                 <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100/80">
-                   <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1"><Clock size={11} /> Timestamp</div>
-                   <div className="text-xs text-slate-700 font-bold">
-                     {new Date(selectedLog.timestamp).toLocaleString('en-IN', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true
-                     })}
-                   </div>
-                 </div>
- 
-                 <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100/80">
-                   <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1"><User size={11} /> Operator</div>
-                   <div className="text-xs text-slate-700 font-extrabold">{selectedLog.operatorName}</div>
-                 </div>
-               </div>
- 
-               {/* Stock Quantity Change Block */}
-               <div className="bg-slate-50 p-4.5 rounded-2xl border border-slate-100">
-                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-3">Inventory Change</div>
-                 {selectedLog.beforeQty !== null && selectedLog.afterQty !== null ? (
-                   <div className="flex items-center gap-6 justify-center py-2">
-                     <div className="text-center">
-                       <div className="text-[10px] text-slate-400 font-bold mb-1">Before</div>
-                       <div className="text-2xl font-black text-slate-400">{selectedLog.beforeQty}</div>
-                     </div>
-                     <ArrowRight size={20} className="text-slate-300" />
-                     <div className="text-center">
-                       <div className="text-[10px] text-slate-400 font-bold mb-1">After</div>
-                       <div className="text-2xl font-black text-indigo-600">{selectedLog.afterQty}</div>
-                     </div>
- 
-                     <div className="border-l border-slate-200 pl-6 ml-2">
-                       <div className="text-[10px] text-slate-400 font-bold mb-1">Difference</div>
-                       {(() => {
-                         const diff = parseInt(selectedLog.afterQty, 10) - parseInt(selectedLog.beforeQty, 10);
-                         if (diff > 0) {
-                           return <div className="text-lg font-extrabold text-emerald-600">+{diff} (Stock In)</div>;
-                         } else if (diff < 0) {
-                           return <div className="text-lg font-extrabold text-rose-600">{diff} (Stock Out)</div>;
-                         } else {
-                           return <div className="text-lg font-extrabold text-slate-500">0 (No Change)</div>;
-                         }
-                       })()}
-                     </div>
-                   </div>
-                 ) : (
-                   <div className="text-xs text-slate-500 font-bold py-2 text-center">No Stock Quantity Recorded</div>
-                 )}
-               </div>
- 
-               {/* Detailed Explanation */}
-               <div className="bg-slate-50 p-4.5 rounded-2xl border border-slate-100">
-                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Description / Changes Logged</div>
-                 <div className="text-xs text-slate-600 leading-relaxed font-semibold">
-                   {selectedLog.details || 'No detailed change description recorded.'}
-                 </div>
-               </div>
-             </div>
- 
-             {/* Footer close button */}
-             <div className="flex gap-3 mt-8">
-                <button 
-                   className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3 px-6 flex-1 text-sm font-bold cursor-pointer border-none shadow-sm transition-colors text-center" 
-                   onClick={() => setSelectedLog(null)}
-                >
-                   Close
-                </button>
-             </div>
-           </div>
-         </div>
-       )}
+       </>
  
        {/* Beautiful Toast Notification */}
        <div className={`fixed bottom-6 right-1/2 translate-x-1/2 z-50 transition-all duration-300 transform ${showToast ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
@@ -1003,6 +725,108 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
            <span className="text-sm font-bold tracking-wide">{toastMessage}</span>
          </div>
        </div>
+
+      {/* Hidden print-only layout container */}
+      <div id="print-catalog-section">
+        <div style={{ textAlign: 'center', marginBottom: '25px', borderBottom: '2px solid #334155', paddingBottom: '15px' }}>
+          <h1 style={{ margin: '0 0 5px 0', fontSize: '24px', color: '#0f172a', fontWeight: '800' }}>
+            {userProfile?.businessName || 'Warehouse'}
+          </h1>
+          <p style={{ margin: 0, fontSize: '12px', color: '#64748b', fontWeight: 'bold', letterSpacing: '1px', textTransform: 'uppercase' }}>
+            Master Inventory Stock Report
+          </p>
+          <div style={{ marginTop: '10px', fontSize: '10px', color: '#94a3b8', display: 'flex', justifyContent: 'space-between' }}>
+            <span>Generated: {new Date().toLocaleString()}</span>
+            <span>Total Items: {sortedDisplayProducts.length}</span>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style={{ width: '40px' }}>Row</th>
+              <th>SKU Code</th>
+              <th>Product Description</th>
+              {dynamicColumns.map(col => (
+                <th key={col}>{col.toUpperCase()}</th>
+              ))}
+              {userRole !== 'staff' && <th>Cost Price (₹)</th>}
+              <th>Selling Price (₹)</th>
+              <th>Available Stock</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedDisplayProducts.map((p, i) => (
+              <tr key={p.id}>
+                <td style={{ textAlign: 'center' }}>{i + 1}</td>
+                <td>{p.productId || '-'}</td>
+                <td style={{ fontWeight: 'bold' }}>{p.name}</td>
+                {dynamicColumns.map(col => (
+                  <td key={col}>{p[col] || '-'}</td>
+                ))}
+                {userRole !== 'staff' && (
+                  <td>
+                    {p.costPrice ? `₹${parseFloat(p.costPrice).toFixed(2)}` : 'Not Set'}
+                  </td>
+                )}
+                <td>
+                  {p.mrp ? `₹${parseFloat(p.mrp).toFixed(2)}` : 'Not Set'}
+                </td>
+                <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{p.quantity}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        #print-catalog-section {
+          display: none;
+        }
+        @media print {
+          /* Hide EVERYTHING else */
+          body * {
+            visibility: hidden !important;
+          }
+          /* Show print section only */
+          #print-catalog-section, #print-catalog-section * {
+            visibility: visible !important;
+          }
+          #print-catalog-section {
+            display: block !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            padding: 10px;
+            color: #000000 !important;
+            background: #ffffff !important;
+            font-family: system-ui, -apple-system, sans-serif;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+          }
+          th {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+            font-weight: 700;
+            border: 1px solid #cbd5e1;
+            padding: 8px 10px;
+            font-size: 11px;
+            text-transform: uppercase;
+          }
+          td {
+            border: 1px solid #e2e8f0;
+            padding: 8px 10px;
+            font-size: 11px;
+            color: #334155;
+          }
+          tr {
+            page-break-inside: avoid;
+          }
+        }
+      `}} />
     </div>
   );
 }

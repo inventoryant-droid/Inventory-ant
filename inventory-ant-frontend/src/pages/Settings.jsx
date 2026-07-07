@@ -197,7 +197,7 @@ function Settings({ userId, token, onScanResult, userRole }) {
   return (
     <div className="p-4 md:p-8 flex-1 overflow-y-auto bg-[#F8FAFC]">
       <div className="flex flex-col mb-8">
-        <h1 className="m-0 text-3xl font-extrabold tracking-tight text-indigo-600">
+        <h1 className="m-0 text-3xl font-extrabold tracking-tight text-emerald-600">
           Account Settings
         </h1>
         <p className="text-slate-500 mt-1 text-sm font-medium">Configure warehouse data imports and system registries.</p>
@@ -206,14 +206,14 @@ function Settings({ userId, token, onScanResult, userRole }) {
       <div className="flex flex-col gap-6 max-w-3xl">
           <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
             <h3 className="m-0 text-[15px] font-bold text-slate-800 flex items-center gap-2 mb-2">
-               <UploadCloud size={18} className="text-indigo-500" /> Upload CSV File
+               <UploadCloud size={18} className="text-emerald-500" /> Upload CSV File
             </h3>
             <p className="text-slate-500 text-sm leading-relaxed mb-6">
                Apni inventory (stock) list ko bulk me add karne ke liye CSV file select karein. Headers automatically map ho jayenge.
             </p>
             <input type="file" accept=".csv" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
             <button 
-              className="py-2.5 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold border-none shadow-sm transition-colors cursor-pointer w-full md:w-auto" 
+              className="py-2.5 px-6 bg-[#0f9d63] hover:bg-emerald-700 text-white rounded-lg text-sm font-bold border-none shadow-sm transition-colors cursor-pointer w-full md:w-auto" 
               onClick={() => fileInputRef.current.click()}
             >
               Select File

@@ -113,7 +113,7 @@ export default function OnboardingScreen({ token, userProfile, onProfileComplete
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl p-6 md:p-10 shadow-2xl flex flex-col gap-6 transition-all">
         {/* Header */}
         <div className="flex flex-col items-center text-center">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-4 shadow-sm animate-pulse">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4 shadow-sm animate-pulse">
             <Sparkles size={32} />
           </div>
           <h1 className="m-0 text-2xl md:text-3xl font-extrabold tracking-tight text-slate-800 dark:text-white">
@@ -155,7 +155,7 @@ export default function OnboardingScreen({ token, userProfile, onProfileComplete
                 <button 
                   type="button" 
                   onClick={() => fileInputRef.current.click()} 
-                  className="py-1.5 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 rounded-lg text-xs font-bold border-none transition-colors cursor-pointer"
+                  className="py-1.5 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-lg text-xs font-bold border-none transition-colors cursor-pointer"
                 >
                   {logoBase64 ? 'Update Logo' : 'Upload Logo'}
                 </button>
@@ -176,14 +176,14 @@ export default function OnboardingScreen({ token, userProfile, onProfileComplete
             {/* Business Name */}
             <div className="flex flex-col gap-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                <Building size={14} className="text-indigo-500" /> Business Name <span className="text-rose-500">*</span>
+                <Building size={14} className="text-emerald-500" /> Business Name <span className="text-rose-500">*</span>
               </label>
               <input 
                 type="text" 
                 placeholder="e.g. Acme Warehouse Ltd" 
                 value={businessName}
                 onChange={e => setBusinessName(e.target.value)}
-                className="p-3.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 outline-none text-slate-800 dark:text-white focus:border-indigo-500 transition-colors text-sm"
+                className="p-3.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 outline-none text-slate-800 dark:text-white focus:border-emerald-500 transition-colors text-sm"
                 required
               />
             </div>
@@ -191,14 +191,14 @@ export default function OnboardingScreen({ token, userProfile, onProfileComplete
             {/* Business Type */}
             <div className="flex flex-col gap-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                <Sparkles size={14} className="text-indigo-500" /> Business Type <span className="text-rose-500">*</span>
+                <Sparkles size={14} className="text-emerald-500" /> Business Type <span className="text-rose-500">*</span>
               </label>
               <input 
                 type="text" 
                 placeholder="e.g. Retail, Wholesale, Manufacturing" 
                 value={businessType}
                 onChange={e => setBusinessType(e.target.value)}
-                className="p-3.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 outline-none text-slate-800 dark:text-white focus:border-indigo-500 transition-colors text-sm"
+                className="p-3.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 outline-none text-slate-800 dark:text-white focus:border-emerald-500 transition-colors text-sm"
                 required
               />
             </div>
@@ -206,28 +206,28 @@ export default function OnboardingScreen({ token, userProfile, onProfileComplete
             {/* GST Number */}
             <div className="flex flex-col gap-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                <ShieldCheck size={14} className="text-indigo-500" /> GST Number (Optional)
+                <ShieldCheck size={14} className="text-emerald-500" /> GST Number (Optional)
               </label>
               <input 
                 type="text" 
                 placeholder="e.g. 22AAAAA0000A1Z5" 
                 value={gstNumber}
                 onChange={e => setGstNumber(e.target.value)}
-                className="p-3.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 outline-none text-slate-800 dark:text-white focus:border-indigo-500 transition-colors text-sm"
+                className="p-3.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 outline-none text-slate-800 dark:text-white focus:border-emerald-500 transition-colors text-sm"
               />
             </div>
 
             {/* Email Address */}
             <div className="flex flex-col gap-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                <Mail size={14} className="text-indigo-500" /> Email Address <span className="text-rose-500">*</span>
+                <Mail size={14} className="text-emerald-500" /> Email Address <span className="text-rose-500">*</span>
               </label>
               <input 
                 type="email" 
                 placeholder="e.g. contact@business.com" 
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="p-3.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 outline-none text-slate-800 dark:text-white focus:border-indigo-500 transition-colors text-sm"
+                className="p-3.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 outline-none text-slate-800 dark:text-white focus:border-emerald-500 transition-colors text-sm"
                 required
               />
             </div>
@@ -235,14 +235,14 @@ export default function OnboardingScreen({ token, userProfile, onProfileComplete
             {/* Phone Number */}
             <div className="flex flex-col gap-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                <Phone size={14} className="text-indigo-500" /> Phone Number <span className="text-rose-500">*</span>
+                <Phone size={14} className="text-emerald-500" /> Phone Number <span className="text-rose-500">*</span>
               </label>
               <input 
                 type="text" 
                 placeholder="e.g. +91 9876543210" 
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
-                className="p-3.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 outline-none text-slate-800 dark:text-white focus:border-indigo-500 transition-colors text-sm"
+                className="p-3.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 outline-none text-slate-800 dark:text-white focus:border-emerald-500 transition-colors text-sm"
                 required
               />
             </div>
@@ -251,14 +251,14 @@ export default function OnboardingScreen({ token, userProfile, onProfileComplete
           {/* Business Address */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <MapPin size={14} className="text-indigo-500" /> Business Address <span className="text-rose-500">*</span>
+              <MapPin size={14} className="text-emerald-500" /> Business Address <span className="text-rose-500">*</span>
             </label>
             <textarea 
               placeholder="e.g. 102, Warehouse Lane, Sector-4, Mumbai, Maharashtra" 
               rows={3}
               value={businessAddress}
               onChange={e => setBusinessAddress(e.target.value)}
-              className="p-3.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 outline-none text-slate-800 dark:text-white focus:border-indigo-500 transition-colors text-sm resize-none"
+              className="p-3.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 outline-none text-slate-800 dark:text-white focus:border-emerald-500 transition-colors text-sm resize-none"
               required
             />
           </div>
@@ -278,7 +278,7 @@ export default function OnboardingScreen({ token, userProfile, onProfileComplete
                   type="checkbox" 
                   checked={showPhoneOnBills} 
                   onChange={e => setShowPhoneOnBills(e.target.checked)}
-                  className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                 />
                 Show Phone Number on Bills
               </label>
@@ -287,7 +287,7 @@ export default function OnboardingScreen({ token, userProfile, onProfileComplete
                   type="checkbox" 
                   checked={showEmailOnBills} 
                   onChange={e => setShowEmailOnBills(e.target.checked)}
-                  className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                 />
                 Show Email Address on Bills
               </label>
@@ -299,7 +299,7 @@ export default function OnboardingScreen({ token, userProfile, onProfileComplete
             <button 
               type="submit" 
               disabled={loading}
-              className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 border-none transition-all cursor-pointer"
+              className="flex-1 py-4 bg-[#0f9d63] hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 border-none transition-all cursor-pointer"
             >
               {loading ? (
                 <>

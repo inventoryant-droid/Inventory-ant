@@ -249,7 +249,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
   return (
     <div className="p-4 md:p-8 flex-1 overflow-y-auto bg-[#F8FAFC]">
       <div className="flex flex-col mb-8">
-        <h1 className="m-0 text-3xl font-extrabold tracking-tight text-indigo-600">
+        <h1 className="m-0 text-3xl font-extrabold tracking-tight text-emerald-600">
           My Profile
         </h1>
         <p className="text-slate-500 mt-1 text-sm font-medium">Manage your personal account credentials, business details, and security parameters.</p>
@@ -272,7 +272,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
             
             {/* Badges and metadata */}
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-3">
-              <span className="text-[10px] bg-indigo-50 border border-indigo-100 text-indigo-700 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
+              <span className="text-[10px] bg-emerald-50 border border-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
                 {userProfile?.role === 'admin' ? 'ROLE_ADMIN' : 'ROLE_USER'}
               </span>
               <span className={`text-[10px] border px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${userProfile?.active !== false ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-rose-50 border-rose-100 text-rose-700'}`}>
@@ -290,7 +290,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
           <div className="lg:col-span-2 flex flex-col gap-6">
             <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
               <h3 className="m-0 text-[15px] font-bold text-slate-800 flex items-center gap-2 mb-2">
-                <Sparkles size={18} className="text-indigo-500" /> Edit Profile Details
+                <Sparkles size={18} className="text-emerald-500" /> Edit Profile Details
               </h3>
               <p className="text-slate-500 text-sm leading-relaxed mb-6">
                 Apne personal and business profile details ko yahan update karein. Ye changes invoices aur system documents me reflect hongi.
@@ -335,7 +335,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
                            <button 
                              type="button" 
                              onClick={() => logoInputRef.current.click()} 
-                             className="py-1 px-2.5 bg-white hover:bg-slate-50 text-indigo-600 border border-slate-200 rounded-md text-[10px] font-bold transition-colors cursor-pointer shadow-sm"
+                             className="py-1 px-2.5 bg-white hover:bg-slate-50 text-emerald-600 border border-slate-200 rounded-md text-[10px] font-bold transition-colors cursor-pointer shadow-sm"
                            >
                              {logoBase64 ? 'Update Logo' : 'Select Photo'}
                            </button>
@@ -374,7 +374,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
                            <button 
                              type="button" 
                              onClick={() => signatureInputRef.current.click()} 
-                             className="py-1 px-2.5 bg-white hover:bg-slate-50 text-indigo-600 border border-slate-200 rounded-md text-[10px] font-bold transition-colors cursor-pointer shadow-sm"
+                             className="py-1 px-2.5 bg-white hover:bg-slate-50 text-emerald-600 border border-slate-200 rounded-md text-[10px] font-bold transition-colors cursor-pointer shadow-sm"
                            >
                              {signatureBase64 ? 'Update Sign' : 'Select Sign'}
                            </button>
@@ -401,7 +401,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
                       type="text" 
                       value={name}
                       onChange={e => setName(e.target.value)}
-                      className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
+                      className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-emerald-500 transition-colors text-sm"
                       required
                     />
                   </div>
@@ -414,21 +414,21 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
                       type="text" 
                       value={businessName}
                       onChange={e => setBusinessName(e.target.value)}
-                      className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
+                      className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-emerald-500 transition-colors text-sm"
                       required
                     />
                   </div>
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                      <Sparkles size={12} className="text-indigo-500" /> Business Type <span className="text-rose-500">*</span>
+                      <Sparkles size={12} className="text-emerald-500" /> Business Type <span className="text-rose-500">*</span>
                     </label>
                     <input 
                       type="text" 
                       placeholder="e.g. Retail, Wholesale, Manufacturing"
                       value={businessType}
                       onChange={e => setBusinessType(e.target.value)}
-                      className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
+                      className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-emerald-500 transition-colors text-sm"
                       required
                     />
                   </div>
@@ -441,7 +441,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
                       type="email" 
                       value={email}
                       onChange={e => setEmail(e.target.value)}
-                      className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
+                      className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-emerald-500 transition-colors text-sm"
                       required
                     />
                   </div>
@@ -454,7 +454,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
                       type="text" 
                       value={phone}
                       onChange={e => setPhone(e.target.value)}
-                      className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
+                      className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-emerald-500 transition-colors text-sm"
                       required
                     />
                   </div>
@@ -468,20 +468,20 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
                     type="text" 
                     value={gstNumber}
                     onChange={e => setGstNumber(e.target.value)}
-                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
+                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-emerald-500 transition-colors text-sm"
                     placeholder="e.g. 22AAAAA0000A1Z5"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                    <Sparkles size={12} className="text-indigo-500" /> Business Note (Optional)
+                    <Sparkles size={12} className="text-emerald-500" /> Business Note (Optional)
                   </label>
                   <input 
                     type="text" 
                     value={businessNote}
                     onChange={e => setBusinessNote(e.target.value)}
-                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
+                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-emerald-500 transition-colors text-sm"
                     placeholder="e.g. Wholesaler of Classmate, Link, Studymate, and all kinds of Stationery items"
                   />
                 </div>
@@ -494,7 +494,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
                     rows={2}
                     value={businessAddress}
                     onChange={e => setBusinessAddress(e.target.value)}
-                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm resize-none"
+                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-emerald-500 transition-colors text-sm resize-none"
                     required
                   />
                 </div>
@@ -513,7 +513,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
                         type="checkbox" 
                         checked={showPhoneOnBills} 
                         onChange={e => setShowPhoneOnBills(e.target.checked)}
-                        className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                       />
                       Show Phone Number on Bills
                     </label>
@@ -522,7 +522,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
                         type="checkbox" 
                         checked={showEmailOnBills} 
                         onChange={e => setShowEmailOnBills(e.target.checked)}
-                        className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                       />
                       Show Email Address on Bills
                     </label>
@@ -532,7 +532,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
                 <button 
                   type="submit" 
                   disabled={profileLoading}
-                  className="py-3 px-6 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-lg text-sm font-bold border-none shadow-sm transition-colors cursor-pointer w-full md:w-auto flex items-center justify-center gap-2 self-start"
+                  className="py-3 px-6 bg-[#0f9d63] hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-lg text-sm font-bold border-none shadow-sm transition-colors cursor-pointer w-full md:w-auto flex items-center justify-center gap-2 self-start"
                 >
                   {profileLoading ? (
                     <>
@@ -554,7 +554,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
           <div className="flex flex-col gap-6">
             <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
               <h3 className="m-0 text-[15px] font-bold text-slate-800 flex items-center gap-2 mb-2">
-                <Key size={18} className="text-indigo-500" /> Account Security
+                <Key size={18} className="text-emerald-500" /> Account Security
               </h3>
               <p className="text-slate-500 text-sm leading-relaxed mb-6">
                 Apna login password yahan se change karein.
@@ -582,7 +582,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
                     onChange={e => setOldPass(e.target.value)}
                     placeholder="Enter current password"
                     required
-                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
+                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-emerald-500 transition-colors text-sm"
                   />
                 </div>
 
@@ -593,7 +593,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
                     onChange={e => setNewPass(e.target.value)}
                     placeholder="Enter new password"
                     required
-                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
+                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-emerald-500 transition-colors text-sm"
                   />
                 </div>
 
@@ -604,7 +604,7 @@ export default function Profile({ token, userProfile, onProfileUpdate, theme, us
                     onChange={e => setConfirmPass(e.target.value)}
                     placeholder="Repeat new password"
                     required
-                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-indigo-500 transition-colors text-sm"
+                    className="p-3 border border-slate-200 rounded-lg outline-none text-slate-800 focus:border-emerald-500 transition-colors text-sm"
                   />
                 </div>
 

@@ -15,12 +15,19 @@ import AITools from './pages/AITools';
 import Settings from './pages/Settings';
 import Billing from './pages/Billing';
 import Inventory from './pages/Inventory';
-import About from './pages/About';
 import AdminPanel from './pages/AdminPanel';
 import WelcomeModal from './components/ui/WelcomeModal';
 import OnboardingScreen from './pages/OnboardingScreen';
 import Profile from './pages/Profile';
 import StaffManagement from './pages/StaffManagement';
+import HistoryLogs from './pages/HistoryLogs';
+
+import MarketingHome from './pages/MarketingHome';
+import MarketingPricing from './pages/MarketingPricing';
+import MarketingAbout from './pages/MarketingAbout';
+import MarketingMobileApp from './pages/MarketingMobileApp';
+import { MarketingLayout } from './components/layout/MarketingLayout';
+
 
 
 export default function App() {
@@ -71,16 +78,20 @@ export default function App() {
   };
 
   const handleLogout = () => {
-     setUserId('');
-     setUserRole('user');
-     setToken('');
-     setProducts([]);
-     setInventoryFilter('all');
      localStorage.removeItem('ant_user');
      localStorage.removeItem('ant_role');
      localStorage.removeItem('ant_token');
      localStorage.removeItem('ant_refresh_token');
-     navigate('/login');
+     
+     navigate('/', { replace: true });
+     
+     setTimeout(() => {
+       setUserId('');
+       setUserRole('user');
+       setToken('');
+       setProducts([]);
+       setInventoryFilter('all');
+     }, 50);
   };
 
   useEffect(() => {
@@ -160,10 +171,12 @@ export default function App() {
 
   // Route protection and redirection checks
   useEffect(() => {
-    const publicPaths = ['/', '/login', '/signup'];
+    const publicPaths = ['/', '/login', '/signup', '/pricing', '/about', '/mobile-app'];
     const isPublicPath = publicPaths.includes(location.pathname);
 
-    if (!token) {
+    const hasToken = !!localStorage.getItem('ant_token');
+
+    if (!hasToken) {
       if (!isPublicPath) {
         navigate('/login');
       }
@@ -238,9 +251,13 @@ export default function App() {
     <>
       <Toaster position="top-center" reverseOrder={false} />
       <Routes>
-        <Route path="/" element={<AuthScreen onLogin={handleLogin} defaultView="landing" />} />
+        <Route path="/" element={<MarketingLayout><MarketingHome /></MarketingLayout>} />
+        <Route path="/pricing" element={<MarketingLayout><MarketingPricing /></MarketingLayout>} />
+        <Route path="/about" element={<MarketingLayout><MarketingAbout /></MarketingLayout>} />
+        <Route path="/mobile-app" element={<MarketingLayout><MarketingMobileApp /></MarketingLayout>} />
         <Route path="/login" element={<AuthScreen onLogin={handleLogin} defaultView="login" />} />
         <Route path="/signup" element={<AuthScreen onLogin={handleLogin} defaultView="signup" />} />
+
       <Route path="/dashboard" element={
         token && (userRole === 'user' || userRole === 'staff') ? (
           userRole === 'user' && userProfile && !userProfile.profileCompleted ? (
@@ -314,6 +331,7 @@ export default function App() {
               {view === 'billing' && <Billing products={products} onSaleSuccess={fetchProducts} userId={userId} token={token} userProfile={userProfile} />}
               {view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onEditProduct={handleEditProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} userRole={userRole} userProfile={userProfile} />}
               {view === 'ai_lab' && <AITools userId={userId} token={token} onScanResult={fetchProducts} onOpenScanner={handleOpenScanner} userProfile={userProfile} theme={theme} />}
+              {view === 'history' && <HistoryLogs userId={userId} token={token} userProfile={userProfile} products={products} />}
               {view === 'staff_management' && <StaffManagement token={token} userProfile={userProfile} userId={userId} />}
               {view === 'ant_x' && <AntXTerminal 
                 userId={userId} 
@@ -329,7 +347,6 @@ export default function App() {
               {view === 'settings' && <Settings userId={userId} token={token} onScanResult={fetchProducts} userProfile={userProfile} onProfileUpdate={handleProfileCompleted} userRole={userRole} />}
               {view === 'profile' && <Profile token={token} userProfile={userProfile} onProfileUpdate={handleProfileCompleted} theme={theme} userRole={userRole} />}
               {view === 'guide' && <UserGuide />}
-              {view === 'about' && <About theme={theme} />}
 
               <WelcomeModal 
                 isOpen={showWelcomePopup} 

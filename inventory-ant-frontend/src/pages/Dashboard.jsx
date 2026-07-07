@@ -99,7 +99,7 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
                   <img src={userProfile.picture} alt="Staff Avatar" className="w-full h-full object-cover" />
                 </div>
               ) : (
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 shrink-0 shadow-sm font-bold text-base sm:text-lg">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0 shadow-sm font-bold text-base sm:text-lg">
                   {userProfile?.name ? userProfile.name.substring(0, 2).toUpperCase() : 'ST'}
                 </div>
               )
@@ -108,12 +108,12 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
                 <img src={userProfile.businessLogo} alt="Logo" className="w-full h-full object-cover" />
               </div>
             ) : (
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shrink-0 shadow-sm">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0 shadow-sm">
                 <Building size={24} className="sm:w-7 sm:h-7" />
               </div>
             )}
-            <div className="flex-1 min-w-0 w-full">
-              <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-widest text-indigo-500">
+            <div className="flex-1 min-w-0 w-full text-left">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-[#0f9d63]">
                 {userRole === 'staff' ? `Staff Account • ${userProfile?.businessName || 'Warehouse'}` : 'Warehouse Node Active'}
               </span>
               <h2 className="m-0 text-lg sm:text-xl md:text-2xl font-black text-slate-800 mt-1 leading-tight whitespace-normal">
@@ -136,7 +136,7 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
           {userRole !== 'staff' && (
             <button 
               onClick={onGoToProfile}
-              className="py-2 px-4 sm:py-2.5 sm:px-5 bg-white hover:bg-slate-50 text-indigo-600 border border-slate-200 hover:border-indigo-200 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2 w-full sm:w-auto shrink-0 no-print-btn"
+              className="py-2 px-4 sm:py-2.5 sm:px-5 bg-white hover:bg-slate-50 text-emerald-600 border border-slate-200 hover:border-emerald-200 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2 w-full sm:w-auto shrink-0 no-print-btn"
             >
               <Edit size={14} />
               Edit Profile
@@ -144,8 +144,8 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
           )}
         </div>
       ) : (
-        <div className="flex flex-col mb-6">
-          <h1 className="m-0 text-2xl sm:text-3xl font-extrabold tracking-tight text-indigo-600">
+        <div className="flex flex-col mb-6 text-left">
+          <h1 className="m-0 text-2xl sm:text-3xl font-extrabold tracking-tight text-emerald-600">
             System Overview
           </h1>
           <p className="text-slate-500 mt-1 text-sm font-medium">Warehouse status updates and real-time analytical graphs.</p>
@@ -155,13 +155,13 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
       {products.length === 0 && (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-12 mt-4 flex flex-col items-center text-center max-w-4xl mx-auto shadow-sm">
            <div className="text-5xl md:text-6xl mb-4 animate-bounce drop-shadow-sm">👋</div>
-           <h2 className="m-0 text-indigo-600 text-xl md:text-2xl font-bold">Welcome to Inventory Ant!</h2>
+           <h2 className="m-0 text-emerald-600 text-xl md:text-2xl font-bold">Welcome to Inventory Ant!</h2>
            <p className="text-slate-500 max-w-[600px] leading-relaxed text-sm mt-3">
              Aapka warehouse abhi khali hai. System ko start karne aur AI ko data dene ke liye, sabse pehle apni Master CSV (Inventory List) file upload karein.
            </p>
            <button 
              onClick={onGoToSettings} 
-             className="mt-6 py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition-all shadow-sm border-none cursor-pointer"
+             className="mt-6 py-3 px-6 bg-[#0f9d63] hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition-all shadow-sm border-none cursor-pointer"
            >
              Go to Account Settings ➔
            </button>
@@ -173,15 +173,15 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
           className="bg-white border border-slate-100 rounded-2xl p-4 md:p-6 flex items-start justify-between cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow card-hover" 
           onClick={onTotalClick}
         >
-           <div className="flex flex-col">
+           <div className="flex flex-col text-left">
              <h3 className="text-slate-400 m-0 uppercase text-[9px] sm:text-[10px] tracking-wider font-bold">Total SKU Inventory</h3>
              <p className="text-3xl md:text-4xl my-2 md:my-3 font-extrabold text-slate-800">{products.length}</p>
-             <span className="text-xs text-indigo-600 font-semibold flex items-center gap-1 hover:underline">
+             <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1 hover:underline">
                View all items ➔
              </span>
            </div>
-           <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500 shrink-0">
-              <Box size={20} className="md:w-6 md:h-6" strokeWidth={2} />
+           <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+               <Box size={20} className="md:w-6 md:h-6" strokeWidth={2} />
            </div>
         </div>
         
@@ -189,13 +189,13 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
           className={`bg-white border ${lowStockCount > 0 ? 'border-amber-200 bg-amber-50/10' : 'border-slate-100'} rounded-2xl p-4 md:p-6 flex items-start justify-between cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow card-hover`} 
           onClick={() => onAlertClick('lowStock')}
         >
-           <div className="flex flex-col">
+           <div className="flex flex-col text-left">
              <div className="flex items-center gap-3">
                <h3 className="text-slate-400 m-0 uppercase text-[9px] sm:text-[10px] tracking-wider font-bold">Low Stock Filter</h3>
              </div>
              <div className="flex items-center gap-2 my-2 md:my-3">
-                <p className="text-3xl md:text-4xl m-0 font-extrabold text-slate-800">{lowStockCount}</p>
-                {lowStockCount > 0 && <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Attention</span>}
+                 <p className="text-3xl md:text-4xl m-0 font-extrabold text-slate-800">{lowStockCount}</p>
+                 {lowStockCount > 0 && <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Attention</span>}
              </div>
              <span className="text-xs text-slate-500 font-medium">
                Items requiring replenishment.
@@ -206,14 +206,14 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
              >
                <span>Alert Threshold:</span>
                {userRole === 'staff' ? (
-                 <span className="text-indigo-700">{threshold}</span>
+                 <span className="text-emerald-700">{threshold}</span>
                ) : isEditingThreshold ? (
                  <div className="flex items-center gap-1.5">
                    <input
                      type="number"
                      value={tempThreshold}
                      onChange={(e) => setTempThreshold(e.target.value)}
-                     className="w-12 h-6 px-1 border border-indigo-200 rounded text-center text-xs font-bold text-indigo-700 bg-white focus:outline-none focus:border-indigo-500"
+                     className="w-12 h-6 px-1 border border-emerald-200 rounded text-center text-xs font-bold text-emerald-700 bg-white focus:outline-none focus:border-emerald-500"
                      min="1"
                      autoFocus
                      disabled={isSavingThreshold}
@@ -237,7 +237,7 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
                  </div>
                ) : (
                  <div 
-                   className="flex items-center gap-1 cursor-pointer hover:text-indigo-600 text-indigo-700 font-extrabold" 
+                   className="flex items-center gap-1 cursor-pointer hover:text-emerald-600 text-emerald-700 font-extrabold" 
                    onClick={() => {
                      setTempThreshold(threshold.toString());
                      setIsEditingThreshold(true);
@@ -258,13 +258,13 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
           className={`bg-white border ${outOfStockCount > 0 ? 'border-red-200 bg-rose-50/10' : 'border-slate-100'} rounded-2xl p-4 md:p-6 flex items-start justify-between cursor-pointer shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow card-hover`} 
           onClick={() => onAlertClick('outOfStock')}
         >
-           <div className="flex flex-col">
+           <div className="flex flex-col text-left">
              <div className="flex items-center gap-3">
                <h3 className="text-slate-400 m-0 uppercase text-[9px] sm:text-[10px] tracking-wider font-bold">Out of Stock</h3>
              </div>
              <div className="flex items-center gap-2 my-2 md:my-3">
-                <p className="text-3xl md:text-4xl m-0 font-extrabold text-slate-800">{outOfStockCount}</p>
-                {outOfStockCount > 0 && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Critical</span>}
+                 <p className="text-3xl md:text-4xl m-0 font-extrabold text-slate-800">{outOfStockCount}</p>
+                 {outOfStockCount > 0 && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Critical</span>}
              </div>
              <span className="text-xs text-slate-500 font-medium">
                 Items with zero units remaining.
@@ -276,14 +276,14 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
         </div>
  
         <div className="bg-white border border-slate-100 rounded-2xl p-4 md:p-6 flex items-start justify-between shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow card-hover">
-          <div className="flex flex-col">
+          <div className="flex flex-col text-left">
             <h3 className="text-slate-400 m-0 uppercase text-[9px] sm:text-[10px] tracking-wider font-bold">Total Stock Sum</h3>
             <p className="text-3xl md:text-4xl my-2 md:my-3 font-extrabold text-slate-800">{totalStock}</p>
             <span className="text-xs text-slate-500 font-medium">
               Total physical items.
             </span>
           </div>
-          <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-fuchsia-50 flex items-center justify-center text-fuchsia-500 shrink-0">
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
               <Layers size={20} className="md:w-6 md:h-6" strokeWidth={2} />
           </div>
         </div>
@@ -294,10 +294,10 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
         <div className="mt-6 bg-white border border-slate-100 rounded-2xl p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
            <div className="flex justify-between items-center mb-8">
               <div className="flex items-center gap-2">
-                 <BarChart2 size={18} className="text-indigo-400" />
+                 <BarChart2 size={18} className="text-[#0f9d63]" />
                  <h3 className="m-0 text-slate-700 font-bold text-sm">Stock Availability levels per SKU</h3>
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
+              <div className="flex items-center gap-1.5 text-[10px] bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider font-sans">
                  <TrendingUp size={12} /> Updated Live
               </div>
            </div>
@@ -328,16 +328,16 @@ function Dashboard({ products, userId, onAlertClick, onTotalClick, onOpenScanner
                            {p.details && <div className="text-slate-400 text-[10px] mt-1.5 pt-1.5 border-t border-slate-700 line-clamp-2">{p.details}</div>}
                         </div>
                         <div 
-                           className="w-full bg-indigo-500 rounded-t-sm hover:bg-indigo-400 transition-colors"
+                           className="w-full bg-[#0f9d63] rounded-t-sm hover:bg-emerald-500 transition-colors"
                            style={{ height: `${heightPct}%`, minHeight: qty > 0 ? '4px' : '0' }}
                         ></div>
                      </div>
                    );
                 })}
-             </div>
-             </div>
-           </div>
-         </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
