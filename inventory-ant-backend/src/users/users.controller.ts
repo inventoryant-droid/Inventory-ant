@@ -118,6 +118,14 @@ export class UsersController {
     return this.usersService.getProfile(req.user.sub);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('user/analytics')
+  async getUserAnalytics(@Req() req: any) {
+    const userId = req.user.sub;
+    const email = req.user.tenantEmail || req.user.email;
+    return this.usersService.getAnalytics(email, userId);
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('user', 'admin')
   @Put('user/profile')

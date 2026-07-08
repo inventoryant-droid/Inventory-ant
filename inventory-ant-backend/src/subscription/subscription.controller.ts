@@ -65,6 +65,18 @@ export class SubscriptionController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('usage')
+  async getUserUsages(@Req() req: any) {
+    const userId = req.user.sub;
+    const codes = ['INVENTORY', 'STAFF', 'AI_CHAT', 'VOICE_ASSISTANT', 'SMART_SCAN', 'ANALYTICS'];
+    const usages: Record<string, any> = {};
+    for (const code of codes) {
+      usages[code] = await this.subscriptionService.getUsage(userId, code);
+    }
+    return usages;
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('history')
   async getSubscriptionHistory(@Req() req: any) {
     const userId = req.user.sub;

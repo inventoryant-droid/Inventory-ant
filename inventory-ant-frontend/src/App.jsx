@@ -27,6 +27,7 @@ import MarketingPricing from './pages/MarketingPricing';
 import MarketingAbout from './pages/MarketingAbout';
 import MarketingMobileApp from './pages/MarketingMobileApp';
 import { MarketingLayout } from './components/layout/MarketingLayout';
+import DashboardLayout from './components/layout/DashboardLayout';
 
 
 
@@ -270,52 +271,18 @@ export default function App() {
               theme={theme}
             />
           ) : (
-            <div className={(theme === 'dark' ? 'dark-theme ' : 'light-theme ') + "flex flex-col w-full h-screen overflow-hidden bg-slate-50"}>
-              {localStorage.getItem('ant_admin_token') && (
-                <div className="w-full bg-[#EF4444] text-white text-center py-3 px-6 flex flex-row items-center justify-between z-50 font-sans shadow-md shrink-0">
-                  <div className="flex items-center gap-2">
-                    <span className="animate-pulse inline-block w-2.5 h-2.5 rounded-full bg-white"></span>
-                    <span>Impersonation Mode: Logged in as <strong>{userId}</strong></span>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      const adminToken = localStorage.getItem('ant_admin_token');
-                      const adminUser = localStorage.getItem('ant_admin_user');
-                      const adminRole = localStorage.getItem('ant_admin_role');
-                      
-                      localStorage.setItem('ant_token', adminToken);
-                      localStorage.setItem('ant_user', adminUser);
-                      localStorage.setItem('ant_role', adminRole);
-                      
-                      localStorage.removeItem('ant_admin_token');
-                      localStorage.removeItem('ant_admin_user');
-                      localStorage.removeItem('ant_admin_role');
-                      
-                      setToken(adminToken);
-                      setUserId(adminUser);
-                      setUserRole(adminRole);
-                      navigate('/admin');
-                    }}
-                    className="bg-white text-[#EF4444] hover:bg-[#FEE2E2] font-semibold px-4 py-1.5 rounded-lg text-sm transition-all duration-200 shadow-sm border-none cursor-pointer"
-                  >
-                    Exit & Return to Admin
-                  </button>
-                </div>
-              )}
-              <div className="flex flex-col md:flex-row w-full flex-1 min-h-0 overflow-hidden">
-                <Sidebar 
-                setView={setView} 
-                view={view} 
-                userId={userId} 
-                userRole={userRole} 
-                onLogout={handleLogout} 
-                onSwitchAccount={handleSwitchAccount} 
-                setInventoryFilter={setInventoryFilter} 
-                theme={theme} 
-                onToggleTheme={toggleTheme} 
-                userProfile={userProfile}
-              />
-              
+            <DashboardLayout
+              view={view}
+              setView={setView}
+              userId={userId}
+              userRole={userRole}
+              onLogout={handleLogout}
+              onSwitchAccount={handleSwitchAccount}
+              setInventoryFilter={setInventoryFilter}
+              theme={theme}
+              onToggleTheme={toggleTheme}
+              userProfile={userProfile}
+            >
               {view === 'dashboard' && <Dashboard 
                 products={products} 
                 userId={userId} 
@@ -380,8 +347,7 @@ export default function App() {
                    setGlobalTranscript, setGlobalAiResponse, setGlobalStatus 
                 }}
               />
-              </div>
-            </div>
+            </DashboardLayout>
           )
         ) : <Navigate to="/login" replace />
       } />

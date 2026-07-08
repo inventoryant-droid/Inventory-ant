@@ -28,12 +28,16 @@ class ErrorBoundary extends Component {
   }
 }
 
+import AppProviders from './context/AppProviders';
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <HashRouter>
         <ErrorBoundary>
-          <App />
+          <AppProviders>
+            <App />
+          </AppProviders>
         </ErrorBoundary>
       </HashRouter>
     </GoogleOAuthProvider>

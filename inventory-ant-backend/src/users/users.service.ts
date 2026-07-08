@@ -661,6 +661,101 @@ export class UsersService implements OnModuleInit {
     return mapped;
   }
 
+  async getAnalytics(tenantEmail: string, ownerId: string) {
+    const products = await this.prisma.product.findMany({
+      where: { userId: tenantEmail.toLowerCase() },
+    });
+
+    const bills = await this.prisma.bill.findMany({
+      where: { userId: tenantEmail.toLowerCase() },
+    });
+
+    const usages = await this.prisma.featureUsage.findMany({
+      where: { userId: ownerId },
+      include: { feature: true },
+    });
+
+    // 1. Inventory Valuation
+    let totalStockValue = 0;
+    let totalItemsCount = 0;
+    for (const p of products) {
+      const qty = parseInt(p.quantity || '0', 10);
+      const cost = parseFloat(p.costPrice || p.mrp || '0');
+      if (!isNaN(qty) && qty > 0) {
+        totalItemsCount += qty;
+        if (!isNaN(cost)) {
+          totalStockValue += qty * cost;
+        }
+      }
+    }
+
+    // 2. Sales and Revenue
+    let totalSales = 0;
+    let totalProfit = 0;
+    let totalLoss = 0;
+
+    // Monthly aggregates
+    const monthlyRevenue: { [monthStr: string]: { revenue: number, profit: number } } = {};
+
+    for (const bill of bills) {
+      totalSales += bill.total;
+
+      // Profit/Loss calculation
+      let billCost = 0;
+      try {
+        const items = Array.isArray(bill.items) ? bill.items : JSON.parse(bill.items as string);
+        for (const item of items) {
+          const qty = item.qty || item.quantity || 0;
+          const prod = products.find(p => p.productId === item.productId);
+          const cp = prod ? parseFloat(prod.costPrice || prod.mrp || '0') : parseFloat(item.mrp || '0') * 0.7;
+          billCost += qty * cp;
+        }
+      } catch (e) {}
+
+      const profit = bill.total - billCost;
+      if (profit > 0) {
+        totalProfit += profit;
+      } else {
+        totalLoss += Math.abs(profit);
+      }
+
+      const date = new Date(bill.date);
+      const monthStr = date.toLocaleString('default', { month: 'short', year: '2-digit' });
+      if (!monthlyRevenue[monthStr]) {
+        monthlyRevenue[monthStr] = { revenue: 0, profit: 0 };
+      }
+      monthlyRevenue[monthStr].revenue += bill.total;
+      monthlyRevenue[monthStr].profit += Math.max(0, profit);
+    }
+
+    // 3. AI Usage counts
+    const aiUsage = {
+      aiChat: usages.find(u => u.feature.code === 'AI_CHAT')?.used || 0,
+      voiceAssistant: usages.find(u => u.feature.code === 'VOICE_ASSISTANT')?.used || 0,
+      smartScan: usages.find(u => u.feature.code === 'SMART_SCAN')?.used || 0,
+    };
+
+    return {
+      inventory: {
+        totalSkus: products.length,
+        totalItems: totalItemsCount,
+        valuation: totalStockValue,
+      },
+      sales: {
+        totalOrders: bills.length,
+        totalRevenue: totalSales,
+        totalProfit,
+        totalLoss,
+      },
+      monthlyRevenue: Object.entries(monthlyRevenue).map(([month, data]) => ({
+        month,
+        revenue: data.revenue,
+        profit: data.profit,
+      })),
+      aiUsage,
+    };
+  }
+
   async updateProfile(userId: string, profileData: Partial<User>): Promise<Omit<User, 'password'>> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId }
