@@ -92,9 +92,9 @@ export class PaymentService {
     const eventType = body.event;
     const gatewayEventId = body.id;
 
-    // Idempotency: Check if webhook log was already processed
+    // Idempotency: Check if webhook log was already processed successfully
     const existingLog = await this.repository.findWebhookLogByEventId(gatewayEventId);
-    if (existingLog) {
+    if (existingLog && existingLog.status === 'processed') {
       await this.repository.createAuditEvent({
         userId: null,
         action: 'Webhook Ignored',
