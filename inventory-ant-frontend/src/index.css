@@ -787,4 +787,86 @@ tr:hover td {
   --font-display: 'Outfit', 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
+/* ───────────────────────────────────────────
+   Phase 9A.4 — Production Quality CSS
+   ─────────────────────────────────────────── */
 
+/* ─── ACCESSIBILITY: Keyboard Focus Rings ─── */
+:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* ─── SKIP LINK for screen readers ─── */
+.skip-to-content {
+  position: absolute;
+  top: -100%;
+  left: 0.5rem;
+  background: #1e293b;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 0 0 0.5rem 0.5rem;
+  z-index: 9999;
+  font-weight: 700;
+  font-size: 0.8rem;
+  transition: top 0.2s;
+}
+.skip-to-content:focus { top: 0; }
+
+/* ─── PAGE ENTER ANIMATION ─── */
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: pageEnter 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+/* ─── DIALOG & DRAWER ANIMATIONS ─── */
+@keyframes dialogEnter {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes drawerSlideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.dialog-enter { animation: dialogEnter 0.2s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.drawer-enter  { animation: drawerSlideIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+/* ─── BUTTON ACTIVE PRESS ─── */
+button:active:not(:disabled) { transform: scale(0.97); }
+
+/* ─── LOADING SHIMMER ─── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #f0f4f8 25%, #e8edf2 50%, #f0f4f8 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* ─── REDUCED MOTION ─── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── PRINT STYLES ─── */
+@media print {
+  nav, aside, button, .no-print { display: none !important; }
+  body { background: white !important; color: black !important; font-size: 12pt; }
+  main, .overflow-y-auto, .flex-1 { overflow: visible !important; height: auto !important; }
+  tr { break-inside: avoid; }
+}
+
+/* ─── MOBILE TOUCH TARGETS ─── */
+@media (max-width: 768px) {
+  button, a, input, select { min-height: 40px; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+}

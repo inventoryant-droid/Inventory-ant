@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PaymentController } from './payment.controller';
 import { PaymentWebhookController } from './payment.webhook.controller';
 import { PaymentService } from './payment.service';
@@ -9,8 +9,8 @@ import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
-    SubscriptionModule,
-    UsersModule,
+    forwardRef(() => SubscriptionModule),
+    forwardRef(() => UsersModule),
   ],
   controllers: [
     PaymentController,

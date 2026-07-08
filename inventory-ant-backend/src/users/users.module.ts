@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
@@ -11,7 +11,7 @@ import { SubscriptionModule } from '../subscription/subscription.module';
       secret: process.env.JWT_SECRET || 'inventory-ant-super-secret-key-2026',
       signOptions: { expiresIn: '1d' },
     }),
-    SubscriptionModule,
+    forwardRef(() => SubscriptionModule),
   ],
   controllers: [UsersController],
   providers: [UsersService, PrismaService],

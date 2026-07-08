@@ -1,26 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import './App.css';
 import AntAgentV2 from './components/AntAgentV2';
 import AntXTerminal from './components/AntXTerminal';
 import { API_BASE_URL } from './utils/config';
+import { PageSkeleton } from './components/ui/SharedUI';
 
-import AuthScreen from './pages/AuthScreen';
-import UserGuide from './pages/UserGuide';
-import Sidebar from './components/layout/Sidebar';
-import Dashboard from './pages/Dashboard';
-import ScannerModal from './components/ui/ScannerModal';
-import AITools from './pages/AITools';
-import Settings from './pages/Settings';
-import Billing from './pages/Billing';
-import Inventory from './pages/Inventory';
-import AdminPanel from './pages/AdminPanel';
-import WelcomeModal from './components/ui/WelcomeModal';
-import OnboardingScreen from './pages/OnboardingScreen';
-import Profile from './pages/Profile';
-import StaffManagement from './pages/StaffManagement';
-import HistoryLogs from './pages/HistoryLogs';
+const AuthScreen = lazy(() => import('./pages/AuthScreen'));
+const UserGuide = lazy(() => import('./pages/UserGuide'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const AITools = lazy(() => import('./pages/AITools'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Billing = lazy(() => import('./pages/Billing'));
+const Inventory = lazy(() => import('./pages/Inventory'));
+const OnboardingScreen = lazy(() => import('./pages/OnboardingScreen'));
+const StaffManagement = lazy(() => import('./pages/StaffManagement'));
+const HistoryLogs = lazy(() => import('./pages/HistoryLogs'));
+const Pricing = lazy(() => import('./pages/Pricing'));
+const Subscription = lazy(() => import('./pages/Subscription'));
+const Analytics = lazy(() => import('./pages/Analytics'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const PaymentHistory = lazy(() => import('./pages/PaymentHistory'));
+
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const AdminUsers = lazy(() => import('./pages/AdminUsers'));
+const AdminSubscriptions = lazy(() => import('./pages/AdminSubscriptions'));
+const AdminFlags = lazy(() => import('./pages/AdminFlags'));
+const AdminPlans = lazy(() => import('./pages/AdminPlans'));
+const AdminFeatures = lazy(() => import('./pages/AdminFeatures'));
+const AdminCoupons = lazy(() => import('./pages/AdminCoupons'));
+const AdminAIConfig = lazy(() => import('./pages/AdminAIConfig'));
+const AdminPayments = lazy(() => import('./pages/AdminPayments'));
+const AdminAudits = lazy(() => import('./pages/AdminAudits'));
+const AdminSystem = lazy(() => import('./pages/AdminSystem'));
 
 import MarketingHome from './pages/MarketingHome';
 import MarketingPricing from './pages/MarketingPricing';
@@ -28,6 +41,9 @@ import MarketingAbout from './pages/MarketingAbout';
 import MarketingMobileApp from './pages/MarketingMobileApp';
 import { MarketingLayout } from './components/layout/MarketingLayout';
 import DashboardLayout from './components/layout/DashboardLayout';
+import AdminLayout from './components/layout/AdminLayout';
+import ScannerModal from './components/ui/ScannerModal';
+import WelcomeModal from './components/ui/WelcomeModal';
 
 
 
@@ -251,7 +267,15 @@ export default function App() {
 
   return (
     <>
-      <Toaster position="top-center" reverseOrder={false} />
+      <Toaster
+        position="top-center"
+        reverseOrder={false}
+        toastOptions={{
+          duration: 3500,
+          style: { fontFamily: 'inherit', fontSize: '13px', fontWeight: '600' },
+        }}
+      />
+      <Suspense fallback={<PageSkeleton rows={3} cols={4} />}>
       <Routes>
         <Route path="/" element={<MarketingLayout><MarketingHome /></MarketingLayout>} />
         <Route path="/pricing" element={<MarketingLayout><MarketingPricing /></MarketingLayout>} />
@@ -289,7 +313,7 @@ export default function App() {
                 onAlertClick={(mode) => { setView('inventory'); setInventoryFilter(mode); }} 
                 onTotalClick={() => { setView('inventory'); setInventoryFilter('all'); }}
                 onOpenScanner={handleOpenScanner}
-                onGoToProfile={() => setView('profile')}
+                onGoToProfile={() => setView('settings')}
                 onGoToSettings={() => setView('settings')}
                 userProfile={userProfile}
                 userRole={userRole}
@@ -313,8 +337,12 @@ export default function App() {
 
               {/* Shared Views */}
               {view === 'settings' && <Settings userId={userId} token={token} onScanResult={fetchProducts} userProfile={userProfile} onProfileUpdate={handleProfileCompleted} userRole={userRole} />}
-              {view === 'profile' && <Profile token={token} userProfile={userProfile} onProfileUpdate={handleProfileCompleted} theme={theme} userRole={userRole} />}
               {view === 'guide' && <UserGuide />}
+              {view === 'pricing' && <Pricing userId={userId} userRole={userRole} setView={setView} />}
+              {view === 'subscription' && <Subscription userRole={userRole} setView={setView} />}
+              {view === 'analytics' && <Analytics products={products} />}
+              {view === 'notifications' && <Notifications />}
+              {view === 'payment_history' && <PaymentHistory userProfile={userProfile} />}
 
               <WelcomeModal 
                 isOpen={showWelcomePopup} 
@@ -353,24 +381,29 @@ export default function App() {
       } />
       <Route path="/admin" element={
         token && userRole === 'admin' ? (
-          <div className={(theme === 'dark' ? 'dark-theme ' : 'light-theme ') + "flex flex-col md:flex-row w-full min-h-screen bg-[#F8FAFC]"}>
-            <Sidebar 
-              setView={setView} 
-              view="admin_panel" 
-              userId={userId} 
-              userRole={userRole} 
-              onLogout={handleLogout} 
-              onSwitchAccount={handleSwitchAccount} 
-              setInventoryFilter={setInventoryFilter} 
-              theme={theme} 
-              onToggleTheme={toggleTheme} 
-            />
-            <AdminPanel token={token} onLogout={handleLogout} userProfile={userProfile} />
-          </div>
+          <AdminLayout
+            view={view}
+            setView={setView}
+            userId={userId}
+            onLogout={handleLogout}
+          >
+            {(view === 'admin_dashboard' || view === 'admin_panel' || !view.startsWith('admin_')) && <AdminDashboard setView={setView} />}
+            {view === 'admin_plans' && <AdminPlans />}
+            {view === 'admin_features' && <AdminFeatures />}
+            {view === 'admin_coupons' && <AdminCoupons />}
+            {view === 'admin_flags' && <AdminFlags />}
+            {view === 'admin_ai' && <AdminAIConfig />}
+            {view === 'admin_users' && <AdminUsers />}
+            {view === 'admin_subscriptions' && <AdminSubscriptions />}
+            {view === 'admin_payments' && <AdminPayments />}
+            {view === 'admin_audits' && <AdminAudits />}
+            {view === 'admin_system' && <AdminSystem />}
+          </AdminLayout>
         ) : <Navigate to="/login" replace />
       } />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
+    </Suspense>
     </>
   );
 }

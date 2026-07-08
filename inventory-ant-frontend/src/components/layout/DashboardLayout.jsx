@@ -18,6 +18,8 @@ export default function DashboardLayout({
 
   return (
     <div className={`${theme === 'dark' ? 'dark-theme ' : 'light-theme '} flex flex-col w-full h-screen overflow-hidden bg-slate-50`}>
+      {/* Skip navigation link for screen readers */}
+      <a href="#main-content" className="skip-to-content">Skip to main content</a>
       {/* Impersonation Banner */}
       {impersonating && (
         <div className="w-full bg-[#EF4444] text-white text-center py-3 px-6 flex flex-row items-center justify-between z-50 font-sans shadow-md shrink-0">
@@ -64,9 +66,14 @@ export default function DashboardLayout({
         />
         
         {/* Child Pages Content */}
-        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col bg-[#F8FAFC]">
+        <main
+          id="main-content"
+          role="main"
+          className="flex-1 overflow-y-auto min-h-0 flex flex-col bg-[#F8FAFC] page-enter"
+          tabIndex={-1}
+        >
           {children}
-        </div>
+        </main>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import '../../App.css';
-import { LayoutDashboard, TerminalSquare, Receipt, Package, Scan, Settings, BookOpen, Info, ArrowLeftRight, Sun, Moon, LogOut, Menu, X, Shield, Users, Tag, Clock } from 'lucide-react';
+import { LayoutDashboard, TerminalSquare, Receipt, Package, Scan, Settings, BookOpen, LogOut, Menu, X, Shield, Users, Tag, Clock, CreditCard, BarChart3, Bell, FileText } from 'lucide-react';
 import InventoryAntLogo, { InventoryAntLogoMark, InventoryAntLogoText } from '../ui/InventoryAntLogo';
 
 function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, setInventoryFilter, theme, onToggleTheme, userProfile }) {
@@ -15,6 +15,11 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
       { id: 'ai_lab', label: 'Smart Scanner', icon: <Scan size={18} /> },
       { id: 'history', label: 'History Logs', icon: <Clock size={18} /> },
       { id: 'staff_management', label: 'Staff Management', icon: <Users size={18} /> },
+      { id: 'pricing', label: 'SaaS Plans', icon: <Tag size={18} /> },
+      { id: 'subscription', label: 'My Subscription', icon: <CreditCard size={18} /> },
+      { id: 'payment_history', label: 'Billing Invoices', icon: <FileText size={18} /> },
+      { id: 'analytics', label: 'Business Reports', icon: <BarChart3 size={18} /> },
+      { id: 'notifications', label: 'Announcements', icon: <Bell size={18} /> },
     ] : []),
     ...(userRole === 'staff' ? [
       { id: 'dashboard', label: 'Overview', icon: <LayoutDashboard size={18} /> },
@@ -47,8 +52,11 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
           <InventoryAntLogoMark className="h-8 w-auto" />
         </div>
         <button 
-          onClick={() => setIsMobileOpen(!isMobileOpen)} 
-          className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg border-none cursor-pointer transition-colors"
+          onClick={() => setIsMobileOpen(!isMobileOpen)}
+          aria-label={isMobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          aria-expanded={isMobileOpen}
+          aria-controls="sidebar-nav"
+          className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg border-none cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500"
         >
           {isMobileOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
@@ -104,18 +112,20 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex flex-col gap-1.5 shrink-0 flex-1">
+        <nav id="sidebar-nav" role="navigation" aria-label="Main navigation" className="flex flex-col gap-1.5 shrink-0 flex-1">
           {navItems.map(item => {
             const isActive = view === item.id;
             return (
             <button 
               key={item.id}
-              onClick={() => handleNavClick(item.id)} 
-              className={`text-left border-none py-2.5 px-4 flex items-center gap-3 rounded-xl text-sm font-bold transition-all duration-200 cursor-pointer whitespace-nowrap
+              onClick={() => handleNavClick(item.id)}
+              aria-current={isActive ? 'page' : undefined}
+              aria-label={item.label}
+              className={`text-left border-none py-2.5 px-4 flex items-center gap-3 rounded-xl text-sm font-bold transition-all duration-200 cursor-pointer whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-emerald-400
                 ${isActive ? 'bg-emerald-50 text-emerald-800' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700 bg-transparent'}
               `}
             >
-              <span className={isActive ? "text-[#0f9d63]" : "text-slate-400"}>{item.icon}</span>
+              <span className={isActive ? "text-[#0f9d63]" : "text-slate-400"} aria-hidden="true">{item.icon}</span>
               <span className="inline">{item.label}</span>
             </button>
           )})}
@@ -141,14 +151,15 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
            </button>
            */}
            <button 
-             onClick={onLogout} 
-             className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none shadow-sm
+             onClick={onLogout}
+             aria-label="Logout of application"
+             className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none shadow-sm focus:outline-none focus:ring-2 focus:ring-red-400
                ${theme === 'dark' 
                  ? 'bg-red-950/40 hover:bg-red-950/60 text-red-400' 
                  : 'bg-red-50 hover:bg-red-100/90 text-red-600'
                }`}
            >
-             <LogOut size={14} />
+             <LogOut size={14} aria-hidden="true" />
              <span className="inline">Logout</span>
            </button>
          </div>

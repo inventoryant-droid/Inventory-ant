@@ -15,7 +15,7 @@ import { UsersModule } from '../users/users.module';
 import { SaasModule } from '../saas/saas.module';
 
 @Module({
-  imports: [UsersModule, forwardRef(() => SaasModule)],
+  imports: [forwardRef(() => UsersModule), forwardRef(() => SaasModule)],
   controllers: [SubscriptionController],
   providers: [
     SubscriptionService,

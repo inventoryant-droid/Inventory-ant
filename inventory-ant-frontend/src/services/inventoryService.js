@@ -45,4 +45,12 @@ export const InventoryService = {
     if (!res.ok) throw new Error(await res.text() || 'Failed to delete product');
     return res.json();
   },
+
+  async getHistory() {
+    const res = await fetch(`${API_BASE_URL}/api/user/products/history`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error(await res.text() || 'Failed to fetch history');
+    return res.json();
+  },
 };
