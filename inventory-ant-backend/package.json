@@ -36,6 +36,7 @@
     "google-auth-library": "^10.7.0",
     "pdfkit": "^0.19.1",
     "prisma": "^5.22.0",
+    "razorpay": "^2.9.6",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "tesseract.js": "^7.0.0"
