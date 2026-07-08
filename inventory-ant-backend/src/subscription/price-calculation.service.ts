@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { SubscriptionRepository } from './subscription.repository';
 import { Plan, Coupon } from '@prisma/client';
+import { CacheService } from '../saas/cache/cache.service';
 
 export interface IPricingBreakdown {
   basePrice: number;
@@ -15,7 +16,10 @@ export interface IPricingBreakdown {
 
 @Injectable()
 export class PriceCalculationService {
-  constructor(private readonly repository: SubscriptionRepository) {}
+  constructor(
+    private readonly repository: SubscriptionRepository,
+    private readonly cacheService: CacheService,
+  ) {}
 
   async validateCoupon(code: string, planId: string, baseAmount: number): Promise<Coupon> {
     const coupon = await (this.repository as any).prisma.coupon.findUnique({
@@ -71,46 +75,47 @@ export class PriceCalculationService {
     billingCycle: 'monthly' | 'yearly',
     couponCode?: string,
   ): Promise<IPricingBreakdown> {
-    const plan = await this.repository.findPlanById(planId);
-    if (!plan) {
-      throw new BadRequestException('Invalid plan ID');
-    }
+    const cacheKey = `pricing:${planId}:${billingCycle}:${couponCode || 'none'}`;
+    return this.cacheService.wrap(cacheKey, async () => {
+      const plan = await this.repository.findPlanById(planId);
+      if (!plan) {
+        throw new BadRequestException('Invalid plan ID');
+      }
 
-    const basePrice = billingCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
-    let couponDiscount = 0;
+      const basePrice = billingCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
+      let couponDiscount = 0;
 
-    if (couponCode) {
-      const coupon = await this.validateCoupon(couponCode, planId, basePrice);
-      couponDiscount = this.calculateDiscount(coupon, basePrice);
-    }
+      if (couponCode) {
+        const coupon = await this.validateCoupon(couponCode, planId, basePrice);
+        couponDiscount = this.calculateDiscount(coupon, basePrice);
+      }
 
-    // Savings: If yearly, show monthly rate * 12 vs yearly rate + coupon savings
-    let savings = 0;
-    if (billingCycle === 'yearly') {
-      const monthlyEquivalentTotal = plan.monthlyPrice * 12;
-      savings = Math.max(0, monthlyEquivalentTotal - plan.yearlyPrice) + couponDiscount;
-    } else {
-      savings = couponDiscount;
-    }
+      let savings = 0;
+      if (billingCycle === 'yearly') {
+        const monthlyEquivalentTotal = plan.monthlyPrice * 12;
+        savings = Math.max(0, monthlyEquivalentTotal - plan.yearlyPrice) + couponDiscount;
+      } else {
+        savings = couponDiscount;
+      }
 
-    const netAmount = basePrice - couponDiscount;
-    const gstRate = 0.18; // Tax-ready 18% GST default
-    const tax = netAmount * gstRate;
-    const finalAmount = netAmount + tax;
+      const netAmount = basePrice - couponDiscount;
+      const gstRate = 0.18; 
+      const tax = netAmount * gstRate;
+      const finalAmount = netAmount + tax;
 
-    // Recurring renewal price does not include one-off coupon discount unless coupon is persistent
-    const renewalNetAmount = basePrice;
-    const renewalAmount = renewalNetAmount + (renewalNetAmount * gstRate);
+      const renewalNetAmount = basePrice;
+      const renewalAmount = renewalNetAmount + (renewalNetAmount * gstRate);
 
-    return {
-      basePrice,
-      discount: couponDiscount,
-      couponDiscount,
-      tax,
-      finalAmount,
-      savings,
-      renewalAmount,
-      currency: plan.currency || 'INR',
-    };
+      return {
+        basePrice,
+        discount: couponDiscount,
+        couponDiscount,
+        tax,
+        finalAmount,
+        savings,
+        renewalAmount,
+        currency: plan.currency || 'INR',
+      };
+    }, 60); // Cache calculation for 60 seconds
   }
 }

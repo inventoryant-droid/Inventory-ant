@@ -33,6 +33,10 @@ export class AuditService {
     performedBy: string,
     ipAddress?: string | null,
     tx?: Prisma.TransactionClient,
+    requestId?: string | null,
+    executionTime?: number | null,
+    userAgent?: string | null,
+    device?: string | null,
   ): Promise<AuditEvent> {
     return this.repository.createAuditEvent(
       {
@@ -41,6 +45,10 @@ export class AuditService {
         details,
         performedBy,
         ipAddress,
+        requestId,
+        executionTime,
+        userAgent,
+        device,
       },
       tx,
     );

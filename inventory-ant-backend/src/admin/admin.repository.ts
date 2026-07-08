@@ -147,7 +147,7 @@ export class AdminRepository {
   }
 
   // 6. Subscription Management
-  async getSubscriptions(search?: string): Promise<any[]> {
+  async getSubscriptions(search?: string, page?: number, limit?: number): Promise<any[]> {
     const where: any = {};
     if (search) {
       where.OR = [
@@ -156,10 +156,14 @@ export class AdminRepository {
         { user: { email: { contains: search, mode: 'insensitive' } } },
       ];
     }
+    const take = limit ? Number(limit) : undefined;
+    const skip = page && limit ? (Number(page) - 1) * Number(limit) : undefined;
     return this.prisma.subscription.findMany({
       where,
       include: { plan: true, user: true },
       orderBy: { updatedAt: 'desc' },
+      take,
+      skip,
     });
   }
 
@@ -172,7 +176,7 @@ export class AdminRepository {
   }
 
   // 7. User Details
-  async getUsers(search?: string): Promise<User[]> {
+  async getUsers(search?: string, page?: number, limit?: number): Promise<User[]> {
     const where: any = {};
     if (search) {
       where.OR = [
@@ -181,9 +185,13 @@ export class AdminRepository {
         { businessName: { contains: search, mode: 'insensitive' } },
       ];
     }
+    const take = limit ? Number(limit) : undefined;
+    const skip = page && limit ? (Number(page) - 1) * Number(limit) : undefined;
     return this.prisma.user.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      take,
+      skip,
     });
   }
 
@@ -205,10 +213,14 @@ export class AdminRepository {
     });
   }
 
-  async getUserAuditLogs(userId: string): Promise<AuditEvent[]> {
+  async getUserAuditLogs(userId: string, page?: number, limit?: number): Promise<AuditEvent[]> {
+    const take = limit ? Number(limit) : undefined;
+    const skip = page && limit ? (Number(page) - 1) * Number(limit) : undefined;
     return this.prisma.auditEvent.findMany({
       where: { userId },
       orderBy: { timestamp: 'desc' },
+      take,
+      skip,
     });
   }
 

@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { HealthService } from './health.service';
 import { PrismaService } from '../../prisma.service';
 
+import { CacheService } from '../cache/cache.service';
+
 describe('HealthService', () => {
   let service: HealthService;
   let prisma: PrismaService;
@@ -16,6 +18,14 @@ describe('HealthService', () => {
     },
   };
 
+  const mockCacheService = {
+    wrap: jest.fn((key, fn) => fn()),
+    get: jest.fn(),
+    set: jest.fn(),
+    del: jest.fn(),
+    clear: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -23,6 +33,10 @@ describe('HealthService', () => {
         {
           provide: PrismaService,
           useValue: mockPrisma,
+        },
+        {
+          provide: CacheService,
+          useValue: mockCacheService,
         },
       ],
     }).compile();

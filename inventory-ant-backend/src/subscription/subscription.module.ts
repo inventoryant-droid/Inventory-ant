@@ -1,4 +1,4 @@
-import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer, RequestMethod, forwardRef } from '@nestjs/common';
 import { SubscriptionController } from './subscription.controller';
 import { SubscriptionService } from './subscription.service';
 import { SubscriptionRepository } from './subscription.repository';
@@ -12,9 +12,10 @@ import { AuditService } from './audit.service';
 import { SubscriptionLifecycleService } from './subscription-lifecycle.service';
 import { PriceCalculationService } from './price-calculation.service';
 import { UsersModule } from '../users/users.module';
+import { SaasModule } from '../saas/saas.module';
 
 @Module({
-  imports: [UsersModule],
+  imports: [UsersModule, forwardRef(() => SaasModule)],
   controllers: [SubscriptionController],
   providers: [
     SubscriptionService,

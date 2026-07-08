@@ -4,6 +4,8 @@ import { SubscriptionRepository } from './subscription.repository';
 import { Coupon } from '@prisma/client';
 import { BadRequestException } from '@nestjs/common';
 
+import { CacheService } from '../saas/cache/cache.service';
+
 describe('PriceCalculationService', () => {
   let service: PriceCalculationService;
   let repository: SubscriptionRepository;
@@ -17,6 +19,14 @@ describe('PriceCalculationService', () => {
     findPlanById: jest.fn(),
   };
 
+  const mockCacheService = {
+    wrap: jest.fn((key, fn) => fn()),
+    get: jest.fn(),
+    set: jest.fn(),
+    del: jest.fn(),
+    clear: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -24,6 +34,10 @@ describe('PriceCalculationService', () => {
         {
           provide: SubscriptionRepository,
           useValue: mockRepository,
+        },
+        {
+          provide: CacheService,
+          useValue: mockCacheService,
         },
       ],
     }).compile();

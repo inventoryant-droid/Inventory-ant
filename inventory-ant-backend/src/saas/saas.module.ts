@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { APP_FILTER, APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 import { SaasConfigService } from './config/saas-config.service';
 import { SaasLoggerService } from './logging/saas-logger.service';
 import { EmailTemplateEngine } from './email/email-template.engine';
@@ -15,12 +16,27 @@ import { SubscriptionModule } from '../subscription/subscription.module';
 import { UsersModule } from '../users/users.module';
 import { PrismaService } from '../prisma.service';
 
+// Cache Layer
+import { CacheService } from './cache/cache.service';
+import { MemoryCacheProvider } from './cache/memory-cache.provider';
+
+// Storage Layer
+import { StorageService } from './storage/storage.service';
+import { LocalStorageProvider } from './storage/local-storage.provider';
+
+// Tracing, Error Handling & Security
+import { TracingMiddleware } from './tracing/tracing.middleware';
+import { TracingInterceptor } from './tracing/tracing.interceptor';
+import { GlobalExceptionFilter } from './errors/global-exception.filter';
+import { SecuritySanitizationMiddleware } from './security/security.middleware';
+import { RateLimiterGuard } from './security/rate-limiter.guard';
+
 @Module({
   imports: [
     HealthModule,
-    PaymentModule,
-    SubscriptionModule,
-    UsersModule,
+    forwardRef(() => PaymentModule),
+    forwardRef(() => SubscriptionModule),
+    forwardRef(() => UsersModule),
   ],
   providers: [
     SaasConfigService,
@@ -37,6 +53,37 @@ import { PrismaService } from '../prisma.service';
     BackgroundJobService,
     SaasSchedulerService,
     PrismaService,
+
+    // Cache Layer
+    {
+      provide: 'CacheProvider',
+      useClass: MemoryCacheProvider,
+    },
+    CacheService,
+
+    // Storage Layer
+    {
+      provide: 'StorageProvider',
+      useClass: LocalStorageProvider,
+    },
+    StorageService,
+
+    // Security, Tracing, Filters registered globally
+    TracingMiddleware,
+    SecuritySanitizationMiddleware,
+    
+    {
+      provide: APP_FILTER,
+      useClass: GlobalExceptionFilter,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TracingInterceptor,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RateLimiterGuard,
+    },
   ],
   exports: [
     SaasConfigService,
@@ -46,6 +93,20 @@ import { PrismaService } from '../prisma.service';
     PaymentRecoveryService,
     WebhookRecoveryService,
     BackgroundJobService,
+
+    // Cache & Storage
+    CacheService,
+    StorageService,
+
+    // Security & Tracing
+    TracingMiddleware,
+    SecuritySanitizationMiddleware,
   ],
 })
-export class SaasModule {}
+export class SaasModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(TracingMiddleware, SecuritySanitizationMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}

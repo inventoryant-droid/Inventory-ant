@@ -276,6 +276,10 @@ export class SubscriptionRepository {
       details: string | null;
       performedBy: string;
       ipAddress?: string | null;
+      requestId?: string | null;
+      executionTime?: number | null;
+      userAgent?: string | null;
+      device?: string | null;
     },
     tx?: Prisma.TransactionClient,
   ): Promise<AuditEvent> {
@@ -287,6 +291,10 @@ export class SubscriptionRepository {
         details: data.details,
         performedBy: data.performedBy,
         ipAddress: data.ipAddress || null,
+        requestId: data.requestId || null,
+        executionTime: data.executionTime || null,
+        userAgent: data.userAgent || null,
+        device: data.device || null,
         timestamp: new Date(),
       },
     });

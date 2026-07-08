@@ -327,14 +327,18 @@ model PlanHistory {
 }
 
 model AuditEvent {
-  id          String   @id @default(uuid())
-  userId      String?
-  action      String   // e.g. "PLAN_CHANGED", "COUPON_APPLIED", "PAYMENT_SUCCESS", "FEATURE_ENABLED", etc.
-  details     String?
-  performedBy String
-  ipAddress   String?
-  timestamp   DateTime @default(now())
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id            String   @id @default(uuid())
+  userId        String?
+  action        String   // e.g. "PLAN_CHANGED", "COUPON_APPLIED", "PAYMENT_SUCCESS", "FEATURE_ENABLED", etc.
+  details       String?
+  performedBy   String
+  ipAddress     String?
+  timestamp     DateTime @default(now())
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  requestId     String?
+  executionTime Float?
+  userAgent     String?
+  device        String?
 
   @@index([userId])
 }
