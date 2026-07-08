@@ -63,3 +63,31 @@ export class ExpireTrialDto {
   @IsString()
   userId: string;
 }
+
+export class ApplyCouponDto {
+  @IsNotEmpty()
+  @IsString()
+  code: string;
+
+  @IsNotEmpty()
+  @IsString()
+  planId: string;
+
+  @IsNotEmpty()
+  @IsEnum(['monthly', 'yearly'])
+  billingCycle: 'monthly' | 'yearly';
+}
+
+export class PreviewPlanDto {
+  @IsNotEmpty()
+  @IsString()
+  targetPlanId: string;
+
+  @IsNotEmpty()
+  @IsEnum(['monthly', 'yearly'])
+  billingCycle: 'monthly' | 'yearly';
+
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
+}

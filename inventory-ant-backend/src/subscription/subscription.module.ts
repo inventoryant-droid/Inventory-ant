@@ -10,6 +10,7 @@ import { FeatureService } from './feature.service';
 import { UsageService } from './usage.service';
 import { AuditService } from './audit.service';
 import { SubscriptionLifecycleService } from './subscription-lifecycle.service';
+import { PriceCalculationService } from './price-calculation.service';
 import { UsersModule } from '../users/users.module';
 
 @Module({
@@ -25,6 +26,7 @@ import { UsersModule } from '../users/users.module';
     UsageService,
     AuditService,
     SubscriptionLifecycleService,
+    PriceCalculationService,
   ],
   exports: [
     SubscriptionService,
@@ -36,6 +38,7 @@ import { UsersModule } from '../users/users.module';
     UsageService,
     AuditService,
     SubscriptionLifecycleService,
+    PriceCalculationService,
   ],
 })
 export class SubscriptionModule implements NestModule {
