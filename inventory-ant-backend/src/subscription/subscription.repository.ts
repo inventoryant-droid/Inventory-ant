@@ -292,6 +292,21 @@ export class SubscriptionRepository {
     });
   }
 
+  async countProducts(userEmail: string): Promise<number> {
+    return this.prisma.product.count({
+      where: { userId: userEmail.toLowerCase() },
+    });
+  }
+
+  async countStaff(ownerEmail: string): Promise<number> {
+    return this.prisma.user.count({
+      where: {
+        role: 'staff',
+        parentEmail: ownerEmail.toLowerCase(),
+      },
+    });
+  }
+
   async findSubscriptionsDueForExpiry(now: Date): Promise<Subscription[]> {
     return this.prisma.subscription.findMany({
       where: {

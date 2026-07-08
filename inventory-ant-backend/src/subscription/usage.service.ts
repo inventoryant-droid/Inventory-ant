@@ -52,9 +52,20 @@ export class UsageService {
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
 
-    const usageRecord = await this.repository.getFeatureUsage(userId, feature.id, currentMonth, currentYear);
-    const used = usageRecord ? usageRecord.used : 0;
-    const resetDate = usageRecord ? new Date(usageRecord.resetDate) : new Date(currentYear, currentMonth, 1);
+    let used = 0;
+    if (featureCode === 'INVENTORY') {
+      const user = await this.repository.findUserById(userId);
+      used = user ? await this.repository.countProducts(user.email) : 0;
+    } else if (featureCode === 'STAFF') {
+      const user = await this.repository.findUserById(userId);
+      used = user ? await this.repository.countStaff(user.email) : 0;
+    } else {
+      const usageRecord = await this.repository.getFeatureUsage(userId, feature.id, currentMonth, currentYear);
+      used = usageRecord ? usageRecord.used : 0;
+    }
+
+    const usageRecordFallback = await this.repository.getFeatureUsage(userId, feature.id, currentMonth, currentYear);
+    const resetDate = usageRecordFallback ? new Date(usageRecordFallback.resetDate) : new Date(currentYear, currentMonth, 1);
 
     const remaining = limitValue !== null ? Math.max(0, limitValue - used) : null;
 

@@ -4,9 +4,10 @@ import { ProductsService } from './products.service';
 import { AiService } from './ai.service';
 import { UsersModule } from '../users/users.module';
 import { PrismaService } from '../prisma.service';
+import { SubscriptionModule } from '../subscription/subscription.module';
 
 @Module({
-  imports: [UsersModule],
+  imports: [UsersModule, SubscriptionModule],
   controllers: [ProductsController],
   providers: [ProductsService, AiService, PrismaService],
 })

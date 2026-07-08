@@ -3,6 +3,8 @@ import { UsersService } from './users.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
 import { Roles } from './roles.decorator';
+import { SubscriptionGuard } from '../subscription/subscription.guard';
+import { RequireFeature, RequireLimit } from '../subscription/subscription.decorators';
 
 @Controller('api')
 export class UsersController {
@@ -128,42 +130,45 @@ export class UsersController {
   async changeUserPassword(@Req() req: any, @Body() body: { oldPass: string; newPass: string }) {
     return this.usersService.changeUserPassword(req.user.email, body.oldPass, body.newPass);
   }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
   @Roles('user')
+  @RequireLimit('STAFF', 1)
   @Post('user/staff')
   async createStaff(@Req() req: any, @Body() staffData: any) {
     return this.usersService.createStaff(req.user.email, staffData);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
   @Roles('user')
+  @RequireFeature('STAFF')
   @Get('user/staff')
   async getStaff(@Req() req: any) {
     return this.usersService.findStaffByOwner(req.user.email);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
   @Roles('user')
+  @RequireFeature('STAFF')
   @Put('user/staff/:id')
   async updateStaff(@Req() req: any, @Param('id') staffId: string, @Body() staffData: any) {
     return this.usersService.updateStaff(req.user.email, staffId, staffData);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
   @Roles('user')
+  @RequireFeature('STAFF')
   @Put('user/staff/:id/password')
   async updateStaffPassword(@Req() req: any, @Param('id') staffId: string, @Body() body: { newPass: string }) {
     return this.usersService.updateStaffPassword(req.user.email, staffId, body.newPass);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
   @Roles('user')
+  @RequireFeature('STAFF')
   @Delete('user/staff/:id')
   async deleteStaff(@Req() req: any, @Param('id') staffId: string) {
     return this.usersService.deleteStaff(req.user.email, staffId);
   }
-
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Post('admin/impersonate/:email')
