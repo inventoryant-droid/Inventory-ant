@@ -35,6 +35,13 @@ model User {
   businessNote     String?
   lowStockThreshold Int      @default(20)
   businessSignature String?
+
+  // Subscription relations
+  subscriptions    Subscription[]
+  usages           FeatureUsage[]
+  planHistory      PlanHistory[]
+  auditEvents      AuditEvent[]
+  invoices         Invoice[]
 }
 
 model Product {
@@ -115,6 +122,9 @@ model Payment {
   status       String   // "success" | "refunded"
   timestamp    Float
   invoiceId    String
+
+  // Relation to new Invoice (virtual relation, backward compatible)
+  invoice      Invoice?
 }
 
 model ActivityLog {
@@ -162,4 +172,194 @@ model ChatMessage {
   thread    ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@index([threadId])
+}
+
+model Plan {
+  id           String        @id @default(uuid())
+  name         String
+  slug         String        @unique
+  description  String?
+  monthlyPrice Float
+  yearlyPrice  Float
+  trialDays    Int           @default(0)
+  isActive     Boolean       @default(true)
+  displayOrder Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  features     PlanFeature[]
+  subscriptions Subscription[]
+}
+
+model Feature {
+  id          String        @id @default(uuid())
+  code        String        @unique
+  name        String
+  category    String?
+  description String?
+  isActive    Boolean       @default(true)
+  plans       PlanFeature[]
+  usages      FeatureUsage[]
+}
+
+model PlanFeature {
+  id         String   @id @default(uuid())
+  planId     String
+  featureId  String
+  enabled    Boolean  @default(true)
+  limitValue Int?     // null means unlimited
+  metadata   Json?
+  plan       Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  feature    Feature  @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, featureId])
+}
+
+model Subscription {
+  id              String              @id @default(uuid())
+  userId          String
+  planId          String
+  status          String              // "trial" | "active" | "expired" | "cancelled" | "grace" | "suspended"
+  billingCycle    String              // "monthly" | "yearly"
+  startDate       DateTime
+  expiryDate      DateTime
+  renewalDate     DateTime?
+  trialEndsAt     DateTime?
+  graceEndsAt     DateTime?
+  cancelledAt     DateTime?
+  nextBillingDate DateTime?
+  autoRenew       Boolean             @default(true)
+  paymentId       String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan            Plan                @relation(fields: [planId], references: [id], onDelete: Restrict)
+  addons          SubscriptionAddon[]
+  invoices        Invoice[]
+
+  @@index([userId])
+}
+
+model FeatureUsage {
+  id        String   @id @default(uuid())
+  userId    String
+  featureId String
+  used      Int      @default(0)
+  month     Int
+  year      Int
+  resetDate DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature   Feature  @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@index([userId, featureId, month, year])
+}
+
+model Coupon {
+  id              String   @id @default(uuid())
+  code            String   @unique
+  discountType    String   // "percentage" | "fixed"
+  discountValue   Float
+  maximumDiscount Float?
+  minimumAmount   Float?
+  usageLimit      Int?
+  usedCount       Int      @default(0)
+  validFrom       DateTime
+  validTill       DateTime
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Addon {
+  id           String              @id @default(uuid())
+  name         String
+  description  String?
+  price        Float
+  billingCycle String              // "monthly" | "yearly"
+  active       Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  subscriptions SubscriptionAddon[]
+}
+
+model SubscriptionAddon {
+  id             String       @id @default(uuid())
+  subscriptionId String
+  addonId        String
+  quantity       Int          @default(1)
+  expiryDate     DateTime
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  addon          Addon        @relation(fields: [addonId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, addonId])
+}
+
+model FeatureFlag {
+  id         String   @id @default(uuid())
+  code       String   @unique
+  name       String
+  enabled    Boolean  @default(false)
+  conditions Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model PlanHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  oldPlan   String?
+  newPlan   String
+  reason    String?
+  changedBy String   // "user" | "admin" | "system"
+  timestamp DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AuditEvent {
+  id          String   @id @default(uuid())
+  userId      String?
+  action      String   // e.g. "PLAN_CHANGED", "COUPON_APPLIED", "PAYMENT_SUCCESS", "FEATURE_ENABLED", etc.
+  details     String?
+  performedBy String
+  ipAddress   String?
+  timestamp   DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+}
+
+model Invoice {
+  id            String       @id @default(uuid())
+  userId        String
+  subscriptionId String
+  paymentId     String?      @unique
+  invoiceNumber String       @unique
+  amount        Float
+  tax           Float
+  total         Float
+  status        String       // "paid" | "unpaid" | "void"
+  pdfPath       String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription  Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  payment       Payment?     @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+}
+
+model PaymentWebhookLog {
+  id             String   @id @default(uuid())
+  gateway        String   // "razorpay" | "stripe"
+  gatewayEventId String?  @unique
+  eventType      String
+  payload        Json
+  signature      String?
+  verified       Boolean  @default(false)
+  retryCount     Int      @default(0)
+  status         String   // "processed" | "failed"
+  error          String?
+  createdAt      DateTime @default(now())
+  processedAt    DateTime?
 }
