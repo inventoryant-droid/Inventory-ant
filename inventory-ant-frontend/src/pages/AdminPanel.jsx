@@ -5,7 +5,7 @@ import {
   BarChart3, Package, X, Mail, Phone, Calendar, Info, Clock, 
   AlertTriangle, Building, MapPin, Sparkles, User, CreditCard, 
   Activity, Cpu, Bell, Shield, ArrowUpRight, CheckCircle2, 
-  UserCog, Ban, RefreshCw, Layers, Edit2, Check
+  UserCog, Ban, RefreshCw, Layers, Edit2, Check, LogOut
 } from 'lucide-react';
 import PasswordInput from '../components/ui/PasswordInput';
 
@@ -699,6 +699,20 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
             );
           })}
         </nav>
+
+        {/* Divider / Spacer */}
+        <div className="border-t border-slate-800 my-4" />
+
+        {/* Logout Button */}
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="flex items-center gap-2.5 text-left border-none py-2.5 px-3.5 rounded-xl text-xs font-bold transition-all cursor-pointer bg-transparent text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 mb-4"
+          >
+            <LogOut size={16} />
+            <span>Sign Out</span>
+          </button>
+        )}
 
         {message.text && (
           <div className={`mt-auto p-3.5 rounded-xl border text-[10px] font-bold shadow-sm transition-all duration-300 animate-fadeIn ${

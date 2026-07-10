@@ -5,7 +5,8 @@ import { SubscriptionService } from '../services/subscriptionService';
 import { 
   MessageSquare, Mic, Scan, History, PieChart as UsageIcon, 
   Send, Trash2, Plus, Search, Loader2, Sparkles, UploadCloud, 
-  Camera, Check, AlertTriangle, RefreshCw, X, Play, Volume2
+  Camera, Check, AlertTriangle, RefreshCw, X, Play, Volume2,
+  Layers, Package
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -54,9 +55,9 @@ const formatMarkdown = (text) => {
   return formatted;
 };
 
-export default function AITools({ userId, token, onScanResult }) {
+export default function AITools({ userId, token, onScanResult, onOpenScanner }) {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'voice' | 'scanner' | 'history' | 'usage'
+  const [activeTab, setActiveTab] = useState('scanner'); // 'chat' | 'voice' | 'scanner' | 'history' | 'usage'
 
   // --- QUERY CLIENT SUBSCRIPTION TIER CHECKS ---
   const { data: subData } = useQuery({
@@ -357,33 +358,11 @@ export default function AITools({ userId, token, onScanResult }) {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-left border-b border-slate-200 pb-5">
         <div>
           <h1 className="m-0 text-3xl font-extrabold tracking-tight text-emerald-600">
-            Cognitive AI Lab
+            Smart Scanner Module
           </h1>
           <p className="text-slate-500 text-sm font-medium mt-1 m-0">
-            Integrated smart automation workspace. Autonomously manage stock lines.
+            Autonomous invoice scanning & stock sync using Gemini AI.
           </p>
-        </div>
-
-        {/* WORKSPACE TAB SELECTOR */}
-        <div className="flex flex-wrap gap-1.5 bg-slate-100 p-1 rounded-2xl w-full md:w-auto">
-          {[
-            { id: 'chat', label: 'AI Chat', icon: <MessageSquare size={14} /> },
-            { id: 'voice', label: 'Voice Link', icon: <Mic size={14} /> },
-            { id: 'scanner', label: 'Smart Scanner', icon: <Scan size={14} /> },
-            { id: 'history', label: 'Scan Logs', icon: <History size={14} /> },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`py-2 px-4 rounded-xl text-xs font-bold transition-all border-none cursor-pointer flex items-center gap-1.5 flex-1 md:flex-initial justify-center ${
-                activeTab === tab.id 
-                  ? 'bg-white text-emerald-600 shadow-sm' 
-                  : 'bg-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              {tab.icon} {tab.label}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -391,390 +370,55 @@ export default function AITools({ userId, token, onScanResult }) {
       <div className="flex-1 min-h-0 bg-white border border-slate-200 rounded-3xl overflow-hidden flex flex-col">
         
         {/* ==========================================
-            TAB 1: CHAT CLIENT
-           ========================================== */}
-        {activeTab === 'chat' && (
-          <div className="flex flex-1 divide-x divide-slate-100 min-h-0 h-[600px] overflow-hidden">
-            {/* Sidebar Threads List */}
-            <div className="w-64 shrink-0 bg-slate-50/50 flex flex-col p-4 space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-xs uppercase font-extrabold text-slate-400 tracking-wider">Sessions</span>
-                <button 
-                  onClick={() => createThreadMutation.mutate()}
-                  className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg border-none cursor-pointer"
-                  title="New Session"
-                >
-                  <Plus size={14} />
-                </button>
-              </div>
-
-              {/* Thread Search */}
-              <div className="relative">
-                <Search size={14} className="absolute left-3.5 top-3.5 text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search sessions..." 
-                  value={chatSearch}
-                  onChange={(e) => setChatSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none"
-                />
-              </div>
-
-              {/* Threads Scrolling container */}
-              <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                {threadsLoading ? (
-                  <div className="text-slate-400 text-xs py-4 flex items-center justify-center gap-1.5">
-                    <Loader2 className="animate-spin" size={14} /> Loading...
-                  </div>
-                ) : filteredThreads.map(thread => (
-                  <div 
-                    key={thread.id}
-                    onClick={() => setActiveThreadId(thread.id)}
-                    className={`p-3 rounded-xl flex items-center justify-between text-left cursor-pointer transition-all ${
-                      activeThreadId === thread.id 
-                        ? 'bg-emerald-50 border border-emerald-100 text-emerald-800 font-bold' 
-                        : 'bg-white hover:bg-slate-50 border border-slate-100 text-slate-600'
-                    }`}
-                  >
-                    <span className="truncate text-xs flex-1">{thread.title}</span>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteThreadMutation.mutate(thread.id);
-                      }}
-                      className="p-1 hover:bg-rose-100 text-slate-400 hover:text-rose-600 rounded border-none bg-transparent cursor-pointer"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Conversation Area */}
-            <div className="flex-1 flex flex-col min-h-0 bg-[#FBFDFB]">
-              {/* Message scroll container */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {activeThread?.messages.map((msg) => (
-                  <div 
-                    key={msg.id}
-                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-[75%] rounded-2xl p-4 text-xs sm:text-sm text-left shadow-sm ${
-                      msg.role === 'user'
-                        ? 'bg-slate-900 text-white rounded-tr-none'
-                        : 'bg-white border border-slate-100 text-slate-800 rounded-tl-none leading-relaxed'
-                    }`}>
-                      <div 
-                        dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.text) }}
-                        className="prose prose-sm max-w-none prose-slate"
-                      />
-                    </div>
-                  </div>
-                ))}
-                
-                {isTyping && (
-                  <div className="flex justify-start">
-                    <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-none p-4 flex items-center gap-1.5 shadow-sm text-slate-400 text-xs">
-                      <Loader2 className="animate-spin" size={14} /> Ant Agent is writing...
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Chat Input form */}
-              <div className="p-4 bg-white border-t border-slate-100 flex gap-2">
-                <input 
-                  type="text" 
-                  placeholder="Ask Ant: e.g. Show me out of stock products / stock in 10 items"
-                  value={userPrompt}
-                  onChange={(e) => setUserPrompt(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                  disabled={messageMutation.isPending}
-                  className="flex-1 p-3 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-2xl outline-none text-xs sm:text-sm"
-                />
-                <button 
-                  onClick={handleSendMessage}
-                  disabled={messageMutation.isPending || !userPrompt.trim()}
-                  className="py-3 px-5 bg-[#0f9d63] hover:bg-emerald-700 disabled:bg-slate-200 text-white rounded-2xl border-none cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <Send size={16} />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ==========================================
-            TAB 2: VOICE ASSISTANT
-           ========================================== */}
-        {activeTab === 'voice' && (
-          <div className="p-6 md:p-8 flex flex-col items-center justify-center min-h-[450px] space-y-8 bg-slate-50/30 flex-1">
-            <div className="text-center space-y-2 max-w-md">
-              <h3 className="m-0 text-lg font-black text-slate-800 flex items-center justify-center gap-1.5">
-                <Sparkles size={18} className="text-emerald-500 animate-pulse" /> Hinglish Voice Link
-              </h3>
-              <p className="text-slate-500 text-xs sm:text-sm leading-relaxed m-0">
-                Tap the microphone to speak a command. Mixer of Hindi & English is supported. E.g. "Low stock items report dikhao."
-              </p>
-            </div>
-
-            {/* Glowing Microphone Button */}
-            <div className="relative">
-              {isVoiceActive && (
-                <div className="absolute inset-0 bg-emerald-500/10 rounded-full animate-ping scale-150" />
-              )}
-              <button 
-                onClick={toggleVoiceAssistant}
-                className={`w-28 h-28 rounded-full border-none cursor-pointer transition-all duration-300 flex items-center justify-center shadow-lg relative z-10 ${
-                  isVoiceActive 
-                    ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-300/40' 
-                    : 'bg-[#0f9d63] hover:bg-emerald-700 text-white shadow-emerald-200/50'
-                }`}
-              >
-                <Mic size={40} className={isVoiceActive ? 'animate-pulse' : ''} />
-              </button>
-            </div>
-
-            {/* Transcript & Logs */}
-            <div className="w-full max-w-lg space-y-4">
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 text-center min-h-[50px] flex items-center justify-center text-xs sm:text-sm font-semibold text-slate-700 font-mono shadow-sm">
-                Status: {voiceStatus}
-              </div>
-              
-              {voiceTranscript && (
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-left">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Your Speech:</span>
-                  <p className="m-0 text-sm font-medium text-slate-800 mt-1">"{voiceTranscript}"</p>
-                </div>
-              )}
-
-              {voiceResponse && (
-                <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-left flex items-start gap-2.5">
-                  <Volume2 className="text-emerald-600 shrink-0 mt-0.5" size={16} />
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-emerald-600 tracking-wider">Ant Response:</span>
-                    <p className="m-0 text-sm font-bold text-slate-800 mt-1">{voiceResponse}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ==========================================
             TAB 3: SMART SCANNER FLOW
            ========================================== */}
         {activeTab === 'scanner' && (
           <div className="p-6 md:p-8 space-y-6 text-left flex-1 bg-slate-50/10 overflow-y-auto">
-            
-            {/* Upload Area & Camera split */}
-            {ocrItems.length === 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                
-                {/* Drag and Drop box */}
-                <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-8 flex flex-col items-center justify-center text-center space-y-4 hover:border-emerald-500 transition-colors">
-                  <UploadCloud size={48} className="text-slate-400" />
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-700 m-0">Upload Supplier Invoices / Bills</h4>
-                    <p className="text-slate-400 text-xs mt-1 m-0">Supports JPG, PNG images</p>
-                  </div>
-                  
-                  <div className="flex gap-2 pt-2">
-                    <button 
-                      onClick={() => setScanType('IN')}
-                      className={`py-1.5 px-4 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                        scanType === 'IN' ? 'bg-[#0f9d63] border-[#0f9d63] text-white shadow' : 'bg-white border-slate-200 text-slate-600'
-                      }`}
-                    >
-                      Stock Inbound
-                    </button>
-                    <button 
-                      onClick={() => setScanType('OUT')}
-                      className={`py-1.5 px-4 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                        scanType === 'OUT' ? 'bg-red-500 border-red-500 text-white shadow' : 'bg-white border-slate-200 text-slate-600'
-                      }`}
-                    >
-                      Stock Outbound
-                    </button>
-                  </div>
-
-                  <input 
-                    type="file" 
-                    id="scan_file_selector"
-                    accept="image/*"
-                    onChange={(e) => setScanFile(e.target.files[0])}
-                    className="hidden"
-                  />
-                  <button 
-                    onClick={() => document.getElementById('scan_file_selector').click()}
-                    className="py-2.5 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold border-none cursor-pointer transition-colors"
-                  >
-                    Choose Image File
-                  </button>
-
-                  {scanFile && (
-                    <div className="bg-slate-50 border border-slate-200/60 p-3 rounded-2xl w-full flex items-center justify-between text-xs font-medium">
-                      <span className="truncate max-w-[80%]">{scanFile.name}</span>
-                      <button 
-                        onClick={() => handleBillScan()}
-                        disabled={isScanning}
-                        className="py-1.5 px-3 bg-[#0f9d63] hover:bg-emerald-700 text-white border-none rounded-lg cursor-pointer transition-colors flex items-center gap-1"
-                      >
-                        {isScanning ? <Loader2 className="animate-spin" size={10} /> : <Play size={10} />} Run OCR Scan
-                      </button>
-                    </div>
-                  )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Inbound Scanner Card */}
+              <div className="bg-white border border-slate-200 rounded-3xl p-8 flex flex-col items-center text-center space-y-6 shadow-sm">
+                <div className="w-16 h-16 rounded-full bg-emerald-50 text-[#0f9d63] flex items-center justify-center">
+                  <Layers size={28} />
                 </div>
-
-                {/* Device Camera interface */}
-                <div className="bg-white border border-slate-200 rounded-3xl p-6 flex flex-col items-center justify-center text-center space-y-4">
-                  {cameraActive ? (
-                    <div className="w-full relative rounded-2xl overflow-hidden aspect-video bg-slate-950 border">
-                      <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-                      <canvas ref={canvasRef} className="hidden" />
-                      <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
-                        <button 
-                          onClick={capturePhoto}
-                          className="py-2 px-5 bg-white text-slate-800 hover:bg-slate-100 rounded-xl text-xs font-bold border-none cursor-pointer flex items-center gap-1 shadow-md"
-                        >
-                          <Camera size={14} /> Snap Photo
-                        </button>
-                        <button 
-                          onClick={stopCamera}
-                          className="py-2 px-5 bg-rose-600 text-white hover:bg-rose-700 rounded-xl text-xs font-bold border-none cursor-pointer shadow-md"
-                        >
-                          Close Stream
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <Camera size={48} className="text-slate-400" />
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-700 m-0">Use Device Camera</h4>
-                        <p className="text-slate-400 text-xs mt-1 m-0">Snap invoice directly from scanner</p>
-                      </div>
-                      <button 
-                        onClick={startCamera}
-                        className="py-2.5 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold border-none cursor-pointer transition-colors"
-                      >
-                        Start Camera Stream
-                      </button>
-                    </>
-                  )}
+                <div className="space-y-2">
+                  <h3 className="text-base font-extrabold text-slate-800 uppercase tracking-wider m-0">Inbound Scanner</h3>
+                  <p className="text-xs text-slate-400 max-w-xs leading-relaxed m-0">
+                    Upload purchase bills or supplier invoices. The system extracts quantities and adds to inventory automatically.
+                  </p>
                 </div>
-
+                <button 
+                  onClick={() => onOpenScanner('IN')}
+                  className="py-3.5 w-full bg-[#0f9d63] hover:bg-emerald-700 text-white rounded-2xl text-xs font-bold transition-all border-none cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <UploadCloud size={16} /> Select Supplier Invoice
+                </button>
               </div>
-            ) : (
-              // Review parsed OCR products list
-              <div className="space-y-4 bg-white border border-slate-200 p-6 rounded-3xl">
-                <div className="flex justify-between items-center border-b pb-4">
-                  <div>
-                    <h3 className="m-0 text-base font-extrabold text-slate-800">Verify OCR Parsing Results</h3>
-                    <p className="text-slate-400 text-xs mt-0.5 m-0">Adjust parsed quantities before committing sync to database.</p>
-                  </div>
-                  <button 
-                    onClick={() => { setOcrItems([]); setScanFile(null); }}
-                    className="p-1 hover:bg-slate-100 rounded border-none bg-transparent cursor-pointer text-slate-400 hover:text-slate-600"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
 
-                <div className="divide-y divide-slate-100">
-                  {ocrItems.map((item, idx) => (
-                    <div key={idx} className="py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
-                      <div>
-                        <span className="font-bold text-slate-800 block text-sm">{item.name}</span>
-                        <span className="text-slate-400 text-[10px] uppercase tracking-wide">ID: {item.productId || 'N/A'}</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="space-y-1 text-left">
-                          <label className="text-[9px] uppercase font-bold text-slate-400 block">Quantity</label>
-                          <input 
-                            type="number"
-                            value={item.quantity || 0}
-                            onChange={(e) => {
-                              const updated = [...ocrItems];
-                              updated[idx].quantity = parseInt(e.target.value, 10) || 0;
-                              setOcrItems(updated);
-                            }}
-                            className="w-20 p-2 bg-slate-50 border rounded-lg text-center outline-none font-bold"
-                          />
-                        </div>
-                        <div className="space-y-1 text-left">
-                          <label className="text-[9px] uppercase font-bold text-slate-400 block">Unit Price (MRP)</label>
-                          <input 
-                            type="text"
-                            value={item.mrp || '0'}
-                            onChange={(e) => {
-                              const updated = [...ocrItems];
-                              updated[idx].mrp = e.target.value;
-                              setOcrItems(updated);
-                            }}
-                            className="w-24 p-2 bg-slate-50 border rounded-lg text-center outline-none font-bold"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              {/* Outbound Scanner Card */}
+              <div className="bg-white border border-slate-200 rounded-3xl p-8 flex flex-col items-center text-center space-y-6 shadow-sm">
+                <div className="w-16 h-16 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
+                  <Package size={28} />
                 </div>
-
-                <div className="flex justify-end gap-3 border-t pt-4">
-                  <button 
-                    onClick={() => { setOcrItems([]); setScanFile(null); }}
-                    className="py-2.5 px-6 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl border-none cursor-pointer transition-colors"
-                  >
-                    Discard Scan
-                  </button>
-                  <button 
-                    onClick={() => handleConfirmSync()}
-                    disabled={isSavingScan}
-                    className="py-2.5 px-6 bg-[#0f9d63] hover:bg-emerald-700 text-white font-bold text-xs rounded-xl border-none cursor-pointer transition-colors flex items-center gap-1.5"
-                  >
-                    {isSavingScan && <Loader2 className="animate-spin" size={12} />}
-                    Sync to Inventory
-                  </button>
+                <div className="space-y-2">
+                  <h3 className="text-base font-extrabold text-slate-800 uppercase tracking-wider m-0">Outbound Scanner</h3>
+                  <p className="text-xs text-slate-400 max-w-xs leading-relaxed m-0">
+                    Upload sales slips, delivery challans or receipts. The system deducts quantities from inventory.
+                  </p>
                 </div>
+                <button 
+                  onClick={() => onOpenScanner('OUT')}
+                  className="py-3.5 w-full bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-xs font-bold transition-all border-none cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <UploadCloud size={16} /> Select Delivery Slip
+                </button>
               </div>
-            )}
-          </div>
-        )}
 
-        {/* ==========================================
-            TAB 4: SCAN ACTION LOGS LIST
-           ========================================== */}
-        {activeTab === 'history' && (
-          <div className="p-6 md:p-8 flex-1 overflow-y-auto space-y-6 text-left">
-            <h3 className="m-0 text-base font-extrabold text-slate-800">Dispatched Scan Actions</h3>
-            
-            <div className="space-y-3">
-              {scanHistory && scanHistory.map((history) => (
-                <div key={history.id} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs">
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-mono block">{new Date(history.timestamp).toLocaleString()}</span>
-                    <span className="font-bold text-slate-800 block text-sm mt-0.5">Bill: {history.id}</span>
-                    <span className="text-slate-500 mt-1 block">Direction: <strong>{history.actionType}</strong> • Operator: {history.operatorName}</span>
-                  </div>
-                  <div className="bg-white p-3 border rounded-xl w-full md:w-64 max-h-24 overflow-y-auto">
-                    <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider block mb-1">Parsed Items</span>
-                    {Array.isArray(history.items) ? history.items.map((item, i) => (
-                      <div key={i} className="flex justify-between text-[11px] text-slate-600 font-medium">
-                        <span className="truncate max-w-[80%]">{item.name}</span>
-                        <span className="font-bold">x{item.qty || item.quantity}</span>
-                      </div>
-                    )) : null}
-                  </div>
-                </div>
-              ))}
-
-              {(!scanHistory || scanHistory.length === 0) && (
-                <div className="text-slate-400 text-center py-12">No scan history records logged.</div>
-              )}
             </div>
           </div>
         )}
+
+
 
       </div>
 

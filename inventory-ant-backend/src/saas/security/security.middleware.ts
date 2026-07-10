@@ -8,10 +8,14 @@ export class SecuritySanitizationMiddleware implements NestMiddleware {
       req.body = this.sanitize(req.body);
     }
     if (req.query) {
-      req.query = this.sanitize(req.query) as any;
+      for (const key of Object.keys(req.query)) {
+        req.query[key] = this.sanitize(req.query[key]);
+      }
     }
     if (req.params) {
-      req.params = this.sanitize(req.params) as any;
+      for (const key of Object.keys(req.params)) {
+        req.params[key] = this.sanitize(req.params[key]);
+      }
     }
     next();
   }

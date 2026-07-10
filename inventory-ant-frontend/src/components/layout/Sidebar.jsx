@@ -17,7 +17,6 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
       { id: 'staff_management', label: 'Staff Management', icon: <Users size={18} /> },
       { id: 'pricing', label: 'SaaS Plans', icon: <Tag size={18} /> },
       { id: 'subscription', label: 'My Subscription', icon: <CreditCard size={18} /> },
-      { id: 'payment_history', label: 'Billing Invoices', icon: <FileText size={18} /> },
       { id: 'analytics', label: 'Business Reports', icon: <BarChart3 size={18} /> },
       { id: 'notifications', label: 'Announcements', icon: <Bell size={18} /> },
     ] : []),

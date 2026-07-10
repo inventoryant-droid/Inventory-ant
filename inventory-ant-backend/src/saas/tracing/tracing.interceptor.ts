@@ -21,7 +21,9 @@ export class TracingInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap(async () => {
         const executionTime = Date.now() - startTime;
-        res.setHeader('X-Response-Time', `${executionTime}ms`);
+        if (!res.headersSent) {
+          res.setHeader('X-Response-Time', `${executionTime}ms`);
+        }
 
         const userAgent = req.headers['user-agent'] || 'Unknown';
         const ip = req.ip || req.headers['x-forwarded-for'] || '127.0.0.1';

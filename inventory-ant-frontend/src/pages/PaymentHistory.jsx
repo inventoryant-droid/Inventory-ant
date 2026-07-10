@@ -9,7 +9,7 @@ import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import '../App.css';
 
-export default function PaymentHistory({ userProfile }) {
+export default function PaymentHistory({ userProfile, isMerged = false }) {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   // 1. FETCH BILLING HISTORY VIA REACT QUERY
@@ -57,7 +57,7 @@ export default function PaymentHistory({ userProfile }) {
   }
 
   return (
-    <div className="p-4 md:p-8 flex-1 overflow-y-auto bg-[#F8FAFC] space-y-6 text-left relative">
+    <div className={isMerged ? "space-y-6 text-left relative" : "p-4 md:p-8 flex-1 overflow-y-auto bg-[#F8FAFC] space-y-6 text-left relative"}>
       
       {/* ─── OVERLAY INVOICE VIEWER ─── */}
       <AnimatePresence>

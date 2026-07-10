@@ -1096,7 +1096,7 @@ export class UsersService implements OnModuleInit {
   async refreshToken(token: string): Promise<{ access_token: string; refresh_token: string }> {
     try {
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.JWT_REFRESH_SECRET || 'inventory-ant-refresh-secret-key-2026',
+        secret: process.env.JWT_REFRESH_SECRET,
       });
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub }
@@ -1119,7 +1119,7 @@ export class UsersService implements OnModuleInit {
       };
       const newAccessToken = await this.jwtService.signAsync(jwtPayload, { expiresIn: '15m' });
       const newRefreshToken = await this.jwtService.signAsync({ sub: user.id }, {
-        secret: process.env.JWT_REFRESH_SECRET || 'inventory-ant-refresh-secret-key-2026',
+        secret: process.env.JWT_REFRESH_SECRET,
         expiresIn: '7d'
       });
       

@@ -143,6 +143,13 @@ export default function AdminLayout({
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block animate-pulse" />
               Primary Core Linked
             </span>
+            <button
+              onClick={onLogout}
+              className="py-1.5 px-3 bg-red-50 hover:bg-red-500 border border-red-200 hover:border-red-500 text-red-700 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <LogOut size={13} />
+              <span>Sign Out</span>
+            </button>
           </div>
         </header>
 

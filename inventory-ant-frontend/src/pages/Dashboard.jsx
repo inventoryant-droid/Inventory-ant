@@ -332,8 +332,8 @@ export default function Dashboard({
                 <History className="text-emerald-500" size={18} /> Recent Activities
               </h3>
               <button 
-                onClick={() => refetchHistory()}
-                className="text-xs font-bold text-emerald-600 hover:underline border-none bg-transparent cursor-pointer flex items-center gap-0.5"
+                onClick={() => setView('history')}
+                className="text-xs font-bold text-[#0f9d63] hover:underline border-none bg-transparent cursor-pointer flex items-center gap-0.5"
               >
                 View all logs <ChevronRight size={14} />
               </button>

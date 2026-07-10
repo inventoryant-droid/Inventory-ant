@@ -21,6 +21,7 @@ const Pricing = lazy(() => import('./pages/Pricing'));
 const Subscription = lazy(() => import('./pages/Subscription'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Notifications = lazy(() => import('./pages/Notifications'));
+const Profile = lazy(() => import('./pages/Profile'));
 const PaymentHistory = lazy(() => import('./pages/PaymentHistory'));
 
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
@@ -295,54 +296,58 @@ export default function App() {
               theme={theme}
             />
           ) : (
-            <DashboardLayout
-              view={view}
-              setView={setView}
-              userId={userId}
-              userRole={userRole}
-              onLogout={handleLogout}
-              onSwitchAccount={handleSwitchAccount}
-              setInventoryFilter={setInventoryFilter}
-              theme={theme}
-              onToggleTheme={toggleTheme}
-              userProfile={userProfile}
-            >
-              {view === 'dashboard' && <Dashboard 
-                products={products} 
-                userId={userId} 
-                onAlertClick={(mode) => { setView('inventory'); setInventoryFilter(mode); }} 
-                onTotalClick={() => { setView('inventory'); setInventoryFilter('all'); }}
-                onOpenScanner={handleOpenScanner}
-                onGoToProfile={() => setView('settings')}
-                onGoToSettings={() => setView('settings')}
-                userProfile={userProfile}
+            <>
+              <DashboardLayout
+                view={view}
+                setView={setView}
+                userId={userId}
                 userRole={userRole}
-                onProfileUpdate={handleProfileCompleted}
-                token={token}
-              />}
-              {view === 'billing' && <Billing products={products} onSaleSuccess={fetchProducts} userId={userId} token={token} userProfile={userProfile} />}
-              {view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onEditProduct={handleEditProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} userRole={userRole} userProfile={userProfile} />}
-              {view === 'ai_lab' && <AITools userId={userId} token={token} onScanResult={fetchProducts} onOpenScanner={handleOpenScanner} userProfile={userProfile} theme={theme} />}
-              {view === 'history' && <HistoryLogs userId={userId} token={token} userProfile={userProfile} products={products} />}
-              {view === 'staff_management' && <StaffManagement token={token} userProfile={userProfile} userId={userId} />}
-              {view === 'ant_x' && <AntXTerminal 
-                userId={userId} 
-                token={token}
-                onUpdate={fetchProducts} 
-                onNavigate={(page) => setView(page)} 
-                onLogin={handleLogin} 
-                currentView={view} 
-                voiceState={{ isVoiceActive, setIsVoiceActive, globalTranscript, globalAiResponse, globalStatus }}
-              />}
+                onLogout={handleLogout}
+                onSwitchAccount={handleSwitchAccount}
+                setInventoryFilter={setInventoryFilter}
+                theme={theme}
+                onToggleTheme={toggleTheme}
+                userProfile={userProfile}
+              >
+                {view === 'dashboard' && <Dashboard 
+                  products={products} 
+                  userId={userId} 
+                  onAlertClick={(mode) => { setView('inventory'); setInventoryFilter(mode); }} 
+                  onTotalClick={() => { setView('inventory'); setInventoryFilter('all'); }}
+                  onOpenScanner={handleOpenScanner}
+                  onGoToProfile={() => setView('settings')}
+                  onGoToSettings={() => setView('settings')}
+                  userProfile={userProfile}
+                  userRole={userRole}
+                  onProfileUpdate={handleProfileCompleted}
+                  token={token}
+                  setView={setView}
+                  setInventoryFilter={setInventoryFilter}
+                />}
+                {view === 'billing' && <Billing products={products} onSaleSuccess={fetchProducts} userId={userId} token={token} userProfile={userProfile} />}
+                {view === 'inventory' && <Inventory products={products} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onEditProduct={handleEditProduct} filterMode={inventoryFilter} setFilterMode={setInventoryFilter} userRole={userRole} userProfile={userProfile} />}
+                {view === 'ai_lab' && <AITools userId={userId} token={token} onScanResult={fetchProducts} onOpenScanner={handleOpenScanner} userProfile={userProfile} theme={theme} />}
+                {view === 'history' && <HistoryLogs userId={userId} token={token} userProfile={userProfile} products={products} />}
+                {view === 'staff_management' && <StaffManagement token={token} userProfile={userProfile} userId={userId} />}
+                {view === 'ant_x' && <AntXTerminal 
+                  userId={userId} 
+                  token={token}
+                  onUpdate={fetchProducts} 
+                  onNavigate={(page) => setView(page)} 
+                  onLogin={handleLogin} 
+                  currentView={view} 
+                  voiceState={{ isVoiceActive, setIsVoiceActive, globalTranscript, globalAiResponse, globalStatus }}
+                />}
 
-              {/* Shared Views */}
-              {view === 'settings' && <Settings userId={userId} token={token} onScanResult={fetchProducts} userProfile={userProfile} onProfileUpdate={handleProfileCompleted} userRole={userRole} />}
-              {view === 'guide' && <UserGuide />}
-              {view === 'pricing' && <Pricing userId={userId} userRole={userRole} setView={setView} />}
-              {view === 'subscription' && <Subscription userRole={userRole} setView={setView} />}
-              {view === 'analytics' && <Analytics products={products} />}
-              {view === 'notifications' && <Notifications />}
-              {view === 'payment_history' && <PaymentHistory userProfile={userProfile} />}
+                {/* Shared Views */}
+                {view === 'settings' && <Settings userId={userId} token={token} onScanResult={fetchProducts} userProfile={userProfile} onProfileUpdate={handleProfileCompleted} userRole={userRole} />}
+                {view === 'profile' && <Profile token={token} userProfile={userProfile} onProfileUpdate={handleProfileCompleted} theme={theme} userRole={userRole} />}
+                {view === 'guide' && <UserGuide />}
+                {view === 'pricing' && <Pricing userId={userId} userRole={userRole} setView={setView} />}
+                {view === 'subscription' && <Subscription userRole={userRole} setView={setView} userProfile={userProfile} />}
+                {view === 'analytics' && <Analytics products={products} />}
+                {view === 'notifications' && <Notifications />}
+              </DashboardLayout>
 
               <WelcomeModal 
                 isOpen={showWelcomePopup} 
@@ -375,7 +380,7 @@ export default function App() {
                    setGlobalTranscript, setGlobalAiResponse, setGlobalStatus 
                 }}
               />
-            </DashboardLayout>
+            </>
           )
         ) : <Navigate to="/login" replace />
       } />

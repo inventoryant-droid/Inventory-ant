@@ -7,9 +7,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import PaymentHistory from './PaymentHistory';
 import '../App.css';
 
-export default function Subscription({ userRole, setView }) {
+export default function Subscription({ userRole, setView, userProfile }) {
   const queryClient = useQueryClient();
   const [activePreviewType, setActivePreviewType] = useState(null); // 'cancel' | 'resume'
   const [previewData, setPreviewData] = useState(null);
@@ -385,6 +386,11 @@ export default function Subscription({ userRole, setView }) {
           </button>
         </div>
       )}
+
+      {/* Merged Billing Invoices / Payment History Section */}
+      <div className="pt-8 border-t border-slate-200">
+        <PaymentHistory userProfile={userProfile} isMerged={true} />
+      </div>
 
     </div>
   );

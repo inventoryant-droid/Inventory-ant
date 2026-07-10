@@ -8,7 +8,7 @@ import { SubscriptionModule } from '../subscription/subscription.module';
 @Module({
   imports: [
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'inventory-ant-super-secret-key-2026',
+      secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '1d' },
     }),
     forwardRef(() => SubscriptionModule),

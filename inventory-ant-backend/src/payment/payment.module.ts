@@ -27,6 +27,7 @@ import { UsersModule } from '../users/users.module';
   exports: [
     PaymentService,
     PaymentRepository,
+    'PaymentProvider',
   ],
 })
 export class PaymentModule {}

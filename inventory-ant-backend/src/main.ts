@@ -52,12 +52,11 @@ async function bootstrap() {
     allowedHeaders: 'Content-Type,Accept,Authorization,x-user-id,x-request-id',
   });
 
-  // Part 3: API Versioning (e.g. /api/v1/...)
-  app.setGlobalPrefix('api');
-  app.enableVersioning({
-    type: VersioningType.URI,
-    defaultVersion: '1',
-  });
+  // app.setGlobalPrefix('api');
+  // app.enableVersioning({
+  //   type: VersioningType.URI,
+  //   defaultVersion: '1',
+  // });
 
   // Part 11: Swagger Documentation Improvements
   const config = new DocumentBuilder()
