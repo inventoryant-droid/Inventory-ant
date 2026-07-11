@@ -552,6 +552,51 @@ export class ProductsService {
     return { success: true, bill: newBill };
   }
 
+  async undoBill(userId: string, billId: string, operatorName = 'Owner'): Promise<any> {
+    const cleanUserId = userId.trim().toLowerCase();
+    const bill = await this.prisma.bill.findUnique({
+      where: { id: billId }
+    });
+
+    if (!bill || bill.userId !== cleanUserId) {
+      throw new NotFoundException('Bill not found or access denied');
+    }
+
+    const items = bill.items as any[];
+    for (const item of items) {
+      const product = await this.prisma.product.findFirst({
+        where: { userId: cleanUserId, id: item.id }
+      });
+      if (product) {
+        const cur = parseInt(product.quantity || '0', 10);
+        const qtyToRevert = parseInt(item.quantity || '0', 10);
+        const newQtyStr = (cur + qtyToRevert).toString();
+
+        await this.prisma.product.update({
+          where: { id: product.id },
+          data: { quantity: newQtyStr }
+        });
+
+        await this.logInventoryChange(
+          cleanUserId,
+          'STOCK_IN',
+          product.name || 'Unknown Item',
+          product.productId,
+          cur.toString(),
+          newQtyStr,
+          `Reverted transaction due to invoice undo (Billing ID: ${billId})`,
+          operatorName
+        );
+      }
+    }
+
+    await this.prisma.bill.delete({
+      where: { id: billId }
+    });
+
+    return { success: true, message: 'Transaction reverted successfully.' };
+  }
+
   async getBills(userId: string): Promise<any[]> {
     const cleanUserId = userId.trim().toLowerCase();
     return this.prisma.bill.findMany({

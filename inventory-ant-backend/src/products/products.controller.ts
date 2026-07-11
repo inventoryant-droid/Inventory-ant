@@ -164,6 +164,15 @@ export class ProductsController {
   }
 
   @UseGuards(JwtAuthGuard, SubscriptionGuard)
+  @RequireFeature('BILLING')
+  @Post('bills/:id/undo')
+  async undoBill(@Req() req: any, @Param('id') id: string) {
+    const tenantEmail = this.validateUser(req);
+    const operatorName = req.user.role === 'staff' ? req.user.name || req.user.email : 'Owner';
+    return this.productsService.undoBill(tenantEmail, id, operatorName);
+  }
+
+  @UseGuards(JwtAuthGuard, SubscriptionGuard)
   @RequireLimit('INVENTORY', 1)
   @Post()
   async create(@Req() req: any, @Body() createProductDto: any) {

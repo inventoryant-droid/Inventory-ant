@@ -472,7 +472,7 @@ function ScannerModal({ isOpen, onClose, scanType, userId, token, onScanSuccess,
                           }`}
                     >
                        {isSyncing ? (
-                          <><Loader2 size={16} className="animate-spin" /> Syncing...</>
+                          <><Loader2 size={16} className="animate-spin" /> Please wait/Syncing...</>
                        ) : (
                           <><CheckCircle2 size={16} /> Confirm &amp; Sync to Inventory</>
                        )}

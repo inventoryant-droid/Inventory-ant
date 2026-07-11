@@ -40,6 +40,46 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [lastBill, setLastBill] = useState(null);
+  const [undoBillId, setUndoBillId] = useState(null);
+  const [undoCountdown, setUndoCountdown] = useState(0);
+
+  useEffect(() => {
+    if (!undoBillId || undoCountdown <= 0) return;
+    const interval = setInterval(() => {
+      setUndoCountdown(prev => {
+        if (prev <= 1) {
+          setUndoBillId(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [undoBillId, undoCountdown]);
+
+  const handleUndoBill = async () => {
+    if (!undoBillId) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/user/products/bills/${undoBillId}/undo`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        showSuccessToast("Transaction reverted successfully!");
+        setUndoBillId(null);
+        setLastBill(null);
+        onSaleSuccess();
+      } else {
+        const errData = await res.json();
+        showErrorToast(errData.message || "Failed to revert transaction.");
+      }
+    } catch (e) {
+      console.error(e);
+      showErrorToast("Network error reverting transaction.");
+    }
+  };
   
   
 
@@ -151,7 +191,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
         saveAndSetCart(cart.map(item => item.id === product.id ? {...item, quantity: currentQty + 1} : item));
      } else {
         // Initialize manualPrice from mrp (user can override it)
-        saveAndSetCart([...cart, {...product, quantity: 1, availableStock: maxQty, manualPrice: product.mrp || '0'}]);
+        saveAndSetCart([{...product, quantity: 1, availableStock: maxQty, manualPrice: product.mrp || '0'}, ...cart]);
      }
      setSearchTerm('');
   };
@@ -235,7 +275,8 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
             saveAndSetCart([]);
             setLastBill(data.bill);
             onSaleSuccess();
-            
+            setUndoBillId(data.bill.id);
+            setUndoCountdown(30);
          }
      } catch (e) {
         console.error("Checkout failed:", e);
@@ -435,6 +476,26 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
            <h1 className="m-0 text-3xl font-extrabold tracking-tight text-emerald-600">Sales Terminal</h1>
 
         </div>
+
+        {undoBillId && (
+           <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-2xl flex items-center justify-between no-print-btn text-amber-800 dark:text-amber-300">
+             <div className="flex items-center gap-3">
+               <span className="relative flex h-3 w-3">
+                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                 <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+               </span>
+               <div className="text-sm font-semibold">
+                 Invoice generated successfully! Undo available for <strong>{undoCountdown}s</strong>...
+               </div>
+             </div>
+             <button
+               onClick={handleUndoBill}
+               className="py-2 px-5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold border-none cursor-pointer transition-all shadow-sm flex items-center gap-1"
+             >
+               Undo Bill
+             </button>
+           </div>
+         )}
 
         
            <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 flex-1">
