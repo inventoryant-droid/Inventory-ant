@@ -12,6 +12,7 @@ This document serves as an exhaustive reference and guide for **Inventory Ant**,
 *   **Frontend**: React 19, Vite, Tailwind CSS v4, Framer Motion, Lucide React, React Hot Toast, PapaParse (CSV).
 *   **Backend**: NestJS (TypeScript), Prisma ORM, PostgreSQL.
 *   **AI Engine**: Google Gemini API (`gemini-2.5-flash` and `gemini-2.0-flash`), Google TTS (Hindi/Hinglish accent synthesis), Tesseract.js (Optical Character Recognition fallback).
+*   **Payments Engine**: Razorpay subscription payments integration.
 *   **Authentication**: Google OAuth 2.0 / JWT and Local Credentials with role isolation (`admin` | `user` | `staff`).
 
 ---
@@ -25,8 +26,8 @@ inventory-ant/
 ├── inventory-ant-frontend/             # React Vite Application
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── layout/                 # Sidebar, SiteHeader, SiteFooter, MarketingLayout
-│   │   │   ├── ui/                     # ScannerModal, WelcomeModal, PasswordInput, Button, etc.
+│   │   │   ├── layout/                 # Sidebar, SiteHeader, SiteFooter, MarketingLayout, AdminLayout, DashboardLayout
+│   │   │   ├── ui/                     # ScannerModal, WelcomeModal, PasswordInput, Button, AllFeaturesComparisonModal, PricingPlans, FeatureDemoModal, etc.
 │   │   │   ├── AntAgentV2.jsx          # Voice AI agent Core (always-mounted)
 │   │   │   └── AntXTerminal.jsx        # Conversational Terminal Interface
 │   │   ├── pages/
@@ -37,9 +38,35 @@ inventory-ant/
 │   │   │   ├── AITools.jsx             # AI Playground, voice debug, schema mapper
 │   │   │   ├── HistoryLogs.jsx         # System actions audit logs (Excel exportable)
 │   │   │   ├── StaffManagement.jsx     # Owner interface to manage staff members
-│   │   │   ├── AdminPanel.jsx          # Admin overview, user impersonation, system telemetry
 │   │   │   ├── Settings.jsx            # Custom business settings & CSV mapper
-│   │   │   └── Profile.jsx             # Profile completions
+│   │   │   ├── Profile.jsx             # Profile completions
+│   │   │   ├── Pricing.jsx             # Pricing structures & tiers
+│   │   │   ├── Subscription.jsx        # Active subscription details
+│   │   │   ├── PaymentHistory.jsx      # Payment ledger & invoices
+│   │   │   ├── OnboardingScreen.jsx    # Custom profile creation portal
+│   │   │   ├── UserGuide.jsx           # Step-by-step user onboarding details
+│   │   │   ├── AdminDashboard.jsx      # System telemetry overview for Admins
+│   │   │   ├── AdminPanel.jsx          # Super Admin central control console
+│   │   │   ├── AdminAnalytics.jsx      # Advanced SaaS telemetry metrics
+│   │   │   ├── AdminUsers.jsx          # Manage tenant profiles and status
+│   │   │   ├── AdminAdmins.jsx         # Access hierarchy settings
+│   │   │   ├── AdminSubscriptions.jsx  # Modify limits and expiry parameters
+│   │   │   ├── AdminPlans.jsx          # Add/delete pricing levels
+│   │   │   ├── AdminFeatures.jsx       # Register new platform features
+│   │   │   ├── AdminCoupons.jsx        # System coupon administration
+│   │   │   ├── AdminFlags.jsx          # System feature flags toggles
+│   │   │   ├── AdminAIConfig.jsx       # Global Gemini LLM keys configs
+│   │   │   ├── AdminPayments.jsx       # Razorpay transactions audits
+│   │   │   ├── AdminAudits.jsx         # Detailed audit event tracing logs
+│   │   │   └── AdminSystem.jsx         # System diagnostics & health parameters
+│   │   ├── context/
+│   │   │   ├── AppProviders.jsx        # Global React Context orchestrator
+│   │   │   └── PermissionContext.jsx   # Role and permission access controls
+│   │   ├── services/
+│   │   │   ├── adminService.js         # Admin endpoints mappings
+│   │   │   ├── aiService.js            # Gemini AI communications handler
+│   │   │   ├── subscriptionService.js  # Subscription management calls
+│   │   │   └── paymentService.js       # Razorpay gateway integrations
 │   │   ├── utils/
 │   │   │   ├── cn.js                   # Classnames utility
 │   │   │   └── config.js               # API URL endpoint mapping
@@ -63,10 +90,45 @@ inventory-ant/
 │   │   │   ├── products.controller.ts
 │   │   │   ├── products.module.ts
 │   │   │   └── products.service.ts     # Main transactional logic
+│   │   ├── admin/                      # Central administration control APIs
+│   │   │   ├── admin.controller.ts
+│   │   │   ├── admin.dto.ts
+│   │   │   ├── admin.guard.ts
+│   │   │   ├── admin.module.ts
+│   │   │   ├── admin.repository.ts
+│   │   │   └── admin.service.ts
+│   │   ├── subscription/               # Multi-tier subscription model and limits checker
+│   │   │   ├── subscription.controller.ts
+│   │   │   ├── subscription.service.ts
+│   │   │   ├── subscription.repository.ts
+│   │   │   ├── subscription.guard.ts
+│   │   │   ├── subscription.decorators.ts
+│   │   │   ├── subscription-lifecycle.service.ts
+│   │   │   ├── usage.service.ts
+│   │   │   ├── plan.service.ts
+│   │   │   ├── feature.service.ts
+│   │   │   ├── price-calculation.service.ts
+│   │   │   ├── audit.service.ts
+│   │   │   └── subscription.scheduler.ts # Renewal tasks & trial management
+│   │   ├── payment/                    # Payments checkout and gateway providers
+│   │   │   ├── payment.controller.ts
+│   │   │   ├── payment.service.ts
+│   │   │   ├── payment.webhook.controller.ts
+│   │   │   ├── payment.repository.ts
+│   │   │   └── providers/
+│   │   │       ├── payment-provider.interface.ts
+│   │   │       └── razorpay.provider.ts
+│   │   ├── saas/                       # Core backend middleware & security wrappers
+│   │   │   ├── cache/                  # In-memory subscription caching
+│   │   │   ├── security/               # Rate limit guards and Express sanitizers
+│   │   │   ├── tracing/                # Correlation ID request tracing
+│   │   │   ├── errors/                 # Global standardized exception filters
+│   │   │   ├── storage/                # Storage system abstraction layers
+│   │   │   └── saas.module.ts
 │   │   ├── app.module.ts               # Core app orchestration
 │   │   ├── main.ts                     # Server bootstrap
 │   │   ├── prisma.service.ts           # Prisma client provider
-│   │   └── voice.service.ts            # (Optional extra voice integrations)
+│   │   └── voice.service.ts            # Optional extra voice integrations
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── .env                            # Server secrets & environment
@@ -76,7 +138,7 @@ inventory-ant/
 
 ## 3. Database Schema (`schema.prisma`)
 
-Inventory Ant uses PostgreSQL with Prisma. Below is the complete schema definition:
+Inventory Ant uses PostgreSQL with Prisma. Below is the complete schema definition containing the core models and the multi-tenant SaaS subscription modules:
 
 ```prisma
 datasource db {
@@ -112,10 +174,17 @@ model User {
   validUntil       Float?
   storageUsed      Float?
   lastLogin        Float?
-  adminRole        String?  // "super_admin" | "support_admin" etc.
+  adminRole        String?  // "super_admin" | "support_admin" | "finance_admin" | "tech_admin"
   businessNote     String?
   lowStockThreshold Int      @default(20)
   businessSignature String?
+
+  // Subscription relations
+  subscriptions    Subscription[]
+  usages           FeatureUsage[]
+  planHistory      PlanHistory[]
+  auditEvents      AuditEvent[]
+  invoices         Invoice[]
 }
 
 model Product {
@@ -196,6 +265,9 @@ model Payment {
   status       String   // "success" | "refunded"
   timestamp    Float
   invoiceId    String
+
+  // Relation to new Invoice (backward compatible)
+  invoice      Invoice?
 }
 
 model ActivityLog {
@@ -244,6 +316,231 @@ model ChatMessage {
 
   @@index([threadId])
 }
+
+model Plan {
+  id               String        @id @default(uuid())
+  name             String
+  slug             String        @unique
+  description      String?
+  monthlyPrice     Float
+  yearlyPrice      Float
+  trialDays        Int           @default(0)
+  isActive         Boolean       @default(true)
+  displayOrder     Int           @default(0)
+  currency         String        @default("INR")
+  popularBadge     Boolean       @default(false)
+  recommendedBadge Boolean       @default(false)
+  visibility       Boolean       @default(true)
+  gracePeriod      Int           @default(3)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  features         PlanFeature[]
+  subscriptions    Subscription[]
+  coupons          Coupon[]
+}
+
+model Feature {
+  id          String        @id @default(uuid())
+  code        String        @unique
+  name        String
+  category    String?
+  description String?
+  isActive    Boolean       @default(true)
+  plans       PlanFeature[]
+  usages      FeatureUsage[]
+}
+
+model PlanFeature {
+  id         String   @id @default(uuid())
+  planId     String
+  featureId  String
+  enabled    Boolean  @default(true)
+  limitValue Int?     // null means unlimited
+  metadata   Json?
+  plan       Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  feature    Feature  @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, featureId])
+}
+
+model Subscription {
+  id              String              @id @default(uuid())
+  userId          String
+  planId          String
+  status          String              // "trial" | "active" | "expired" | "cancelled" | "grace" | "suspended"
+  billingCycle    String              // "monthly" | "yearly"
+  startDate       DateTime
+  expiryDate      DateTime
+  renewalDate     DateTime?
+  trialEndsAt     DateTime?
+  graceEndsAt     DateTime?
+  cancelledAt     DateTime?
+  nextBillingDate DateTime?
+  autoRenew       Boolean             @default(true)
+  paymentId       String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan            Plan                @relation(fields: [planId], references: [id], onDelete: Restrict)
+  addons          SubscriptionAddon[]
+  invoices        Invoice[]
+
+  @@index([userId])
+}
+
+model FeatureUsage {
+  id        String   @id @default(uuid())
+  userId    String
+  featureId String
+  used      Int      @default(0)
+  month     Int
+  year      Int
+  resetDate DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature   Feature  @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@index([userId, featureId, month, year])
+}
+
+model Coupon {
+  id              String   @id @default(uuid())
+  code            String   @unique
+  discountType    String   // "percentage" | "fixed"
+  discountValue   Float
+  maximumDiscount Float?
+  minimumAmount   Float?
+  usageLimit      Int?
+  usedCount       Int      @default(0)
+  validFrom       DateTime
+  validTill       DateTime
+  active          Boolean  @default(true)
+  planId          String?
+  plan            Plan?    @relation(fields: [planId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([planId])
+}
+
+model Addon {
+  id           String              @id @default(uuid())
+  name         String
+  description  String?
+  price        Float
+  billingCycle String              // "monthly" | "yearly"
+  active       Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  subscriptions SubscriptionAddon[]
+}
+
+model SubscriptionAddon {
+  id             String       @id @default(uuid())
+  subscriptionId String
+  addonId        String
+  quantity       Int          @default(1)
+  expiryDate     DateTime
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  addon          Addon        @relation(fields: [addonId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, addonId])
+}
+
+model FeatureFlag {
+  id         String   @id @default(uuid())
+  code       String   @unique
+  name       String
+  enabled    Boolean  @default(false)
+  conditions Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model PlanHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  oldPlan   String?
+  newPlan   String
+  reason    String?
+  changedBy String   // "user" | "admin" | "system"
+  timestamp DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AuditEvent {
+  id            String   @id @default(uuid())
+  userId        String?
+  action        String   // e.g. "PLAN_CHANGED", "COUPON_APPLIED", "PAYMENT_SUCCESS", "FEATURE_ENABLED", etc.
+  details       String?
+  performedBy   String
+  ipAddress     String?
+  timestamp     DateTime @default(now())
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  requestId     String?
+  executionTime Float?
+  userAgent     String?
+  device        String?
+
+  @@index([userId])
+}
+
+model Invoice {
+  id            String       @id @default(uuid())
+  userId        String
+  subscriptionId String
+  paymentId     String?      @unique
+  invoiceNumber String       @unique
+  amount        Float
+  tax           Float
+  total         Float
+  status        String       // "paid" | "unpaid" | "void"
+  pdfPath       String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription  Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  payment       Payment?     @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+}
+
+model PaymentWebhookLog {
+  id             String   @id @default(uuid())
+  gateway        String   // "razorpay" | "stripe"
+  gatewayEventId String?  @unique
+  eventType      String
+  payload        Json
+  signature      String?
+  verified       Boolean  @default(false)
+  retryCount     Int      @default(0)
+  status         String   // "processed" | "failed"
+  error          String?
+  createdAt      DateTime @default(now())
+  processedAt    DateTime?
+}
+
+model AiConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DeletedUser {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  name            String
+  phone           String?
+  businessName    String?
+  businessType    String?
+  gstNumber       String?
+  businessAddress String?
+  deletedAt       DateTime @default(now())
+}
 ```
 
 ---
@@ -270,17 +567,41 @@ The core voice command parsing is handled by `ProductsService.processAgentComman
     *   If `action` is `OUT` and quantity > current stock, it prompts: *"Aapke paas sirf X items hain. Kya unhe nikal doon?"*
     *   If quantity > 50, it stages a confirmation flag to prevent huge accidental updates.
 
-### B. Smart Invoice Scanner
-Handled by `ProductsService.processBillWithGemini`.
-1.  **Vision Parsing**: Base64 image payload sent directly to Gemini (`gemini-2.5-flash`) to parse billing grids containing product code, description, quantity, and price.
-2.  **OCR Fallback**: If Gemini fails, it fires local `Tesseract.js` worker on the image. A regex parser runs through the text line-by-line to parse data columns, identifying items, code formats, and numbers.
+### B. Multi-Step AI-Powered Document Scanner
+Located under the `ScannerModal` UI component and backend `products.controller.ts` routes.
+1.  **Selection Mode**: The user selects between file upload (PNG, JPG, PDF) or camera access. The camera feed captures images directly into a Canvas element and converts them to File blobs.
+2.  **Vision Parsing**: Base64 payload is sent to Gemini (`gemini-2.5-flash` with the `parseOnly: true` query) to extract billing tables containing product codes, descriptions, quantities, and prices without modifying the DB directly.
+3.  **OCR Fallback**: If Gemini Vision parsing fails, local `Tesseract.js` worker processes the document and parses text lines to find item code patterns.
+4.  **Verify & Review Phase**: The parsed rows are mapped to a review grid in the frontend. The operator can edit rows, remove incorrect products, adjust stock quantities, update price thresholds, or add rows manually.
+5.  **Synchronization**: Hitting "Sync to Inventory" commits the finalized array to the database via `/api/user/products/confirm-bill`.
 
 ### C. Hinglish Text-to-Speech (TTS) Proxy
 Handled in `/products/tts`. Uses a Google Translate Speech proxy configured with target language setting `tl=hi` (Hindi/Hinglish accent) to return audio streams played by frontend components.
 
 ---
 
-## 5. Environment Configuration
+## 5. Security & SaaS Architecture
+
+1.  **Rate Limiter Guard**:
+    Endpoints are protected by `RateLimiterGuard` utilizing standard configurations for distinct API families:
+    *   *Auth & Passwords*: 10 requests / 60 seconds (IP-based block).
+    *   *AI Scanner & Voice Assistant*: 15 requests / 60 seconds (User-based block).
+    *   *Billing & Payments*: 30 requests / 60 seconds (User-based block).
+    *   *Admin APIs*: 40 requests / 60 seconds (User-based block).
+2.  **Request Sanitization**:
+    Express middleware sanitizes all request body, query params, and route parameters dynamically, replacing HTML symbols (`<` and `>`) to prevent injection attacks.
+3.  **Request Tracing Interceptor**:
+    Appends a unique UUID `requestId` header on all inbound transactions to trace requests through the global logger.
+4.  **Global Exception Filter**:
+    Catches all runtime errors, packages them in standardized JSON formats containing detailed error codes, trace logs, and correlation IDs.
+5.  **User Deletion cascading**:
+    Ensures safe data purging. Admin-driven user deletions delete users completely across child tables (invoices, products, bills, scan histories, activity logs, chat logs, subscriptions) in a single transaction with an optimized 25 seconds execution timeout constraint. A summary is archived in the `DeletedUser` table.
+6.  **SaaS Caching**:
+    Custom in-memory cache system invalidates cache records when plans are updated, features mapped, or plans reordered.
+
+---
+
+## 6. Environment Configuration
 
 ### Frontend Config (`inventory-ant-frontend/.env`)
 ```env
@@ -300,29 +621,33 @@ GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
 BREVO_API_KEY=your-brevo-smtp-key
 SMTP_SENDER=inventoryant@gmail.com
+RAZORPAY_KEY_ID=your-razorpay-key-id
+RAZORPAY_KEY_SECRET=your-razorpay-key-secret
 ```
 
 ---
 
-## 6. How to Recreate & Setup (Step-by-Step)
+## 7. How to Recreate & Setup (Step-by-Step)
 
-### Step 1: Clone and Initialize Backend
+### Step 1: Initialize Database and Backend
 1.  Go to `inventory-ant-backend`.
 2.  Run dependencies installer:
     ```bash
     npm install
     ```
-3.  Configure database:
-    Make sure your local PostgreSQL database matches `DATABASE_URL` in `.env`.
-4.  Generate Prisma Client & Sync Database:
+3.  Generate Prisma Client:
     ```bash
     npx prisma generate
     ```
-    Push database structure:
+4.  Push database structure to your local PostgreSQL instances:
     ```bash
     npx prisma db push
     ```
-5.  Start the dev server:
+5.  Seed the subscription plans, tier permissions, and features mapping:
+    ```bash
+    npx ts-node scripts/seed-subscription.ts
+    ```
+6.  Start the server:
     ```bash
     npm run start:dev
     ```
@@ -345,12 +670,14 @@ SMTP_SENDER=inventoryant@gmail.com
 *   Use local credentials or Google Log In on `http://localhost:5173/login`.
 *   Access settings to upload inventory master CSVs.
 *   Interact with **Ant Agent** on the bottom right or via **Terminal** (`/ant_x` command viewport) for Hinglish command checks (e.g. *"Pencil box me 5 units add karo"*).
+*   Test Super Admin dashboards on `/admin` to verify user details, payment records, and plan updates.
 
 ---
 
-## 7. Crucial Guidelines for Recreating Style & UX
+## 8. Crucial Guidelines for Recreating Style & UX
 
 *   **Responsive Theme Handling**:
-    As defined in App.jsx and MarketingLayout.jsx, the app must respect system `prefers-color-scheme` automatically if no manual preference is saved in local storage.
+     respects system `prefers-color-scheme` automatically if no manual preference is saved in local storage.
 *   **Aesthetics (Glassmorphism & Gradients)**:
     Refer to styles in index.css. Keep borders glass-like (`rgba(255, 255, 255, 0.1)`), use smooth gradients (`bg-gradient-to-br`), and maintain micro-animations using Framer Motion.
+
