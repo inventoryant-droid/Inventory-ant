@@ -470,6 +470,8 @@ export class AdminRepository {
 
       // 15. The User records themselves (tenant + staff)
       await tx.user.deleteMany({ where: { id: { in: allUserIds } } });
+    }, {
+      timeout: 25000, // 25 seconds timeout to allow large deletions on production
     });
   }
 
