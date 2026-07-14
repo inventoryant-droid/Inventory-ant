@@ -174,7 +174,6 @@ export class AdminService {
       code: dto.code.toUpperCase().trim(),
       description: dto.description || null,
       category: dto.category || 'General',
-      groupName: dto.groupName || 'Core',
       isActive: dto.isActive !== undefined ? dto.isActive : true,
     });
 
@@ -192,7 +191,13 @@ export class AdminService {
     const existing = await this.repository.getFeatureById(id);
     if (!existing) throw new NotFoundException('Feature not found');
 
-    const updated = await this.repository.updateFeature(id, dto);
+    const updated = await this.repository.updateFeature(id, {
+      name: dto.name,
+      code: dto.code ? dto.code.toUpperCase().trim() : undefined,
+      description: dto.description,
+      category: dto.category,
+      isActive: dto.isActive,
+    });
 
     await this.repository.createAuditEvent({
       userId: null,
