@@ -69,7 +69,7 @@ export default function AdminPayments() {
 
             <div className="space-y-2 text-xs">
               <div className="flex justify-between border-b pb-1.5">
-                <span className="text-slate-400">Tenant Account:</span>
+                <span className="text-slate-400">User Account:</span>
                 <span className="font-bold text-slate-800">{selectedTxn.userId}</span>
               </div>
               <div className="flex justify-between border-b pb-1.5">
@@ -157,7 +157,7 @@ export default function AdminPayments() {
             <thead className="bg-slate-50 border-b text-slate-400 uppercase text-[10px] tracking-wider font-bold">
               <tr>
                 <th className="p-4">Txn ID</th>
-                <th className="p-4">Tenant Email</th>
+                <th className="p-4">User Email</th>
                 <th className="p-4">Plan Name</th>
                 <th className="p-4 text-right">Amount</th>
                 <th className="p-4 text-center">Status</th>

@@ -1003,7 +1003,8 @@ export class ProductsService {
            .fontSize(7)
            .font('Helvetica-Bold');
         
-        doc.text('PRODUCT', 40, currentY + 7, { width: 280, align: 'left' });
+        doc.text('S.No.', 40, currentY + 7, { width: 30, align: 'center' });
+        doc.text('PRODUCT', 75, currentY + 7, { width: 245, align: 'left' });
         doc.text('SKU', 325, currentY + 7, { width: 100, align: 'left' });
         doc.text('QTY', 435, currentY + 7, { width: 60, align: 'center' });
         doc.text('RATE (Rs.)', 505, currentY + 7, { width: 90, align: 'right' });
@@ -1059,7 +1060,12 @@ export class ProductsService {
         doc.fillColor('#1e293b')
            .fontSize(8)
            .font('Helvetica-Bold')
-           .text(item.name || 'Unnamed Item', 40, rowY + 6, { width: 280, align: 'left', height: 10, ellipsis: true });
+           .text(String(idx + 1), 40, rowY + 6, { width: 30, align: 'center' });
+
+        doc.fillColor('#1e293b')
+           .fontSize(8)
+           .font('Helvetica-Bold')
+           .text(item.name || 'Unnamed Item', 75, rowY + 6, { width: 245, align: 'left', height: 10, ellipsis: true });
 
         doc.fillColor('#1e293b')
            .fontSize(8)

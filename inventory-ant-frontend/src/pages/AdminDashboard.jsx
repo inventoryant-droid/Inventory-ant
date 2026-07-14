@@ -83,7 +83,7 @@ export default function AdminDashboard({ setView }) {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="m-0 text-xl md:text-2xl font-black text-slate-800">SaaS Node Overview</h2>
-          <span className="text-xs text-slate-400 font-bold font-mono">Dynamic System Logs and Tenant allocations</span>
+          <span className="text-xs text-slate-400 font-bold font-mono">Dynamic System Logs and User allocations</span>
         </div>
         <button 
           onClick={handleReload}
@@ -98,7 +98,10 @@ export default function AdminDashboard({ setView }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Total Users */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 flex items-start justify-between shadow-sm">
+        <div 
+          onClick={() => setView('admin_users')}
+          className="bg-white border border-slate-200 rounded-2xl p-5 flex items-start justify-between shadow-sm cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all"
+        >
           <div>
             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total User Accounts</span>
             <h3 className="text-2xl font-black text-slate-800 mt-2 m-0">{metrics.totalUsers}</h3>
@@ -110,7 +113,10 @@ export default function AdminDashboard({ setView }) {
         </div>
 
         {/* Financial MRR */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 flex items-start justify-between shadow-sm">
+        <div 
+          onClick={() => setView('admin_analytics')}
+          className="bg-white border border-slate-200 rounded-2xl p-5 flex items-start justify-between shadow-sm cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all"
+        >
           <div>
             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Monthly Revenue (MRR)</span>
             <h3 className="text-2xl font-black text-indigo-600 mt-2 m-0">₹{metrics.mrr.toLocaleString()}</h3>
@@ -122,7 +128,10 @@ export default function AdminDashboard({ setView }) {
         </div>
 
         {/* Total Sales Paid */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 flex items-start justify-between shadow-sm">
+        <div 
+          onClick={() => setView('admin_analytics')}
+          className="bg-white border border-slate-200 rounded-2xl p-5 flex items-start justify-between shadow-sm cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all"
+        >
           <div>
             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Sales Invoiced</span>
             <h3 className="text-2xl font-black text-slate-800 mt-2 m-0">₹{metrics.totalRevenue.toLocaleString()}</h3>
@@ -134,7 +143,10 @@ export default function AdminDashboard({ setView }) {
         </div>
 
         {/* Expiring Reminders */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 flex items-start justify-between shadow-sm">
+        <div 
+          onClick={() => setView('admin_subscriptions')}
+          className="bg-white border border-slate-200 rounded-2xl p-5 flex items-start justify-between shadow-sm cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all"
+        >
           <div>
             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Expiring in 7 Days</span>
             <h3 className="text-2xl font-black text-slate-800 mt-2 m-0">{metrics.expiringSubscriptions}</h3>
@@ -151,22 +163,22 @@ export default function AdminDashboard({ setView }) {
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
         <h4 className="m-0 text-slate-700 font-extrabold text-[10px] uppercase tracking-wider mb-3">Subscription Tier Distributions</h4>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="p-3 bg-slate-50 border rounded-xl">
-            <span className="text-[9px] uppercase font-bold text-slate-400 block">Free Trial Plan</span>
-            <span className="text-lg font-black text-slate-800 mt-1">{metrics.freeUsers} tenants</span>
-          </div>
-          <div className="p-3 bg-slate-50 border rounded-xl">
-            <span className="text-[9px] uppercase font-bold text-slate-400 block">Basic Plan</span>
-            <span className="text-lg font-black text-slate-800 mt-1">{metrics.silverUsers} tenants</span>
-          </div>
-          <div className="p-3 bg-slate-50 border rounded-xl">
-            <span className="text-[9px] uppercase font-bold text-slate-400 block">Pro Plan</span>
-            <span className="text-lg font-black text-slate-800 mt-1">{metrics.goldUsers} tenants</span>
-          </div>
-          <div className="p-3 bg-slate-50 border rounded-xl">
-            <span className="text-[9px] uppercase font-bold text-slate-400 block">Enterprise Plan</span>
-            <span className="text-lg font-black text-slate-800 mt-1">{metrics.enterpriseUsers} tenants</span>
-          </div>
+          {(adminData?.planDistributions || []).map(dist => (
+            <div 
+              key={dist.id}
+              onClick={() => {
+                localStorage.setItem('admin_users_plan_filter', dist.slug);
+                setView('admin_users');
+              }}
+              className="p-3 bg-slate-50 hover:bg-slate-100/80 border hover:border-indigo-300 rounded-xl cursor-pointer transition-all"
+            >
+              <span className="text-[9px] uppercase font-bold text-slate-400 block">{dist.name}</span>
+              <span className="text-lg font-black text-slate-800 mt-1">{dist.count} users</span>
+            </div>
+          ))}
+          {(!adminData?.planDistributions || adminData.planDistributions.length === 0) && (
+            <div className="text-slate-400 text-xs py-4 col-span-4 text-center">No active pricing plans found.</div>
+          )}
         </div>
       </div>
 
@@ -178,21 +190,22 @@ export default function AdminDashboard({ setView }) {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
-            { id: 'database', label: 'Prisma DB', icon: <Database size={16} />, data: healthServices.database },
-            { id: 'payment', label: 'Razorpay POS', icon: <TrendingUp size={16} />, data: healthServices.payment },
-            { id: 'subscription', label: 'SaaS Engine', icon: <Layers size={16} />, data: healthServices.subscription },
-            { id: 'ai', label: 'Gemini AI Hub', icon: <Zap size={16} />, data: healthServices.ai },
-            { id: 'email', label: 'Brevo Mailer', icon: <Mail size={16} />, data: healthServices.email },
-            { id: 'storage', label: 'File Drive', icon: <HardDrive size={16} />, data: healthServices.storage },
+            { id: 'database', label: 'Prisma DB', icon: <Database size={16} />, data: healthServices.database, targetView: 'admin_system' },
+            { id: 'payment', label: 'Razorpay POS', icon: <TrendingUp size={16} />, data: healthServices.payment, targetView: 'admin_payments' },
+            { id: 'subscription', label: 'SaaS Engine', icon: <Layers size={16} />, data: healthServices.subscription, targetView: 'admin_subscriptions' },
+            { id: 'ai', label: 'Gemini AI Hub', icon: <Zap size={16} />, data: healthServices.ai, targetView: 'admin_ai' },
+            { id: 'email', label: 'Brevo Mailer', icon: <Mail size={16} />, data: healthServices.email, targetView: 'admin_system' },
+            { id: 'storage', label: 'File Drive', icon: <HardDrive size={16} />, data: healthServices.storage, targetView: 'admin_system' },
           ].map(service => {
             const isUp = service.data?.status === 'UP';
             return (
               <div 
                 key={service.id} 
-                className={`p-4 rounded-2xl border text-center flex flex-col items-center justify-center space-y-2 ${
+                onClick={() => setView(service.targetView)}
+                className={`p-4 rounded-2xl border text-center flex flex-col items-center justify-center space-y-2 cursor-pointer hover:shadow-md transition-all ${
                   isUp 
-                    ? 'bg-emerald-50/20 border-emerald-200 text-emerald-800' 
-                    : 'bg-rose-50/20 border-rose-200 text-rose-800'
+                    ? 'bg-emerald-50/20 border-emerald-200 hover:border-emerald-300 text-emerald-800' 
+                    : 'bg-rose-50/20 border-rose-200 hover:border-rose-300 text-rose-800'
                 }`}
               >
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${

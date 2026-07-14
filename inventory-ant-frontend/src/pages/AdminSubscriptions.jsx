@@ -138,7 +138,7 @@ export default function AdminSubscriptions() {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <form onSubmit={handlePlanAssignSubmit} className="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full space-y-4 shadow-2xl text-left">
             <h3 className="m-0 text-base font-extrabold text-slate-800">Manual Plan Override</h3>
-            <span className="text-[10px] text-slate-400 font-mono block">Tenant: {selectedSub.userId}</span>
+            <span className="text-[10px] text-slate-400 font-mono block">User: {selectedSub.user?.name || selectedSub.userId} ({selectedSub.user?.email || 'N/A'})</span>
 
             <div className="space-y-1">
               <label className="text-[10px] uppercase font-bold text-slate-400">Select SaaS Tier</label>
@@ -194,7 +194,7 @@ export default function AdminSubscriptions() {
             <thead className="bg-slate-50 border-b text-slate-400 uppercase text-[10px] tracking-wider font-bold">
               <tr>
                 <th className="p-4">Sub ID</th>
-                <th className="p-4">Tenant Email</th>
+                <th className="p-4">User Email</th>
                 <th className="p-4">Active Plan</th>
                 <th className="p-4">Cycle</th>
                 <th className="p-4 text-center">Status</th>
@@ -206,7 +206,12 @@ export default function AdminSubscriptions() {
               {subscriptions?.map(sub => (
                 <tr key={sub.id} className="hover:bg-slate-50 font-medium text-slate-700">
                   <td className="p-4 font-mono">#{sub.id.slice(0, 8)}</td>
-                  <td className="p-4">{sub.userId}</td>
+                  <td className="p-4">
+                    <div>
+                      <span className="block text-slate-800 font-bold">{sub.user?.name || 'Unknown'}</span>
+                      <span className="block text-[10px] text-slate-400 font-mono font-bold">{sub.user?.email || sub.userId}</span>
+                    </div>
+                  </td>
                   <td className="p-4 font-bold text-slate-800">{sub.plan?.name}</td>
                   <td className="p-4 capitalize">{sub.billingCycle}</td>
                   <td className="p-4 text-center">

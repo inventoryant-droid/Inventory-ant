@@ -3,7 +3,7 @@ import {
   Shield, LayoutDashboard, CreditCard, Users, Tag, 
   Settings as SettingsIcon, Activity, Menu, X, LogOut, 
   ChevronRight, UserCheck, BellRing, RefreshCw, Layers, Sparkles,
-  FileText, Terminal, Database, Key
+  FileText, Terminal, Database, Key, UserCog, BarChart3
 } from 'lucide-react';
 import '../../App.css';
 
@@ -18,10 +18,12 @@ export default function AdminLayout({
 
   const navItems = [
     { id: 'admin_dashboard', label: 'Admin Dashboard', icon: <LayoutDashboard size={18} /> },
+    { id: 'admin_analytics', label: 'Business Analytics', icon: <BarChart3 size={18} /> },
     { id: 'admin_plans', label: 'Plan Management', icon: <Layers size={18} /> },
     { id: 'admin_features', label: 'Feature Matrix', icon: <Activity size={18} /> },
     { id: 'admin_coupons', label: 'Coupon Management', icon: <Tag size={18} /> },
     { id: 'admin_users', label: 'User Management', icon: <Users size={18} /> },
+    { id: 'admin_admins', label: 'Admin Management', icon: <UserCog size={18} /> },
     { id: 'admin_subscriptions', label: 'Subscription Overrides', icon: <CreditCard size={18} /> },
     { id: 'admin_payments', label: 'Payment Gateway Logs', icon: <FileText size={18} /> },
     { id: 'admin_audits', label: 'Audit Logs Center', icon: <Database size={18} /> },
@@ -34,10 +36,12 @@ export default function AdminLayout({
   const getBreadcrumb = () => {
     switch (view) {
       case 'admin_dashboard': return 'Dashboard';
+      case 'admin_analytics': return 'Business Analytics';
       case 'admin_plans': return 'SaaS Pricing Plans';
       case 'admin_features': return 'Features & Matrix';
       case 'admin_coupons': return 'Discount Coupons';
-      case 'admin_users': return 'B2B Tenant Accounts';
+      case 'admin_users': return 'B2B User Accounts';
+      case 'admin_admins': return 'System Administrators';
       case 'admin_subscriptions': return 'Subscription Overrides';
       case 'admin_payments': return 'Payments Invoices logs';
       case 'admin_audits': return 'Audit Logs Center';

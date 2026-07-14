@@ -8,6 +8,8 @@ import {
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import PaymentHistory from './PaymentHistory';
+import { FeatureDemoModal } from '../components/ui/FeatureDemoModal';
+import { AllFeaturesComparisonModal } from '../components/ui/AllFeaturesComparisonModal';
 import '../App.css';
 
 export default function Subscription({ userRole, setView, userProfile }) {
@@ -16,6 +18,8 @@ export default function Subscription({ userRole, setView, userProfile }) {
   const [previewData, setPreviewData] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [selectedDemoFeature, setSelectedDemoFeature] = useState(null);
+  const [isComparisonOpen, setIsComparisonOpen] = useState(false);
 
   // 1. DYNAMIC API QUERIES
   const { data: subData, isLoading: subLoading, error: subError, refetch: refetchSub } = useQuery({
@@ -33,7 +37,7 @@ export default function Subscription({ userRole, setView, userProfile }) {
     mutationFn: () => SubscriptionService.cancelSubscription(cancelReason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentSubscription'] });
-      toast.success('Auto-renewal cancelled successfully.');
+      toast.success('Subscription cancellation & refund requested successfully.');
       setActivePreviewType(null);
       setPreviewData(null);
       setCancelReason('');
@@ -149,7 +153,7 @@ export default function Subscription({ userRole, setView, userProfile }) {
               {activePreviewType === 'cancel' && (
                 <div className="space-y-4">
                   <h3 className="m-0 text-lg font-black text-rose-700 flex items-center gap-2">
-                    <AlertTriangle size={20} /> Confirm Cancellation
+                    <AlertTriangle size={20} /> Request Cancellation & Refund
                   </h3>
                   {previewLoading ? (
                     <div className="flex items-center justify-center py-6 text-slate-400 gap-2">
@@ -158,18 +162,13 @@ export default function Subscription({ userRole, setView, userProfile }) {
                   ) : (
                     <div className="space-y-4">
                       <p className="text-slate-500 text-sm m-0">
-                        {previewData?.message || 'Your auto-renewal will be turned off. You will retain access until expiration.'}
+                        Please select a reason to cancel your premium subscription and request a full refund:
                       </p>
-                      {previewData?.accessEndsAt && (
-                        <div className="bg-rose-50 border border-rose-100 rounded-xl p-3 text-xs text-rose-800 font-bold">
-                          Grace access until: {new Date(previewData.accessEndsAt).toLocaleDateString()}
-                        </div>
-                      )}
                       <div className="space-y-1.5">
                         <label className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Reason for Cancellation</label>
                         <input 
                           type="text" 
-                          placeholder="e.g. Too expensive / Not using it" 
+                          placeholder="e.g. Too expensive / Not using it / Changing tools" 
                           value={cancelReason}
                           onChange={(e) => setCancelReason(e.target.value)}
                           className="w-full p-3 bg-slate-50 border border-slate-200 focus:border-rose-500 rounded-xl outline-none text-sm text-slate-800 font-medium"
@@ -188,7 +187,7 @@ export default function Subscription({ userRole, setView, userProfile }) {
                           className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold border-none cursor-pointer transition-colors flex items-center justify-center gap-1.5"
                         >
                           {cancelMutation.isPending && <Loader2 className="animate-spin" size={12} />}
-                          Cancel Auto-Renew
+                          Submit Refund Request
                         </button>
                       </div>
                     </div>
@@ -272,20 +271,28 @@ export default function Subscription({ userRole, setView, userProfile }) {
                 <div>
                   <h3 className="m-0 text-xl font-black text-slate-800">{plan?.name || 'Standard Tier'}</h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-                    <span className="text-xs font-bold text-slate-500 capitalize">{subscription.status} status</span>
+                    <span className={`w-2.5 h-2.5 rounded-full inline-block ${
+                      subscription.status === 'pending_refund' ? 'bg-amber-500' : 'bg-emerald-500'
+                    }`} />
+                    <span className="text-xs font-bold text-slate-500 capitalize">
+                      {subscription.status === 'pending_refund' ? 'Refund Requested (Under Review)' : `${subscription.status} status`}
+                    </span>
                   </div>
                 </div>
               </div>
               
               {/* Plan Action Trigger Buttons */}
               <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                {subscription.autoRenew ? (
+                {subscription.status === 'pending_refund' ? (
+                  <span className="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 shadow-sm">
+                    <Info size={14} className="text-amber-500" /> Reviewing Refund Request
+                  </span>
+                ) : subscription.autoRenew ? (
                   <button 
                     onClick={handleLoadCancelPreview}
                     className="flex-1 sm:flex-initial py-2.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-100 hover:border-rose-200 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    <Trash2 size={14} /> Cancel Auto-Renew
+                    <Trash2 size={14} /> Cancel & Request Refund
                   </button>
                 ) : (
                   <button 
@@ -337,7 +344,15 @@ export default function Subscription({ userRole, setView, userProfile }) {
 
           {/* Right Column: Limits summary */}
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
-            <h4 className="m-0 text-slate-700 font-extrabold text-xs uppercase tracking-wider">Limits Summary</h4>
+            <div className="flex justify-between items-center mb-6 pb-2 border-b border-slate-100/60">
+              <h4 className="m-0 text-slate-700 font-bold text-xs uppercase tracking-wider">Limits Summary</h4>
+              <button
+                onClick={() => setIsComparisonOpen(true)}
+                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] px-2.5 py-1.5 rounded-xl font-bold uppercase border border-emerald-100/50 cursor-pointer transition-colors focus:outline-none flex items-center gap-1 shadow-sm"
+              >
+                All Features
+              </button>
+            </div>
             <div className="space-y-5">
               {usageData ? Object.entries(usageData).map(([key, usage]) => {
                 const used = usage.used || 0;
@@ -345,8 +360,16 @@ export default function Subscription({ userRole, setView, userProfile }) {
                 const pct = limit ? Math.min(100, (used / limit) * 100) : 0;
                 return (
                   <div key={key} className="space-y-1">
-                    <div className="flex justify-between text-xs font-bold text-slate-600 uppercase tracking-wide">
-                      <span>{key.replace('_', ' ')}</span>
+                    <div className="flex justify-between text-xs font-bold text-slate-600 uppercase tracking-wide items-center">
+                      <span className="flex items-center gap-2">
+                        {key.replace('_', ' ')}
+                        <button 
+                          onClick={() => setSelectedDemoFeature(key)}
+                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase cursor-pointer border border-emerald-100/50 transition-colors focus:outline-none"
+                        >
+                          Show Demo
+                        </button>
+                      </span>
                       <span>{limit === null ? `${used} / Unlimited` : `${used} / ${limit}`}</span>
                     </div>
                     <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
@@ -392,6 +415,14 @@ export default function Subscription({ userRole, setView, userProfile }) {
         <PaymentHistory userProfile={userProfile} isMerged={true} />
       </div>
 
+      <FeatureDemoModal 
+        featureId={selectedDemoFeature} 
+        onClose={() => setSelectedDemoFeature(null)} 
+      />
+      <AllFeaturesComparisonModal
+        isOpen={isComparisonOpen}
+        onClose={() => setIsComparisonOpen(false)}
+      />
     </div>
   );
 }

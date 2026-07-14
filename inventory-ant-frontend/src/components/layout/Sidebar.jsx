@@ -1,10 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import '../../App.css';
 import { LayoutDashboard, TerminalSquare, Receipt, Package, Scan, Settings, BookOpen, LogOut, Menu, X, Shield, Users, Tag, Clock, CreditCard, BarChart3, Bell, FileText } from 'lucide-react';
 import InventoryAntLogo, { InventoryAntLogoMark, InventoryAntLogoText } from '../ui/InventoryAntLogo';
+import { NotificationService } from '../../services/notificationService';
 
 function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, setInventoryFilter, theme, onToggleTheme, userProfile }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  // Fetch announcements/notifications to count unread count
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: NotificationService.getNotifications,
+    staleTime: 15000,
+    enabled: userRole === 'user' || userRole === 'staff',
+  });
+
+  const [readIds, setReadIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('ant_read_notifications') || '[]');
+    } catch (e) {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        setReadIds(JSON.parse(localStorage.getItem('ant_read_notifications') || '[]'));
+      } catch (e) {}
+    };
+    window.addEventListener('notifications-read-updated', handleUpdate);
+    return () => window.removeEventListener('notifications-read-updated', handleUpdate);
+  }, []);
+
+  const unreadCount = React.useMemo(() => {
+    if (!notificationsData) return 0;
+    return notificationsData.filter(n => !readIds.includes(n.id)).length;
+  }, [notificationsData, readIds]);
 
   const navItems = [
     ...(userRole === 'user' ? [
@@ -110,7 +143,7 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
            <div className="absolute bottom-3 right-4 w-2 h-2 rounded-full bg-emerald-500 border border-white"></div>
         </div>
 
-        {/* Navigation Links */}
+         {/* Navigation Links */}
         <nav id="sidebar-nav" role="navigation" aria-label="Main navigation" className="flex flex-col gap-1.5 shrink-0 flex-1">
           {navItems.map(item => {
             const isActive = view === item.id;
@@ -120,12 +153,19 @@ function Sidebar({ setView, view, userId, userRole, onLogout, onSwitchAccount, s
               onClick={() => handleNavClick(item.id)}
               aria-current={isActive ? 'page' : undefined}
               aria-label={item.label}
-              className={`text-left border-none py-2.5 px-4 flex items-center gap-3 rounded-xl text-sm font-bold transition-all duration-200 cursor-pointer whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-emerald-400
+              className={`text-left border-none py-2.5 px-4 flex items-center justify-between rounded-xl text-sm font-bold transition-all duration-200 cursor-pointer whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-emerald-400 w-full
                 ${isActive ? 'bg-emerald-50 text-emerald-800' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700 bg-transparent'}
               `}
             >
-              <span className={isActive ? "text-[#0f9d63]" : "text-slate-400"} aria-hidden="true">{item.icon}</span>
-              <span className="inline">{item.label}</span>
+              <div className="flex items-center gap-3">
+                <span className={isActive ? "text-[#0f9d63]" : "text-slate-400"} aria-hidden="true">{item.icon}</span>
+                <span className="inline">{item.label}</span>
+              </div>
+              {item.id === 'notifications' && unreadCount > 0 && (
+                <span className="bg-rose-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center animate-bounce shadow-sm shrink-0">
+                  {unreadCount}
+                </span>
+              )}
             </button>
           )})}
         </nav>

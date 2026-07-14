@@ -232,6 +232,12 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
   });
   const [editingPlan, setEditingPlan] = useState(null);
 
+  // Mappings state variables
+  const [plansList, setPlansList] = useState([]);
+  const [featuresList, setFeaturesList] = useState([]);
+  const [selectedMappingPlanId, setSelectedMappingPlanId] = useState('');
+  const [mappedFeatures, setMappedFeatures] = useState([]);
+
   // General notification message
   const [message, setMessage] = useState({ text: '', type: '' });
   const [oldPass, setOldPass] = useState('');
@@ -337,6 +343,22 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
         });
         const sysData = await sysRes.json();
         if (sysData && !sysData.statusCode) setSystemMetrics(sysData);
+      }
+
+      // Fetch all plans for mapping select
+      const plansRes = await fetch(`${API_BASE_URL}/api/subscription/plans`);
+      const plansData = await plansRes.json();
+      if (Array.isArray(plansData)) {
+        setPlansList(plansData);
+      }
+
+      // Fetch all features
+      const featuresRes = await fetch(`${API_BASE_URL}/api/admin/features`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const featuresData = await featuresRes.json();
+      if (Array.isArray(featuresData)) {
+        setFeaturesList(featuresData);
       }
 
     } catch (e) {
@@ -612,6 +634,66 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
       showToast('Reset console API error', 'error');
     }
   };
+
+  // Mappings helper functions
+  const fetchPlanFeatures = async (planId) => {
+    if (!planId) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/mappings/${planId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setMappedFeatures(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch plan features:", e);
+    }
+  };
+
+  const handleFeatureToggle = async (planId, featureId, checked, limitValue = null) => {
+    try {
+      if (checked) {
+        const res = await fetch(`${API_BASE_URL}/api/admin/mappings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ planId, featureId, limitValue: limitValue !== null ? Number(limitValue) : null })
+        });
+        if (res.ok) {
+          showToast('Feature limit configuration updated', 'success');
+          fetchPlanFeatures(planId);
+        }
+      } else {
+        const res = await fetch(`${API_BASE_URL}/api/admin/mappings/${planId}/${featureId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          showToast('Feature removed from plan', 'success');
+          fetchPlanFeatures(planId);
+        }
+      }
+    } catch (e) {
+      showToast('Mapping update failed', 'error');
+    }
+  };
+
+  useEffect(() => {
+    if (selectedMappingPlanId) {
+      fetchPlanFeatures(selectedMappingPlanId);
+    } else {
+      setMappedFeatures([]);
+    }
+  }, [selectedMappingPlanId]);
+
+  useEffect(() => {
+    if (plansList.length > 0 && !selectedMappingPlanId) {
+      setSelectedMappingPlanId(plansList[0].id);
+    }
+  }, [plansList]);
 
   // Derived Admin Panel stats computed client side
   const ownerUsers = users.filter(u => u.role === 'user');
@@ -1116,6 +1198,78 @@ export default function AdminPanel({ token, onLogout, userProfile }) {
                   </div>
                 );
               })}
+            </div>
+
+            {/* Plan Feature Mappings Section */}
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-6 text-left">
+              <div>
+                <h3 className="m-0 text-base font-extrabold text-slate-800 flex items-center gap-2">
+                  <Layers size={18} className="text-emerald-600" />
+                  Feature Permissions & Limits mapping
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-1 m-0">Toggle which core modules are active for each subscription tier and define their limits.</p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 border-b border-slate-100 pb-5">
+                <div className="w-full sm:w-64">
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Select Plan Tier</label>
+                  <select
+                    value={selectedMappingPlanId}
+                    onChange={(e) => setSelectedMappingPlanId(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none font-bold text-slate-700"
+                  >
+                    <option value="">Select Plan...</option>
+                    {plansList.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} ({p.slug})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {selectedMappingPlanId ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  {featuresList.map(feat => {
+                    const mapping = mappedFeatures.find(m => m.featureId === feat.id);
+                    const isEnabled = !!mapping;
+                    const limitValue = mapping ? (mapping.limitValue !== null ? mapping.limitValue : '') : '';
+
+                    return (
+                      <div key={feat.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:shadow-sm transition">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <input 
+                            type="checkbox" 
+                            checked={isEnabled}
+                            onChange={(e) => handleFeatureToggle(selectedMappingPlanId, feat.id, e.target.checked)}
+                            className="w-4.5 h-4.5 text-emerald-600 focus:ring-emerald-500 border-slate-200 rounded cursor-pointer mt-1"
+                          />
+                          <div className="flex flex-col text-left">
+                            <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">{feat.name} ({feat.code})</span>
+                            <span className="text-[10px] text-slate-400 font-medium line-clamp-1 mt-0.5">{feat.description || 'Core module feature.'}</span>
+                          </div>
+                        </div>
+
+                        {isEnabled && (
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase">Limit:</span>
+                            <input 
+                              type="number" 
+                              placeholder="Unlimited"
+                              value={limitValue}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? null : Number(e.target.value);
+                                handleFeatureToggle(selectedMappingPlanId, feat.id, true, val);
+                              }}
+                              className="w-24 px-2 py-1 bg-white border border-slate-200 text-xs rounded-lg outline-none font-bold text-slate-700 focus:border-emerald-500"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-slate-400 text-xs text-center py-6">Please select a plan to customize feature permissions.</div>
+              )}
             </div>
           </div>
         )}

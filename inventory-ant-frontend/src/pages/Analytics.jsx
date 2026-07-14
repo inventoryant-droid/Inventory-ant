@@ -8,12 +8,12 @@ import {
 import '../App.css';
 
 export default function Analytics({ products }) {
-  const [dateFilter, setDateFilter] = useState('30days'); // 'today' | '7days' | '30days'
+  const [dateFilter, setDateFilter] = useState('30days'); // '1day' | '7days' | '30days'
 
   // Fetch B2B dynamic analytics from backend
   const { data: analyticsData, isLoading, error, refetch } = useQuery({
-    queryKey: ['analyticsData'],
-    queryFn: AnalyticsService.getAnalytics,
+    queryKey: ['analyticsData', dateFilter],
+    queryFn: () => AnalyticsService.getAnalytics(dateFilter),
     staleTime: 30000,
   });
 
@@ -106,7 +106,7 @@ export default function Analytics({ products }) {
 
         {/* TIME FILTERS */}
         <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
-          {['7days', '30days'].map((filter) => (
+          {['1day', '7days', '30days'].map((filter) => (
             <button
               key={filter}
               onClick={() => setDateFilter(filter)}
@@ -116,7 +116,7 @@ export default function Analytics({ products }) {
                   : 'bg-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
-              {filter === '7days' ? 'Last 7 Days' : 'Last 30 Days'}
+              {filter === '1day' ? 'Today' : filter === '7days' ? 'Last 7 Days' : 'Last 30 Days'}
             </button>
           ))}
         </div>

@@ -29,4 +29,12 @@ export const PaymentService = {
     if (!res.ok) throw new Error(await res.text() || 'Failed to fetch billing history');
     return res.json();
   },
+
+  async downloadInvoicePdf(invoiceId) {
+    const res = await fetch(`${API_BASE_URL}/api/subscription/billing-history/${invoiceId}/download`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to download invoice PDF');
+    return res.blob();
+  },
 };

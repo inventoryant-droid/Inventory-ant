@@ -7,16 +7,30 @@ import {
 } from './admin.dto';
 import { AuditEvent, Plan, Feature, Coupon, FeatureFlag, Subscription, User } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { CacheService } from '../saas/cache/cache.service';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly repository: AdminRepository) {}
+  constructor(
+    private readonly repository: AdminRepository,
+    private readonly cacheService: CacheService,
+  ) {}
 
   // 1. Plan Management
+  async getPlans(): Promise<Plan[]> {
+    return this.repository.getPlans();
+  }
+
   async createPlan(dto: CreatePlanDto, adminEmail: string): Promise<Plan> {
+    const slugLower = dto.slug.toLowerCase().trim();
+    const existing = await this.repository.getPlanBySlug(slugLower);
+    if (existing) {
+      throw new BadRequestException(`A plan with the slug identifier "${dto.slug}" already exists. Please use a unique slug.`);
+    }
+
     const plan = await this.repository.createPlan({
       name: dto.name,
-      slug: dto.slug.toLowerCase().trim(),
+      slug: slugLower,
       description: dto.description || null,
       monthlyPrice: dto.monthlyPrice,
       yearlyPrice: dto.yearlyPrice,
@@ -29,6 +43,12 @@ export class AdminService {
       visibility: dto.visibility !== undefined ? dto.visibility : true,
       gracePeriod: dto.gracePeriod || 3,
     });
+
+    try {
+      await this.cacheService.del('plans:all');
+    } catch (e) {
+      console.error('Failed to clear plans cache:', e);
+    }
 
     await this.repository.createAuditEvent({
       userId: null,
@@ -44,7 +64,46 @@ export class AdminService {
     const existing = await this.repository.getPlanById(id);
     if (!existing) throw new NotFoundException('Plan not found');
 
-    const updated = await this.repository.updatePlan(id, dto);
+    const updateData: any = {};
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.slug !== undefined) updateData.slug = dto.slug.toLowerCase().trim();
+    if (dto.description !== undefined) updateData.description = dto.description || null;
+    if (dto.monthlyPrice !== undefined) updateData.monthlyPrice = dto.monthlyPrice;
+    if (dto.yearlyPrice !== undefined) updateData.yearlyPrice = dto.yearlyPrice;
+    if (dto.trialDays !== undefined) updateData.trialDays = dto.trialDays;
+    
+    // Map DTO field variants to DB column names:
+    if (dto.isActive !== undefined) updateData.isActive = dto.isActive;
+    if ((dto as any).active !== undefined) updateData.isActive = (dto as any).active;
+    
+    if (dto.displayOrder !== undefined) updateData.displayOrder = dto.displayOrder;
+    if (dto.currency !== undefined) updateData.currency = dto.currency;
+    
+    if (dto.popularBadge !== undefined) updateData.popularBadge = dto.popularBadge;
+    if ((dto as any).popular !== undefined) updateData.popularBadge = (dto as any).popular;
+    
+    if (dto.recommendedBadge !== undefined) updateData.recommendedBadge = dto.recommendedBadge;
+    if ((dto as any).recommended !== undefined) updateData.recommendedBadge = (dto as any).recommended;
+    
+    if (dto.visibility !== undefined) updateData.visibility = dto.visibility;
+    
+    if (dto.gracePeriod !== undefined) updateData.gracePeriod = dto.gracePeriod;
+    if ((dto as any).gracePeriodDays !== undefined) updateData.gracePeriod = (dto as any).gracePeriodDays;
+
+    const updated = await this.repository.updatePlan(id, updateData);
+
+    try {
+      await this.cacheService.del('plans:all');
+      await this.cacheService.del(`plans:id:${id}`);
+      if (existing.slug) {
+        await this.cacheService.del(`plans:slug:${existing.slug.toLowerCase().trim()}`);
+      }
+      if (updated.slug) {
+        await this.cacheService.del(`plans:slug:${updated.slug.toLowerCase().trim()}`);
+      }
+    } catch (e) {
+      console.error('Failed to clear plans cache on update:', e);
+    }
 
     await this.repository.createAuditEvent({
       userId: null,
@@ -62,6 +121,16 @@ export class AdminService {
 
     const deleted = await this.repository.deletePlan(id);
 
+    try {
+      await this.cacheService.del('plans:all');
+      await this.cacheService.del(`plans:id:${id}`);
+      if (existing.slug) {
+        await this.cacheService.del(`plans:slug:${existing.slug.toLowerCase().trim()}`);
+      }
+    } catch (e) {
+      console.error('Failed to clear plans cache on delete:', e);
+    }
+
     await this.repository.createAuditEvent({
       userId: null,
       action: 'Plan Deleted',
@@ -77,6 +146,15 @@ export class AdminService {
     for (let i = 0; i < planIds.length; i++) {
       const plan = await this.repository.updatePlan(planIds[i], { displayOrder: i });
       updatedPlans.push(plan);
+    }
+
+    try {
+      await this.cacheService.del('plans:all');
+      for (const id of planIds) {
+        await this.cacheService.del(`plans:id:${id}`);
+      }
+    } catch (e) {
+      console.error('Failed to clear plans cache on reorder:', e);
     }
 
     await this.repository.createAuditEvent({
@@ -160,6 +238,17 @@ export class AdminService {
       limitValue: dto.isUnlimited ? null : (dto.limitValue !== undefined ? dto.limitValue : null),
     });
 
+    try {
+      await this.cacheService.del(`plans:features:${dto.planId}:${dto.featureId}`);
+      await this.cacheService.del('plans:all');
+      await this.cacheService.del(`plans:id:${dto.planId}`);
+      if (plan.slug) {
+        await this.cacheService.del(`plans:slug:${plan.slug.toLowerCase().trim()}`);
+      }
+    } catch (e) {
+      console.error('Failed to clear feature mapping cache on assign:', e);
+    }
+
     await this.repository.createAuditEvent({
       userId: null,
       action: 'Plan Feature Mapping Created',
@@ -173,6 +262,18 @@ export class AdminService {
   async removeFeatureFromPlan(planId: string, featureId: string, adminEmail: string) {
     const mapping = await this.repository.removeFeatureFromPlan(planId, featureId);
 
+    try {
+      await this.cacheService.del(`plans:features:${planId}:${featureId}`);
+      await this.cacheService.del('plans:all');
+      await this.cacheService.del(`plans:id:${planId}`);
+      const plan = await this.repository.getPlanById(planId);
+      if (plan && plan.slug) {
+        await this.cacheService.del(`plans:slug:${plan.slug.toLowerCase().trim()}`);
+      }
+    } catch (e) {
+      console.error('Failed to clear feature mapping cache on remove:', e);
+    }
+
     await this.repository.createAuditEvent({
       userId: null,
       action: 'Plan Feature Mapping Deleted',
@@ -181,6 +282,10 @@ export class AdminService {
     });
 
     return mapping;
+  }
+
+  async getPlanFeatures(planId: string) {
+    return this.repository.getPlanFeatures(planId);
   }
 
   // 4. Coupon Management
@@ -480,6 +585,8 @@ export class AdminService {
       if (stat.feature.code === 'SMART_SCAN') scanCount += stat.used;
     });
 
+    const planDistributions = await this.repository.getPlanDistributions();
+
     return {
       metrics: {
         totalUsers,
@@ -500,6 +607,47 @@ export class AdminService {
         voiceCount,
         scanCount,
       },
+      planDistributions,
     };
+  }
+
+  async getDeletedUsers(): Promise<any[]> {
+    return this.repository.getDeletedUsers();
+  }
+
+  async permanentlyDeleteUser(userId: string, adminEmail: string): Promise<{ success: boolean }> {
+    const user = await this.repository.getUserById(userId);
+    if (!user) throw new NotFoundException('User not found');
+    if (user.role === 'admin') {
+      throw new BadRequestException('Administrator accounts cannot be permanently deleted via user management.');
+    }
+
+    // Save details to DeletedUser table
+    await this.repository.saveDeletedUser({
+      email: user.email,
+      name: user.name,
+      phone: user.phone,
+      businessName: user.businessName,
+      businessType: user.businessType,
+      gstNumber: user.gstNumber,
+      businessAddress: user.businessAddress,
+    });
+
+    // Delete all user logs/inventory/billing/user account completely
+    await this.repository.deleteUserDataCompletely(userId, user.email);
+
+    // Create an audit event
+    await this.repository.createAuditEvent({
+      userId: null,
+      action: 'User Permanently Deleted',
+      details: `User email "${user.email}" and all associated data permanently deleted by admin`,
+      performedBy: adminEmail,
+    });
+
+    return { success: true };
+  }
+
+  async getBusinessAnalytics() {
+    return this.repository.getBusinessAnalytics();
   }
 }

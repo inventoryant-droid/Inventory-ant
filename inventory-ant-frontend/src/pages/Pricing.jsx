@@ -108,6 +108,13 @@ export default function Pricing({ userId, userRole, setView }) {
     mutationFn: ({ planId, code }) => PaymentService.createOrder(planId, billingCycle, code),
     onSuccess: async (data, variables) => {
       const targetPlan = plansData.find(p => p.id === variables.planId);
+
+      if (data.alreadyCaptured) {
+        setIsCheckoutProcessing(true);
+        setCheckoutMessage('Payment successful! Processing activation logs...');
+        pollSubscriptionUpdated(targetPlan.slug);
+        return;
+      }
       
       const options = {
         key: data.keyId,
@@ -415,36 +422,39 @@ export default function Pricing({ userId, userRole, setView }) {
             <thead>
               <tr className="border-b border-slate-200 text-slate-400 uppercase tracking-wider text-[10px]">
                 <th className="py-3 text-left font-bold w-1/3">Features & Limits</th>
-                <th className="py-3 text-center font-bold">Free</th>
-                <th className="py-3 text-center font-bold">Basic</th>
-                <th className="py-3 text-center font-bold">Pro</th>
+                {plansData?.map((plan) => (
+                  <th key={plan.id} className="py-3 text-center font-bold capitalize">
+                    {plan.name}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {compareMatrix?.map((row) => (
                 <tr key={row.featureId} className="hover:bg-slate-50/50">
                   <td className="py-4 font-bold text-slate-800">{row.featureName}</td>
-                  <td className="py-4 text-center">
-                    {row.free?.allowed ? (
-                      <span className="font-bold text-emerald-600">{row.free.limitValue || <Check size={16} className="mx-auto" />}</span>
-                    ) : (
-                      <X size={16} className="text-slate-300 mx-auto" />
-                    )}
-                  </td>
-                  <td className="py-4 text-center">
-                    {row.basic?.allowed ? (
-                      <span className="font-bold text-slate-700">{row.basic.limitValue || <Check size={16} className="mx-auto text-emerald-600" />}</span>
-                    ) : (
-                      <X size={16} className="text-slate-300 mx-auto" />
-                    )}
-                  </td>
-                  <td className="py-4 text-center">
-                    {row.pro?.allowed ? (
-                      <span className="font-bold text-indigo-700">{row.pro.limitValue || <Check size={16} className="mx-auto text-emerald-600" />}</span>
-                    ) : (
-                      <X size={16} className="text-slate-300 mx-auto" />
-                    )}
-                  </td>
+                  {plansData?.map((plan) => {
+                    const planVal = row[plan.slug];
+                    const isAllowed = planVal?.allowed;
+                    const limit = planVal?.limitValue;
+                    return (
+                      <td key={plan.id} className="py-4 text-center">
+                        {isAllowed ? (
+                          <span className={`font-bold ${
+                            plan.slug === 'free'
+                              ? 'text-emerald-600'
+                              : plan.slug === 'basic'
+                              ? 'text-slate-700'
+                              : 'text-indigo-700'
+                          }`}>
+                            {limit !== null && limit !== undefined ? limit : <Check size={16} className="mx-auto text-emerald-600" />}
+                          </span>
+                        ) : (
+                          <X size={16} className="text-slate-300 mx-auto" />
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

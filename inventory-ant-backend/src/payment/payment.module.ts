@@ -6,11 +6,13 @@ import { PaymentRepository } from './payment.repository';
 import { RazorpayProvider } from './providers/razorpay.provider';
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { UsersModule } from '../users/users.module';
+import { SaasModule } from '../saas/saas.module';
 
 @Module({
   imports: [
     forwardRef(() => SubscriptionModule),
     forwardRef(() => UsersModule),
+    forwardRef(() => SaasModule),
   ],
   controllers: [
     PaymentController,

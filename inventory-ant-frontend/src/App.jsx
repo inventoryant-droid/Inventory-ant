@@ -25,7 +25,9 @@ const Profile = lazy(() => import('./pages/Profile'));
 const PaymentHistory = lazy(() => import('./pages/PaymentHistory'));
 
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const AdminAnalytics = lazy(() => import('./pages/AdminAnalytics'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers'));
+const AdminAdmins = lazy(() => import('./pages/AdminAdmins'));
 const AdminSubscriptions = lazy(() => import('./pages/AdminSubscriptions'));
 const AdminFlags = lazy(() => import('./pages/AdminFlags'));
 const AdminPlans = lazy(() => import('./pages/AdminPlans'));
@@ -393,12 +395,14 @@ export default function App() {
             onLogout={handleLogout}
           >
             {(view === 'admin_dashboard' || view === 'admin_panel' || !view.startsWith('admin_')) && <AdminDashboard setView={setView} />}
+            {view === 'admin_analytics' && <AdminAnalytics />}
             {view === 'admin_plans' && <AdminPlans />}
             {view === 'admin_features' && <AdminFeatures />}
             {view === 'admin_coupons' && <AdminCoupons />}
             {view === 'admin_flags' && <AdminFlags />}
             {view === 'admin_ai' && <AdminAIConfig />}
             {view === 'admin_users' && <AdminUsers />}
+            {view === 'admin_admins' && <AdminAdmins />}
             {view === 'admin_subscriptions' && <AdminSubscriptions />}
             {view === 'admin_payments' && <AdminPayments />}
             {view === 'admin_audits' && <AdminAudits />}

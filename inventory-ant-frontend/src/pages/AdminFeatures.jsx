@@ -36,7 +36,7 @@ export default function AdminFeatures() {
   // 2. FETCH PLANS
   const { data: plans, isLoading: plansLoading } = useQuery({
     queryKey: ['adminPlansList'],
-    queryFn: () => fetch(`${API_BASE_URL}/api/subscription/plans`, {
+    queryFn: () => fetch(`${API_BASE_URL}/api/admin/plans`, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('ant_token')}` }
     }).then(res => res.json()),
   });
@@ -61,6 +61,8 @@ export default function AdminFeatures() {
       setIsCreateOpen(false);
       resetForm();
       queryClient.invalidateQueries({ queryKey: ['adminFeaturesList'] });
+      queryClient.invalidateQueries({ queryKey: ['plans'] });
+      queryClient.invalidateQueries({ queryKey: ['plansCompare'] });
     },
     onError: (err) => toast.error(err.message)
   });
@@ -80,6 +82,8 @@ export default function AdminFeatures() {
       setEditingFeature(null);
       resetForm();
       queryClient.invalidateQueries({ queryKey: ['adminFeaturesList'] });
+      queryClient.invalidateQueries({ queryKey: ['plans'] });
+      queryClient.invalidateQueries({ queryKey: ['plansCompare'] });
     },
     onError: (err) => toast.error(err.message)
   });
@@ -96,6 +100,8 @@ export default function AdminFeatures() {
     onSuccess: () => {
       toast.success('Feature removed');
       queryClient.invalidateQueries({ queryKey: ['adminFeaturesList'] });
+      queryClient.invalidateQueries({ queryKey: ['plans'] });
+      queryClient.invalidateQueries({ queryKey: ['plansCompare'] });
     },
     onError: (err) => toast.error(err.message)
   });
@@ -112,6 +118,8 @@ export default function AdminFeatures() {
       setEditingMapping(null);
       queryClient.invalidateQueries({ queryKey: ['adminPlansList'] });
       queryClient.invalidateQueries({ queryKey: ['adminFeaturesList'] });
+      queryClient.invalidateQueries({ queryKey: ['plans'] });
+      queryClient.invalidateQueries({ queryKey: ['plansCompare'] });
     }
   });
 
@@ -124,6 +132,8 @@ export default function AdminFeatures() {
       toast.success('Feature disabled for target plan');
       queryClient.invalidateQueries({ queryKey: ['adminPlansList'] });
       queryClient.invalidateQueries({ queryKey: ['adminFeaturesList'] });
+      queryClient.invalidateQueries({ queryKey: ['plans'] });
+      queryClient.invalidateQueries({ queryKey: ['plansCompare'] });
     }
   });
 
@@ -160,7 +170,9 @@ export default function AdminFeatures() {
   // Check if feature is mapped to plan and return limit value info
   const getMappingInfo = (plan, feature) => {
     if (!plan.features) return null;
-    return plan.features.find(f => f.featureId === feature.id);
+    const mapping = plan.features.find(f => f.featureId === feature.id);
+    if (!mapping || mapping.enabled === false) return null;
+    return mapping;
   };
 
   const handleToggleCell = (plan, feature) => {
@@ -327,6 +339,13 @@ export default function AdminFeatures() {
           <span className="text-xs text-slate-400 font-bold font-mono">Map core modules to different subscription plans and restrict usage counts.</span>
         </div>
         <div className="flex gap-2">
+          <button 
+            onClick={() => refetchFeats()}
+            aria-label="Refresh features"
+            className="p-2.5 border rounded-xl hover:bg-slate-100 cursor-pointer bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          >
+            <RefreshCw size={16} />
+          </button>
           {activeSubTab === 'catalog' && (
             <button 
               onClick={() => setIsCreateOpen(true)}

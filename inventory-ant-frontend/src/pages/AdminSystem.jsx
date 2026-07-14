@@ -18,6 +18,11 @@ export default function AdminSystem() {
   const [overrideAmount, setOverrideAmount] = useState(2999);
   const [overridePlan, setOverridePlan] = useState('pro');
 
+  // Announcement Broadcast states
+  const [annTarget, setAnnTarget] = useState('all');
+  const [annTitle, setAnnTitle] = useState('');
+  const [annMessage, setAnnMessage] = useState('');
+
   // 1. FETCH SYSTEM STATUS METRIC HANDSHAKES
   const { data: status, isLoading, error, refetch } = useQuery({
     queryKey: ['adminSystemStatus'],
@@ -68,6 +73,40 @@ export default function AdminSystem() {
     });
   };
 
+  const handleAnnouncementSubmit = async (e) => {
+    e.preventDefault();
+    if (!annTitle || !annMessage) {
+      toast.error('Title and message are required');
+      return;
+    }
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/notifications`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('ant_token')}`,
+        },
+        body: JSON.stringify({
+          target: annTarget,
+          title: annTitle,
+          message: annMessage
+        })
+      });
+      
+      if (res.ok) {
+        toast.success(`Announcement broadcasted to ${annTarget.toUpperCase()} successfully!`);
+        setAnnTitle('');
+        setAnnMessage('');
+      } else {
+        const errorText = await res.text();
+        throw new Error(errorText || 'Failed to broadcast announcement');
+      }
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
   if (isLoading) return <PageSkeleton rows={2} cols={2} />;
   if (error) return <PageError message="Could not fetch system status." onRetry={refetch} />;
 
@@ -94,16 +133,16 @@ export default function AdminSystem() {
         {/* Support tools columns */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Tenant impersonation */}
+          {/* User impersonation */}
           <div className="bg-white border rounded-3xl p-6 space-y-4 shadow-sm">
             <h3 className="m-0 text-sm font-extrabold text-slate-800 flex items-center gap-2">
-              <HelpCircle className="text-indigo-600" /> Impersonate Tenant Session
+              <HelpCircle className="text-indigo-600" /> Impersonate User Session
             </h3>
-            <p className="text-slate-500 text-xs m-0">Log in securely as the B2B tenant to verify inventory discrepancies or scan logs.</p>
+            <p className="text-slate-500 text-xs m-0">Log in securely as the B2B user to verify inventory discrepancies or scan logs.</p>
             <form onSubmit={handleImpersonate} className="flex gap-2">
               <input 
                 type="email"
-                placeholder="tenant@email.com"
+                placeholder="user@email.com"
                 value={impersonationEmail}
                 onChange={e => setImpersonationEmail(e.target.value)}
                 required
@@ -142,6 +181,50 @@ export default function AdminSystem() {
                 className="py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold border-none cursor-pointer flex items-center justify-center gap-1"
               >
                 Sync Receipt
+              </button>
+            </form>
+          </div>
+
+          {/* Announcement Broadcast Center */}
+          <div className="bg-white border rounded-3xl p-6 space-y-4 shadow-sm">
+            <h3 className="m-0 text-sm font-extrabold text-slate-800 flex items-center gap-2">
+              <Zap className="text-indigo-600" /> Announcement Broadcast Center
+            </h3>
+            <p className="text-slate-500 text-xs m-0">Send global announcements or notifications to selected subscription tiers.</p>
+            <form onSubmit={handleAnnouncementSubmit} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <select
+                  value={annTarget}
+                  onChange={e => setAnnTarget(e.target.value)}
+                  className="p-2.5 bg-slate-50 border rounded-xl outline-none text-xs"
+                >
+                  <option value="all">All Users</option>
+                  <option value="free">Free Plan Users</option>
+                  <option value="basic">Basic Plan Users</option>
+                  <option value="pro">Pro Plan Users</option>
+                </select>
+                <input 
+                  type="text" 
+                  placeholder="Announcement Title" 
+                  value={annTitle}
+                  onChange={e => setAnnTitle(e.target.value)}
+                  required
+                  className="p-2.5 bg-slate-50 border rounded-xl outline-none text-xs sm:col-span-2"
+                />
+              </div>
+              <textarea 
+                placeholder="Announcement Message" 
+                value={annMessage}
+                onChange={e => setAnnMessage(e.target.value)}
+                required
+                rows={3}
+                className="w-full p-2.5 bg-slate-50 border rounded-xl outline-none text-xs resize-none"
+              />
+              <button 
+                type="submit" 
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold border-none cursor-pointer flex items-center justify-center gap-1 transition-colors"
+              >
+                Broadcast Announcement
               </button>
             </form>
           </div>

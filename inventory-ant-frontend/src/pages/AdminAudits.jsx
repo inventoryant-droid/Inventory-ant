@@ -50,7 +50,7 @@ export default function AdminAudits() {
       {/* HEADER */}
       <SectionHeader
         title="Audit Logs Center"
-        subtitle="Real-time system event logging, security handshakes, and access audits across all tenants."
+        subtitle="Real-time system event logging, security handshakes, and access audits across all users."
         icon={Database}
         action={
           <button
@@ -99,7 +99,7 @@ export default function AdminAudits() {
             <thead className="bg-slate-50 border-b text-slate-400 uppercase text-[10px] tracking-wider font-bold">
               <tr>
                 <th className="p-4">Log ID</th>
-                <th className="p-4">Tenant Email</th>
+                <th className="p-4">User Email</th>
                 <th className="p-4">Role</th>
                 <th className="p-4">Action message</th>
                 <th className="p-4">Host IP</th>

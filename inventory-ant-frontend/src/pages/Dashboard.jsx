@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { SubscriptionService } from '../services/subscriptionService';
 import { InventoryService } from '../services/inventoryService';
@@ -7,6 +7,8 @@ import {
   PlusCircle, UserPlus, FileText, Scan, History, RefreshCw, 
   Zap, ChevronRight, XCircle, CheckCircle, Info, Loader2 
 } from 'lucide-react';
+import { FeatureDemoModal } from '../components/ui/FeatureDemoModal';
+import { AllFeaturesComparisonModal } from '../components/ui/AllFeaturesComparisonModal';
 import '../App.css';
 
 const parseQty = (qty) => {
@@ -29,6 +31,8 @@ export default function Dashboard({
   setView, 
   setInventoryFilter 
 }) {
+  const [selectedDemoFeature, setSelectedDemoFeature] = useState(null);
+  const [isComparisonOpen, setIsComparisonOpen] = useState(false);
   
   // 1. REACT QUERY CLIENT SERVER STATES
   const { 
@@ -128,7 +132,7 @@ export default function Dashboard({
   }
 
   // 3. ERROR STATE
-  if (subError || usageError || historyError) {
+  if (subError || usageError) {
     return (
       <div className="p-4 md:p-8 flex-1 flex flex-col items-center justify-center bg-[#F8FAFC] text-center min-h-[500px]">
         <div className="w-16 h-16 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 mb-4">
@@ -154,8 +158,16 @@ export default function Dashboard({
       {/* ─── WELCOME BANNER ─── */}
       <div className="bg-white border border-slate-200 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-5 shadow-[0_2px_10px_rgba(0,0,0,0.01)] transition-all">
         <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left flex-1 min-w-0 w-full">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0 shadow-sm">
-            <Shield size={28} className="sm:w-8 sm:h-8" />
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0 shadow-sm overflow-hidden">
+            {userProfile?.businessLogo ? (
+              <img 
+                src={userProfile.businessLogo} 
+                alt="Business Logo" 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Shield size={28} className="sm:w-8 sm:h-8" />
+            )}
           </div>
           <div className="flex-1 min-w-0 w-full text-left">
             <div className="flex flex-wrap items-center gap-2">
@@ -164,7 +176,7 @@ export default function Dashboard({
               </span>
               {plan && (
                 <span className="text-[9px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                  {plan.name} Plan
+                  {plan.name.toLowerCase().endsWith('plan') ? plan.name : `${plan.name} Plan`}
                 </span>
               )}
             </div>
@@ -183,6 +195,26 @@ export default function Dashboard({
           </button>
         )}
       </div>
+
+      {/* ─── EXPIRY WARNING CARD (Show starting 7 days before) ─── */}
+      {daysRemaining !== null && daysRemaining <= 7 && plan?.slug !== 'free' && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 px-5 py-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm text-xs sm:text-sm font-semibold text-left">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="text-amber-500 shrink-0" size={18} />
+            <div>
+              Your <strong className="capitalize">{plan?.name}</strong> is expiring in <strong className="text-amber-700">{daysRemaining} {daysRemaining === 1 ? 'day' : 'days'}</strong>! Please renew or upgrade to keep your warehouse services running smoothly.
+            </div>
+          </div>
+          {userRole !== 'staff' && (
+            <button 
+              onClick={() => setView('subscription')}
+              className="bg-amber-600 hover:bg-amber-700 text-white text-xs px-3.5 py-2 rounded-xl font-bold border-none cursor-pointer transition-colors shadow-sm whitespace-nowrap self-stretch sm:self-auto text-center"
+            >
+              Renew Now
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ─── LIMIT WARNING CARDS ─── */}
       {usageData?.INVENTORY && usageData.INVENTORY.limitValue && (usageData.INVENTORY.used / usageData.INVENTORY.limitValue) >= 0.8 && (
@@ -285,13 +317,21 @@ export default function Dashboard({
               <h3 className="text-slate-800 m-0 font-extrabold text-base flex items-center gap-2">
                 <Zap className="text-emerald-500" size={18} /> Plan Usage quotas
               </h3>
-              <button 
-                onClick={() => refetchUsage()}
-                className="p-1 hover:bg-slate-100 rounded border-none bg-transparent cursor-pointer text-slate-400 hover:text-slate-600 transition-colors"
-                title="Reload Usages"
-              >
-                <RefreshCw size={14} />
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setIsComparisonOpen(true)}
+                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-100/50 hover:border-emerald-200 cursor-pointer transition-colors focus:outline-none flex items-center gap-1 shadow-sm"
+                >
+                  All Features
+                </button>
+                <button 
+                  onClick={() => refetchUsage()}
+                  className="p-1 hover:bg-slate-100 rounded border-none bg-transparent cursor-pointer text-slate-400 hover:text-slate-600 transition-colors"
+                  title="Reload Usages"
+                >
+                  <RefreshCw size={14} />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-5">
@@ -301,8 +341,16 @@ export default function Dashboard({
                 const pct = limit ? Math.min(100, (used / limit) * 100) : 0;
                 return (
                   <div key={key} className="space-y-1">
-                    <div className="flex justify-between text-xs font-bold text-slate-600 uppercase tracking-wide">
-                      <span>{key.replace('_', ' ')}</span>
+                    <div className="flex justify-between text-xs font-bold text-slate-600 uppercase tracking-wide items-center">
+                      <span className="flex items-center gap-2">
+                        {key.replace('_', ' ')}
+                        <button 
+                          onClick={() => setSelectedDemoFeature(key)}
+                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase cursor-pointer border border-emerald-100/50 transition-colors focus:outline-none"
+                        >
+                          Show Demo
+                        </button>
+                      </span>
                       <span>{limit === null ? `${used} / Unlimited` : `${used} / ${limit}`}</span>
                     </div>
                     <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
@@ -364,7 +412,11 @@ export default function Dashboard({
               ))}
 
               {(!historyData || historyData.length === 0) && (
-                <div className="text-slate-400 text-sm py-4 -ml-4">No recent history events found.</div>
+                <div className="text-slate-400 text-sm py-4 -ml-4">
+                  {historyError 
+                    ? "Activity history is a premium feature. Upgrade to view logs." 
+                    : "No recent history events found."}
+                </div>
               )}
             </div>
           </div>
@@ -477,6 +529,14 @@ export default function Dashboard({
 
       </div>
 
+      <FeatureDemoModal 
+        featureId={selectedDemoFeature} 
+        onClose={() => setSelectedDemoFeature(null)} 
+      />
+      <AllFeaturesComparisonModal
+        isOpen={isComparisonOpen}
+        onClose={() => setIsComparisonOpen(false)}
+      />
     </div>
   );
 }

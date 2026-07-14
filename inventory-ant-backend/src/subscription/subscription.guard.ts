@@ -34,10 +34,17 @@ export class SubscriptionGuard implements CanActivate {
     );
 
     const sub = await this.subscriptionService.getActiveSubscription(targetUserId);
+    const userRecord = await this.repository.findUserById(targetUserId);
+    const isFreePlan = userRecord?.plan === 'free' || !userRecord?.plan;
 
     if (requireSubscription || requireSubscription === undefined) {
-      // By default check subscription status if logged in
-      if (!sub) {
+      // 1a. Admin bypass
+      if (user.role === 'admin') {
+        return true;
+      }
+
+      // By default check subscription status if logged in, unless on free plan
+      if (!sub && !isFreePlan) {
         await this.subscriptionService.logAuditEvent(
           targetUserId,
           'Access Denied',
@@ -50,7 +57,7 @@ export class SubscriptionGuard implements CanActivate {
         });
       }
 
-      if (sub.status === 'expired' || sub.status === 'suspended') {
+      if (sub && !isFreePlan && (sub.status === 'expired' || sub.status === 'suspended')) {
         const isTrial = sub.trialEndsAt !== null;
         const errorCode = isTrial ? 'TRIAL_EXPIRED' : 'PLAN_UPGRADE_REQUIRED';
         const errorMsg = isTrial ? 'Your plan trial has expired' : 'Your subscription has expired, upgrade required';

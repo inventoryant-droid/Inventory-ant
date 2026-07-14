@@ -17,6 +17,14 @@ export const AdminService = {
     return res.json();
   },
 
+  async getBusinessAnalytics() {
+    const res = await fetch(`${API_BASE_URL}/api/admin/analytics`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error(await res.text() || 'Failed to fetch business analytics');
+    return res.json();
+  },
+
   async getUsers(search = '') {
     const query = search ? `?search=${encodeURIComponent(search)}` : '';
     const res = await fetch(`${API_BASE_URL}/api/admin/users${query}`, {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Req, UseGuards, HttpCode, HttpStatus, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, UseGuards, HttpCode, HttpStatus, BadRequestException, Param, Res } from '@nestjs/common';
 import { JwtAuthGuard } from '../users/jwt-auth.guard';
 import { SubscriptionService } from './subscription.service';
 import { SubscriptionRepository } from './subscription.repository';
@@ -71,7 +71,10 @@ export class SubscriptionController {
     const codes = ['INVENTORY', 'STAFF', 'AI_CHAT', 'VOICE_ASSISTANT', 'SMART_SCAN', 'ANALYTICS'];
     const usages: Record<string, any> = {};
     for (const code of codes) {
-      usages[code] = await this.subscriptionService.getUsage(userId, code);
+      const usage = await this.subscriptionService.getUsage(userId, code);
+      if (usage.enabled !== false) {
+        usages[code] = usage;
+      }
     }
     return usages;
   }
@@ -87,10 +90,48 @@ export class SubscriptionController {
   @Get('billing-history')
   async getBillingHistory(@Req() req: any) {
     const userId = req.user.sub;
-    return (this.subscriptionRepository as any).prisma.invoice.findMany({
+    const invoices = await (this.subscriptionRepository as any).prisma.invoice.findMany({
       where: { userId },
+      include: {
+        subscription: {
+          include: {
+            plan: true,
+          },
+        },
+        payment: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
+
+    return invoices.map((inv: any) => ({
+      id: inv.id,
+      invoiceNumber: inv.invoiceNumber,
+      amount: inv.total, // Total paid amount
+      gst: inv.tax,      // GST tax amount
+      discount: 0,       // Default to 0 if not stored
+      couponCode: '',    // Default empty
+      planName: inv.subscription?.plan?.name || 'Standard Plan',
+      billingCycle: inv.subscription?.billingCycle || 'monthly',
+      status: inv.status,
+      paymentId: inv.paymentId,
+      createdAt: inv.createdAt,
+    }));
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('billing-history/:id/download')
+  async downloadInvoicePdf(@Req() req: any, @Param('id') id: string, @Res() res: any) {
+    try {
+      const userId = req.user.sub;
+      const pdfBuffer = await this.subscriptionService.generateSaasInvoicePdf(userId, id);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=Invoice_${id}.pdf`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error('SaaS Invoice PDF download failed:', error);
+      res.status(500).json({ message: 'Failed to download PDF invoice' });
+    }
   }
 
   @UseGuards(JwtAuthGuard)

@@ -422,6 +422,8 @@ export class UsersService implements OnModuleInit {
       expiresIn: '7d'
     });
 
+    await this.logAction(newUser.email, newUser.name, newUser.role, 'Registered a new user account');
+
     return {
       access_token: token,
       refresh_token: refreshToken,
@@ -472,6 +474,7 @@ export class UsersService implements OnModuleInit {
         where: { email: googleEmail.toLowerCase() }
       });
 
+      let isNewGoogleUser = false;
       if (!user) {
         user = await this.prisma.user.create({
           data: {
@@ -489,6 +492,7 @@ export class UsersService implements OnModuleInit {
             storageUsed: Math.round((5 + Math.random() * 20) * 10) / 10
           }
         });
+        isNewGoogleUser = true;
       }
 
       if (!user.active) {
@@ -515,7 +519,11 @@ export class UsersService implements OnModuleInit {
         expiresIn: '7d'
       });
 
-      await this.logAction(user.email, user.name, user.role, `Logged in via Google`);
+      if (isNewGoogleUser) {
+        await this.logAction(user.email, user.name, user.role, `Registered a new account via Google`);
+      } else {
+        await this.logAction(user.email, user.name, user.role, `Logged in via Google`);
+      }
 
       return {
         access_token: token,
@@ -661,13 +669,26 @@ export class UsersService implements OnModuleInit {
     return mapped;
   }
 
-  async getAnalytics(tenantEmail: string, ownerId: string) {
+  async getAnalytics(tenantEmail: string, ownerId: string, range?: string) {
     const products = await this.prisma.product.findMany({
       where: { userId: tenantEmail.toLowerCase() },
     });
 
+    let startTimestamp: number | null = null;
+    const now = Date.now();
+    if (range === '1day') {
+      startTimestamp = now - 24 * 60 * 60 * 1000;
+    } else if (range === '7days') {
+      startTimestamp = now - 7 * 24 * 60 * 60 * 1000;
+    } else if (range === '30days') {
+      startTimestamp = now - 30 * 24 * 60 * 60 * 1000;
+    }
+
     const bills = await this.prisma.bill.findMany({
-      where: { userId: tenantEmail.toLowerCase() },
+      where: { 
+        userId: tenantEmail.toLowerCase(),
+        ...(startTimestamp ? { date: { gte: startTimestamp } } : {})
+      },
     });
 
     const usages = await this.prisma.featureUsage.findMany({
@@ -1312,7 +1333,45 @@ export class UsersService implements OnModuleInit {
       data: { status: 'refunded' }
     });
 
-    await this.logAction(txn.userId, txn.businessName, 'user', `Payment refunded for invoice ${txn.invoiceId} (${txn.amount} INR)`);
+    const user = await this.prisma.user.findUnique({
+      where: { email: txn.userId.toLowerCase() }
+    });
+    if (user) {
+      // 1. Rollback user plan to free
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          plan: 'free',
+          validUntil: null,
+          updatedAt: Date.now()
+        }
+      });
+
+      // 2. Find and expire their subscription
+      const subscription = await this.prisma.subscription.findFirst({
+        where: { userId: user.id, status: { in: ['active', 'pending_refund', 'cancelled'] } },
+        orderBy: { createdAt: 'desc' }
+      });
+      if (subscription) {
+        await this.prisma.subscription.update({
+          where: { id: subscription.id },
+          data: { status: 'expired' }
+        });
+      }
+    }
+
+    // 3. Mark invoice as void/refunded
+    const invoice = await this.prisma.invoice.findFirst({
+      where: { paymentId: txn.id }
+    });
+    if (invoice) {
+      await this.prisma.invoice.update({
+        where: { id: invoice.id },
+        data: { status: 'void' }
+      });
+    }
+
+    await this.logAction(txn.userId, txn.businessName, 'user', `Payment refunded for invoice ${txn.invoiceId || txn.id} (${txn.amount} INR). Plan rolled back to free.`);
     return updated;
   }
 

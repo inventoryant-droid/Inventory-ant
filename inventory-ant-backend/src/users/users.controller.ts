@@ -85,13 +85,6 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
-  @Delete('admin/users/:email')
-  async removeUser(@Param('email') email: string) {
-    return this.usersService.hardDeleteUser(email);
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
   @Put('admin/users/:email/deactivate')
   async deactivateUser(@Param('email') email: string) {
     return this.usersService.deactivateUser(email);
@@ -120,10 +113,10 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Get('user/analytics')
-  async getUserAnalytics(@Req() req: any) {
+  async getUserAnalytics(@Req() req: any, @Query('range') range?: string) {
     const userId = req.user.sub;
     const email = req.user.tenantEmail || req.user.email;
-    return this.usersService.getAnalytics(email, userId);
+    return this.usersService.getAnalytics(email, userId, range);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

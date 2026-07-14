@@ -1035,6 +1035,7 @@ export default function HistoryLogs({ userId, token, userProfile, products }) {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-[#0f9d63] text-white">
+                      <th className="p-3 font-bold text-center w-12">S.No.</th>
                       <th className="p-3 font-bold text-left">PRODUCT</th>
                       <th className="p-3 font-bold text-left">SKU</th>
                       <th className="p-3 font-bold text-center w-20">QTY</th>
@@ -1055,6 +1056,7 @@ export default function HistoryLogs({ userId, token, userProfile, products }) {
                       const skuCode = item.productId || matchingProduct?.productId || '---';
                       return (
                         <tr key={item.id || idx} className="border-b border-slate-100">
+                          <td className="p-3 text-center text-slate-500">{idx + 1}</td>
                           <td className="p-3 font-bold text-slate-800 text-left">{item.name}</td>
                           <td className="p-3 text-slate-600 font-bold font-mono text-[10px] text-left">{skuCode}</td>
                           <td className="p-3 text-center font-bold text-slate-700">{qty}</td>
@@ -1067,17 +1069,17 @@ export default function HistoryLogs({ userId, token, userProfile, products }) {
                     {showGst && (
                       <>
                         <tr className="border-t border-slate-200 bg-slate-50/50 font-bold">
-                          <td colSpan={5} className="p-2 text-right text-slate-500">Subtotal:</td>
+                          <td colSpan={6} className="p-2 text-right text-slate-500">Subtotal:</td>
                           <td className="p-2 text-right font-mono text-slate-700">₹{lastBill.subtotal.toFixed(2)}</td>
                         </tr>
                         <tr className="bg-slate-50/50 font-bold">
-                          <td colSpan={5} className="p-2 text-right text-slate-500">GST:</td>
+                          <td colSpan={6} className="p-2 text-right text-slate-500">GST:</td>
                           <td className="p-2 text-right font-mono text-emerald-600">+₹{lastBill.gst.toFixed(2)}</td>
                         </tr>
                       </>
                     )}
                     <tr className="bg-[#0f9d63] text-white font-bold">
-                      <td colSpan={showGst ? 4 : 3} className="p-3 text-left">
+                      <td colSpan={showGst ? 5 : 4} className="p-3 text-left">
                         TOTAL QTY: {lastBill.items.reduce((acc, item) => acc + (item.quantity || 0), 0)}
                       </td>
                       <td colSpan={2} className="p-3 text-right text-sm">

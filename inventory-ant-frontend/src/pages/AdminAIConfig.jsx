@@ -29,7 +29,14 @@ export default function AdminAIConfig() {
   useEffect(() => {
     if (configs) {
       configs.forEach(cfg => {
-        const val = typeof cfg.value === 'string' ? JSON.parse(cfg.value) : cfg.value;
+        let val = cfg.value;
+        if (typeof cfg.value === 'string') {
+          try {
+            val = JSON.parse(cfg.value);
+          } catch (e) {
+            val = cfg.value;
+          }
+        }
         if (cfg.key === 'GEMINI_MODEL') setModel(val);
         if (cfg.key === 'GEMINI_TEMPERATURE') setTemperature(Number(val));
         if (cfg.key === 'GEMINI_MAX_TOKENS') setMaxTokens(Number(val));
@@ -63,7 +70,7 @@ export default function AdminAIConfig() {
         updateMutation.mutateAsync({ key: 'GEMINI_TEMPERATURE', value: Number(temperature), description: 'Creativity temperature (0.0 to 1.0)' }),
         updateMutation.mutateAsync({ key: 'GEMINI_MAX_TOKENS', value: Number(maxTokens), description: 'Max tokens per conversational output' }),
         updateMutation.mutateAsync({ key: 'OCR_MONTHLY_LIMIT', value: Number(ocrLimit), description: 'Max document OCR scans per B2B owner' }),
-        updateMutation.mutateAsync({ key: 'VOICE_MONTHLY_LIMIT', value: Number(voiceLimit), description: 'Max voice commands per tenant' }),
+        updateMutation.mutateAsync({ key: 'VOICE_MONTHLY_LIMIT', value: Number(voiceLimit), description: 'Max voice commands per user' }),
         updateMutation.mutateAsync({ key: 'DAILY_SCAN_LIMIT', value: Number(dailyScanLimit), description: 'Max scan uploads per day' }),
         updateMutation.mutateAsync({ key: 'AI_COST_PER_CALL', value: Number(costPerCall), description: 'Simulated API cost limit per request' }),
       ]);

@@ -46,7 +46,8 @@ export class UsageService {
     const feature = await this.featureService.getFeatureByCode(featureCode);
     const config = await this.planService.getPlanFeatureConfig(plan.id, feature.id);
 
-    const limitValue = config ? config.limitValue : null;
+    const enabled = config ? config.enabled : false;
+    const limitValue = enabled ? (config ? config.limitValue : null) : 0;
 
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
@@ -75,6 +76,7 @@ export class UsageService {
       used,
       remaining,
       resetDate,
+      enabled,
     };
   }
 

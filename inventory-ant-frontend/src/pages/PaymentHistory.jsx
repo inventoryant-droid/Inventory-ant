@@ -19,8 +19,43 @@ export default function PaymentHistory({ userProfile, isMerged = false }) {
     staleTime: 20000,
   });
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    if (!selectedInvoice) return;
+    try {
+      toast.loading('Preparing document for print...', { id: 'print-pdf' });
+      const blob = await PaymentService.downloadInvoicePdf(selectedInvoice.id);
+      const url = URL.createObjectURL(blob);
+      toast.dismiss('print-pdf');
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.focus();
+      } else {
+        toast.error('Pop-up blocked. Please enable pop-ups to print.');
+      }
+    } catch (err) {
+      toast.dismiss('print-pdf');
+      toast.error('Failed to prepare document for printing.');
+    }
+  };
+
+  const handleDownloadSaas = async (invoice) => {
+    try {
+      toast.loading('Downloading invoice PDF...', { id: 'download-pdf' });
+      const blob = await PaymentService.downloadInvoicePdf(invoice.id);
+      const url = URL.createObjectURL(blob);
+      toast.dismiss('download-pdf');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${invoice.invoiceNumber || 'Invoice'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Invoice PDF downloaded successfully!');
+    } catch (err) {
+      toast.dismiss('download-pdf');
+      toast.error('Failed to download invoice PDF.');
+    }
   };
 
   const handleShare = (invoice) => {
@@ -79,6 +114,13 @@ export default function PaymentHistory({ userProfile, isMerged = false }) {
                   <span className="text-[10px] text-slate-400 font-mono block">Payment ID: {selectedInvoice.paymentId}</span>
                 </div>
                 <div className="flex items-center gap-2 print:hidden">
+                  <button 
+                    onClick={() => handleDownloadSaas(selectedInvoice)}
+                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800 border-none bg-transparent cursor-pointer"
+                    title="Download PDF"
+                  >
+                    <Download size={16} />
+                  </button>
                   <button 
                     onClick={handlePrint}
                     className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800 border-none bg-transparent cursor-pointer"
@@ -233,17 +275,19 @@ export default function PaymentHistory({ userProfile, isMerged = false }) {
                         ? 'bg-emerald-100 text-emerald-800' 
                         : 'bg-rose-100 text-rose-800'
                     }`}>
-                      {invoice.status}
+                      {invoice.status === 'void' || invoice.status === 'refunded' ? 'REFUNDED' : invoice.status}
                     </span>
                   </td>
                   <td className="p-4">{new Date(invoice.createdAt).toLocaleDateString()}</td>
                   <td className="p-4 text-center print:hidden">
-                    <button 
-                      onClick={() => setSelectedInvoice(invoice)}
-                      className="py-1 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors inline-flex items-center gap-1"
-                    >
-                      <Eye size={12} /> View Invoice
-                    </button>
+                    {invoice.status !== 'void' && invoice.status !== 'refunded' && (
+                      <button 
+                        onClick={() => setSelectedInvoice(invoice)}
+                        className="py-1 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors inline-flex items-center gap-1"
+                      >
+                        <Eye size={12} /> View Invoice
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

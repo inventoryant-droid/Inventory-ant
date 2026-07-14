@@ -24,7 +24,33 @@ export class SubscriptionLifecycleService {
   }
 
   async getActiveSubscription(userId: string): Promise<ISubscriptionWithPlan | null> {
-    const sub = await this.getSubscriptionByUser(userId);
+    let sub = await this.getSubscriptionByUser(userId);
+    if (!sub) {
+      // Proactively initialize a default free subscription for this existing user
+      try {
+        const freePlan = await this.planService.getPlanBySlug('free');
+        if (freePlan) {
+          const now = new Date();
+          const oneMonthLater = new Date();
+          oneMonthLater.setMonth(now.getMonth() + 1);
+
+          await this.repository.createSubscription({
+            userId,
+            planId: freePlan.id,
+            status: SUBSCRIPTION_STATUS.ACTIVE,
+            billingCycle: BILLING_CYCLE.MONTHLY,
+            startDate: now,
+            expiryDate: oneMonthLater,
+          });
+          sub = await this.getSubscriptionByUser(userId);
+          if (sub) {
+            await this.syncUserPlanAndValidity(userId);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to auto-initialize default free subscription:', e);
+      }
+    }
     if (!sub) return null;
 
     const now = new Date();
@@ -230,6 +256,7 @@ export class SubscriptionLifecycleService {
         activeSub.id,
         {
           autoRenew: false,
+          status: 'pending_refund',
           cancelledAt: new Date(),
         },
         tx,
@@ -238,7 +265,7 @@ export class SubscriptionLifecycleService {
       await this.auditService.logAuditEvent(
         userId,
         AUDIT_ACTION.SUBSCRIPTION_CANCELLED,
-        `Cancelled auto-renewal. Reason: ${reason || 'Not specified'}`,
+        `Requested subscription cancellation & refund. Reason: ${reason || 'Not specified'}`,
         'user',
         null,
         tx,

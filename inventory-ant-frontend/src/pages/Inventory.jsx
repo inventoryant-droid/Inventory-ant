@@ -2,7 +2,7 @@ import { API_BASE_URL } from '../utils/config';
 import React, { useState, useEffect, useMemo } from 'react';
 import '../App.css';
 import { getExpiryInfo, getExpKey } from '../utils/expiryHelpers';
-import { Printer, Trash2, Edit3, Plus, Terminal, Check, X, CheckCircle, Search, History, User, Clock, ArrowRight, Eye, Package, IndianRupee, Info, ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { Printer, Trash2, Edit3, Plus, Terminal, Check, X, CheckCircle, Search, History, User, Clock, ArrowRight, Eye, Package, IndianRupee, Info, ChevronDown, ChevronUp, Download, AlertTriangle } from 'lucide-react';
 
 const parseQty = (qty) => {
   if (!qty) return 0;
@@ -17,6 +17,7 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
   const [editFormData, setEditFormData] = useState({});
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('success');
 
   const [expandedProductIds, setExpandedProductIds] = useState(new Set());
   const toggleRowExpand = (productId) => {
@@ -53,7 +54,13 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
   const headers = useMemo(() => {
     const found = products.find(p => p._headers);
     if (found && found._headers) {
-      return typeof found._headers === 'string' ? JSON.parse(found._headers) : found._headers;
+      if (typeof found._headers === 'string') {
+        try {
+          return JSON.parse(found._headers);
+        } catch (e) {}
+      } else {
+        return found._headers;
+      }
     }
     return {
       productId: 'SKU Code',
@@ -182,15 +189,42 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
 
   const isFiltered = filterMode && filterMode !== 'all';
 
+  const isSkuDuplicate = useMemo(() => {
+    const sku = (formData.productId || '').toString().trim().toLowerCase();
+    if (!sku) return false;
+    return products.some(p => !p._headers && (p.productId || '').toString().trim().toLowerCase() === sku);
+  }, [formData.productId, products]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.name) return;
+
+    // Check if any standard fields are empty
+    const activeKeys = standardFields.map(f => f.key);
+    const hasEmptyField = activeKeys.some(k => !String(formData[k] || '').trim());
+    if (hasEmptyField) {
+      setToastType('error');
+      setToastMessage('Fill all fields!');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
+
+    // Check if SKU is duplicate
+    if (isSkuDuplicate) {
+      setToastType('error');
+      setToastMessage('SKU is already in inventory!');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
+
     const payload = {
       _timestamp: Date.now(),
       ...formData
     };
     onAddProduct(payload);
     setFormData({}); // Reset the input fields
+    setToastType('success');
     setToastMessage(`${payload.name || 'Item'} registered successfully!`);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
@@ -381,28 +415,45 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
           <h4 className="m-0 mb-4 text-sm font-bold text-slate-800 flex items-center gap-2 text-left">
             <Plus size={16} className="text-emerald-500" /> Quick Register
           </h4>
-          <form onSubmit={handleSubmit} className="flex flex-col md:flex-row flex-wrap gap-3 items-stretch md:items-center">
-            {standardFields.map(f => (
-              <input 
-                key={f.key}
-                type="text" 
-                placeholder={f.placeholder} 
-                value={formData[f.key] || ''} 
-                onChange={e => setFormData({...formData, [f.key]: e.target.value})} 
-                className={`bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-3 py-2.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all w-full md:w-auto flex-1 min-w-[100px]`}
-              />
-            ))}
+          <form onSubmit={handleSubmit} className="flex flex-col md:flex-row flex-wrap gap-3.5 items-start md:items-end w-full">
+            {standardFields.map(f => {
+              const isSkuField = f.key === 'productId';
+              const isThisSkuDuplicate = isSkuField && isSkuDuplicate;
+              return (
+                <div key={f.key} className="flex flex-col gap-1 w-full md:w-auto flex-1 min-w-[120px]">
+                  <input 
+                    type="text" 
+                    placeholder={f.placeholder} 
+                    value={formData[f.key] || ''} 
+                    onChange={e => setFormData({...formData, [f.key]: e.target.value})} 
+                    className={`bg-slate-50 border text-slate-700 text-xs rounded-lg px-3 py-2.5 focus:ring-1 focus:ring-emerald-500 outline-none transition-all w-full ${
+                      isThisSkuDuplicate
+                        ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500 bg-rose-50/10'
+                        : 'border-slate-200 focus:border-emerald-500'
+                    }`}
+                  />
+                  {isThisSkuDuplicate && (
+                    <span className="text-[10px] text-rose-500 font-bold tracking-wide animate-pulse">
+                      SKU is already in inventory
+                    </span>
+                  )}
+                </div>
+              );
+            })}
             {dynamicColumns.map(col => (
-              <input 
-                key={col}
-                type="text" 
-                placeholder={col.toUpperCase()} 
-                value={formData[col] || ''} 
-                onChange={e => setFormData({...formData, [col]: e.target.value})} 
-                className="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-3 py-2.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all w-full md:w-32 flex-1 md:flex-none min-w-[100px]"
-              />
+              <div key={col} className="flex flex-col gap-1 w-full md:w-32 flex-1 md:flex-none min-w-[100px]">
+                <input 
+                  type="text" 
+                  placeholder={col.toUpperCase()} 
+                  value={formData[col] || ''} 
+                  onChange={e => setFormData({...formData, [col]: e.target.value})} 
+                  className="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-3 py-2.5 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all w-full"
+                />
+              </div>
             ))}
-            <button type="submit" className="bg-[#0f9d63] hover:bg-emerald-700 text-white border-none py-2.5 px-6 rounded-lg text-xs font-bold cursor-pointer shadow-sm transition-all whitespace-nowrap w-full md:w-auto mt-2 md:mt-0">Add Item</button>
+            <div className="w-full md:w-auto mt-2 md:mt-0 pb-1">
+              <button type="submit" className="bg-[#0f9d63] hover:bg-emerald-700 text-white border-none py-2.5 px-6 rounded-lg text-xs font-bold cursor-pointer shadow-sm transition-all whitespace-nowrap w-full md:w-auto">Add Item</button>
+            </div>
           </form>
       </div>
 
@@ -719,9 +770,15 @@ function Inventory({ products, token, onAddProduct, onDeleteProduct, onEditProdu
        {/* Beautiful Toast Notification */}
        <div className={`fixed bottom-6 right-1/2 translate-x-1/2 z-50 transition-all duration-300 transform ${showToast ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
          <div className="bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.2)] flex items-center gap-3 border border-slate-700/50 backdrop-blur-md">
-           <div className="bg-emerald-500/20 text-emerald-400 p-1.5 rounded-full">
-             <CheckCircle size={18} />
-           </div>
+           {toastType === 'error' ? (
+             <div className="bg-rose-500/20 text-rose-400 p-1.5 rounded-full">
+               <AlertTriangle size={18} />
+             </div>
+           ) : (
+             <div className="bg-emerald-500/20 text-emerald-400 p-1.5 rounded-full">
+               <CheckCircle size={18} />
+             </div>
+           )}
            <span className="text-sm font-bold tracking-wide">{toastMessage}</span>
          </div>
        </div>

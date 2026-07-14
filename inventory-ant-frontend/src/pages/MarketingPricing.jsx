@@ -1,20 +1,12 @@
 import React, { useEffect } from 'react';
-import { Check, X } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { SubscriptionService } from '../services/subscriptionService';
+import { Check, X, Loader2 } from 'lucide-react';
 import { CtaSection } from '../components/ui/CtaSection';
 import { Reveal } from '../components/ui/MotionPrimitives';
 import { Faq } from '../components/ui/Faq';
 import { PricingPlans } from '../components/ui/PricingPlans';
-
-const comparison = [
-  { feature: 'Store locations', starter: '1', growth: 'Up to 3', business: 'Unlimited' },
-  { feature: 'Products', starter: '100', growth: 'Unlimited', business: 'Unlimited' },
-  { feature: 'GST billing & e-invoice', starter: false, growth: true, business: true },
-  { feature: 'Low-stock alerts', starter: false, growth: true, business: true },
-  { feature: 'Staff users', starter: '1', growth: '5', business: 'Unlimited' },
-  { feature: 'Analytics & reports', starter: 'Basic', growth: 'Advanced', business: 'Advanced+' },
-  { feature: 'API & ERP integrations', starter: false, growth: false, business: true },
-  { feature: 'Support', starter: 'Community', growth: 'Priority email', business: 'Dedicated manager' },
-];
+import { cn } from '../utils/cn';
 
 function Cell({ value }) {
   if (typeof value === 'boolean') {
@@ -36,6 +28,16 @@ export default function MarketingPricing() {
     document.title = "Pricing & Plans — Inventory Ant";
     window.scrollTo(0, 0);
   }, []);
+
+  const { data: plansData, isLoading: plansLoading } = useQuery({
+    queryKey: ['plans'],
+    queryFn: SubscriptionService.getPlans,
+  });
+
+  const { data: compareMatrix, isLoading: compareLoading } = useQuery({
+    queryKey: ['plansCompare'],
+    queryFn: SubscriptionService.getPlansCompare,
+  });
 
   return (
     <>
@@ -68,30 +70,63 @@ export default function MarketingPricing() {
           </h2>
         </Reveal>
 
-        <Reveal className="mt-10 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-left">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900">
-                  <th className="px-6 py-4 font-display text-sm font-bold text-slate-900 dark:text-white">Feature</th>
-                  <th className="px-6 py-4 text-center font-display text-sm font-bold text-slate-900 dark:text-white">Starter</th>
-                  <th className="bg-primary/5 px-6 py-4 text-center font-display text-sm font-bold text-primary">Growth</th>
-                  <th className="px-6 py-4 text-center font-display text-sm font-bold text-slate-900 dark:text-white">Business</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                {comparison.map((row) => (
-                  <tr key={row.feature} className="bg-white dark:bg-slate-900/20">
-                    <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">{row.feature}</td>
-                    <td className="px-6 py-4 text-center"><Cell value={row.starter} /></td>
-                    <td className="bg-primary/5 px-6 py-4 text-center"><Cell value={row.growth} /></td>
-                    <td className="px-6 py-4 text-center"><Cell value={row.business} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {plansLoading || compareLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="animate-spin text-primary" size={32} />
           </div>
-        </Reveal>
+        ) : (
+          <Reveal className="mt-10 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] border-collapse text-left">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-900">
+                    <th className="px-6 py-4 font-display text-sm font-bold text-slate-900 dark:text-white">Feature</th>
+                    {plansData?.map((plan) => {
+                      const isHighlighted = plan.recommendedBadge || plan.popularBadge;
+                      return (
+                        <th
+                          key={plan.id}
+                          className={cn(
+                            "px-6 py-4 text-center font-display text-sm font-bold",
+                            isHighlighted
+                              ? "bg-primary/5 text-primary"
+                              : "text-slate-900 dark:text-white"
+                          )}
+                        >
+                          {plan.name}
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                  {compareMatrix?.map((row) => (
+                    <tr key={row.featureId} className="bg-white dark:bg-slate-900/20">
+                      <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">{row.featureName}</td>
+                      {plansData?.map((plan) => {
+                        const planVal = row[plan.slug];
+                        const isAllowed = planVal?.allowed;
+                        const limit = planVal?.limitValue;
+                        const isHighlighted = plan.recommendedBadge || plan.popularBadge;
+                        return (
+                          <td
+                            key={plan.id}
+                            className={cn(
+                              "px-6 py-4 text-center",
+                              isHighlighted && "bg-primary/5"
+                            )}
+                          >
+                            <Cell value={isAllowed ? (limit !== null && limit !== undefined ? limit : true) : false} />
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Reveal>
+        )}
       </section>
 
       <section className="mx-auto max-w-6xl px-4 pb-8 sm:px-6">

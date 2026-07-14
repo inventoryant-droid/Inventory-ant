@@ -41,7 +41,11 @@ export default function StaffManagement({ token, userProfile, userId }) {
         const data = await res.json();
         setStaffList(data);
       } else {
-        setError('Failed to fetch staff members.');
+        if (res.status === 403) {
+          setError('FEATURE_LOCKED');
+        } else {
+          setError('Failed to fetch staff members.');
+        }
       }
     } catch (e) {
       setError('Network error while loading staff.');
@@ -196,6 +200,28 @@ export default function StaffManagement({ token, userProfile, userId }) {
       setPassLoading(false);
     }
   };
+
+  if (error === 'FEATURE_LOCKED') {
+    return (
+      <div className="p-4 md:p-8 flex-1 flex flex-col items-center justify-center bg-[#F8FAFC] text-center min-h-[500px]">
+        <div className="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 mb-6 shadow-sm border border-indigo-100">
+          <ShieldAlert size={32} />
+        </div>
+        <h2 className="text-xl md:text-2xl font-black text-slate-800">Premium Feature Locked</h2>
+        <p className="text-slate-500 text-sm mt-2 max-w-sm leading-relaxed">
+          Staff Management is not included or enabled in your active subscription tier. Please upgrade your pricing plan to add team members.
+        </p>
+        <div className="flex gap-3 mt-6">
+          <button 
+            onClick={() => { setError(''); fetchStaff(); }} 
+            className="py-2.5 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all border-none cursor-pointer flex items-center gap-1.5"
+          >
+            <RefreshCw size={14} /> Refresh Check
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8 flex-1 overflow-y-auto bg-[#F8FAFC]">

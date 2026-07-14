@@ -22,14 +22,14 @@ export default function Notifications() {
   });
 
   // Local state for read tracking
-  const readNotificationIds = useMemo(() => {
+  const [readNotificationIds, setReadNotificationIds] = useState(() => {
     try {
       const stored = localStorage.getItem('ant_read_notifications');
       return stored ? JSON.parse(stored) : [];
     } catch (e) {
       return [];
     }
-  }, [notificationsData]);
+  });
 
   // Check if a notification is unread
   const isUnread = (id) => !readNotificationIds.includes(id);
@@ -39,8 +39,9 @@ export default function Notifications() {
     if (!notificationsData) return;
     const allIds = notificationsData.map(n => n.id);
     localStorage.setItem('ant_read_notifications', JSON.stringify(allIds));
-    // Trigger local refresh by invalidating query cache
-    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    setReadNotificationIds(allIds);
+    // Dispatch custom event to notify sidebar
+    window.dispatchEvent(new CustomEvent('notifications-read-updated'));
     toast.success('All announcements marked as read');
   };
 
@@ -49,7 +50,9 @@ export default function Notifications() {
     if (readNotificationIds.includes(id)) return;
     const updated = [...readNotificationIds, id];
     localStorage.setItem('ant_read_notifications', JSON.stringify(updated));
-    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    setReadNotificationIds(updated);
+    // Dispatch custom event to notify sidebar
+    window.dispatchEvent(new CustomEvent('notifications-read-updated'));
   };
 
   // Filtered and searched notifications
@@ -251,7 +254,7 @@ export default function Notifications() {
                           {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
-                      <p className="m-0 text-xs text-slate-500 leading-relaxed font-sans">{item.message}</p>
+                      <p className="m-0 text-xs text-slate-500 leading-relaxed font-sans" style={{ wordBreak: 'break-all' }}>{item.message}</p>
                     </div>
                   </div>
                 );

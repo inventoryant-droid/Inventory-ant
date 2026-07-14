@@ -21,4 +21,5 @@ export interface IUsageStatus {
   used: number;
   remaining: number | null;
   resetDate: Date;
+  enabled?: boolean;
 }

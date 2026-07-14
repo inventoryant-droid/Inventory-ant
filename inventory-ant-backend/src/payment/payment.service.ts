@@ -6,6 +6,7 @@ import { SubscriptionLifecycleService } from '../subscription/subscription-lifec
 import { PlanService } from '../subscription/plan.service';
 import { CreatePaymentOrderDto } from './payment.dto';
 import { PAYMENT_STATUS } from './payment.constants';
+import { EmailService } from '../saas/email/email.service';
 
 @Injectable()
 export class PaymentService {
@@ -15,6 +16,7 @@ export class PaymentService {
     private readonly priceService: PriceCalculationService,
     private readonly planService: PlanService,
     private readonly lifecycleService: SubscriptionLifecycleService,
+    private readonly emailService: EmailService,
   ) {}
 
   async createOrder(userId: string, dto: CreatePaymentOrderDto) {
@@ -40,46 +42,80 @@ export class PaymentService {
       dto.couponCode,
     );
 
-    const receiptId = `rcpt_${Math.random().toString(36).substring(2, 12)}`;
-
-    // 2. Call PSP to create order (amount in minor unit, e.g. paisa for INR)
+    const mockPaymentId = `pay_mock_${Math.random().toString(36).substring(2, 10)}`;
+    const mockOrderId = `order_mock_${Math.random().toString(36).substring(2, 10)}`;
     const amountInMinor = Math.round(pricing.finalAmount * 100);
-    const orderResult = await this.provider.createOrder({
-      amount: amountInMinor,
-      currency: pricing.currency,
-      receipt: receiptId,
-      notes: {
-        userId,
-        planId: dto.planId,
-        billingCycle: dto.billingCycle,
-        couponCode: dto.couponCode || '',
-      },
-    });
 
-    // 3. Save order record in Payment table with pending status
-    await this.repository.createPayment({
-      id: orderResult.id,
-      userId: ownerEmail, // Map legacy email
+    // 2. Save order record in Payment table with success status immediately (Razorpay bypassed)
+    const updatedPayment = await this.repository.createPayment({
+      id: mockOrderId,
+      userId: ownerEmail,
       businessName,
-      amount: pricing.finalAmount, // Rs
+      amount: pricing.finalAmount,
       plan: plan.slug,
-      status: 'pending',
-      invoiceId: `PENDING_INV_${orderResult.id}`,
+      status: 'success',
+      invoiceId: `INV_${mockPaymentId}`,
     });
 
-    // 4. Log AuditEvent
-    await this.repository.createAuditEvent({
-      userId,
-      action: 'Order Created',
-      details: `Razorpay Order ${orderResult.id} created for plan ${plan.name} (Amount: Rs.${pricing.finalAmount})`,
-      performedBy: ownerEmail,
+    // 3. Trigger subscription change/activation
+    const activeSub = await this.lifecycleService.changePlan(
+      owner.id,
+      plan.slug,
+      dto.billingCycle || 'monthly',
+    );
+
+    // 4. Generate Invoice
+    const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const gstRate = 0.18;
+    const tax = pricing.finalAmount * (gstRate / (1 + gstRate));
+    const baseAmount = pricing.finalAmount - tax;
+
+    const invoice = await this.repository.createInvoice({
+      userId: owner.id,
+      amount: baseAmount,
+      tax,
+      total: pricing.finalAmount,
+      status: 'paid',
+      subscriptionId: activeSub.id,
+      paymentId: updatedPayment.id,
+      invoiceNumber,
     });
+
+    // Link Invoice back to Payment
+    await this.repository.updatePayment(updatedPayment.id, {
+      invoiceId: invoice.id,
+    });
+
+    // 5. Log AuditEvents
+    await this.repository.createAuditEvent({
+      userId: owner.id,
+      action: 'Payment Success',
+      details: `Payment successful (Mock ID: ${mockPaymentId}) for plan ${plan.name} (Razorpay bypassed)`,
+      performedBy: owner.email,
+    });
+
+    await this.repository.createAuditEvent({
+      userId: owner.id,
+      action: 'Subscription Activation',
+      details: `Subscription activated for plan ${plan.name} (Sub ID: ${activeSub.id})`,
+      performedBy: owner.email,
+    });
+
+    // 6. Send emails!
+    try {
+      await this.emailService.sendPaymentSuccess(ownerEmail, mockOrderId, pricing.finalAmount, plan.name);
+      await this.emailService.sendSubscriptionActivated(ownerEmail, plan.name, activeSub.expiryDate);
+      await this.emailService.sendInvoice(ownerEmail, invoiceNumber, baseAmount, tax, pricing.finalAmount);
+    } catch (mailErr) {
+      console.error('Failed to send activation emails:', mailErr);
+    }
 
     return {
-      orderId: orderResult.id,
-      currency: orderResult.currency,
-      amount: amountInMinor, // Minor unit for frontend Checkout
-      keyId: process.env.RAZORPAY_KEY_ID || 'mock_key_id',
+      orderId: mockOrderId,
+      currency: pricing.currency || 'INR',
+      amount: amountInMinor,
+      keyId: 'mock_key_id',
+      alreadyCaptured: true, // Tell frontend to bypass Razorpay Modal
     };
   }
 

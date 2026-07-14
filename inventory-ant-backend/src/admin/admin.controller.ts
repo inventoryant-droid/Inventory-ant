@@ -19,7 +19,18 @@ export class AdminController {
     return this.adminService.getDashboardAnalytics();
   }
 
+  // 1b. Advanced Business Analytics
+  @Get('analytics')
+  async getBusinessAnalytics() {
+    return this.adminService.getBusinessAnalytics();
+  }
+
   // 2. Plan Management
+  @Get('plans')
+  async getPlans() {
+    return this.adminService.getPlans();
+  }
+
   @Post('plans')
   async createPlan(@Req() req: any, @Body() dto: CreatePlanDto) {
     return this.adminService.createPlan(dto, req.user.email);
@@ -74,6 +85,11 @@ export class AdminController {
     @Param('featureId') featureId: string,
   ) {
     return this.adminService.removeFeatureFromPlan(planId, featureId, req.user.email);
+  }
+
+  @Get('mappings/:planId')
+  async getPlanFeatures(@Param('planId') planId: string) {
+    return this.adminService.getPlanFeatures(planId);
   }
 
   // 5. Coupon Management
@@ -148,6 +164,11 @@ export class AdminController {
     return this.adminService.getUsers(search);
   }
 
+  @Get('deleted-users')
+  async getDeletedUsers() {
+    return this.adminService.getDeletedUsers();
+  }
+
   @Get('users/:id/details')
   async getUserDetails(@Param('id') id: string) {
     return this.adminService.getUserDetails(id);
@@ -165,6 +186,11 @@ export class AdminController {
   @Post('users/:id/force-logout')
   async forceLogout(@Req() req: any, @Param('id') id: string) {
     return this.adminService.forceLogout(id, req.user.email);
+  }
+
+  @Delete('users/:id')
+  async permanentlyDeleteUser(@Req() req: any, @Param('id') id: string) {
+    return this.adminService.permanentlyDeleteUser(id, req.user.email);
   }
 
   // 9. AI Configuration

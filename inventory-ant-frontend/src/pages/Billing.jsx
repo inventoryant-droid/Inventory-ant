@@ -810,6 +810,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                    <table className="w-full text-left text-xs" style={{ borderCollapse: 'collapse', margin: 0, backgroundColor: 'var(--inv-bg)' }}>
                       <thead>
                          <tr style={{ background: '#1e3a8a', borderBottom: '1px solid var(--inv-border)' }}>
+                            <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: '#ffffff', fontSize: '0.7rem', textAlign: 'center', width: '50px' }}>S.No.</th>
                             <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: '#ffffff', fontSize: '0.7rem', textAlign: 'left' }}>PRODUCT</th>
                             <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: '#ffffff', fontSize: '0.7rem', textAlign: 'left' }}>SKU</th>
                             <th style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: '#ffffff', fontSize: '0.7rem', textAlign: 'center', width: '80px' }}>QTY</th>
@@ -830,6 +831,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                             const skuCode = item.productId || matchingProduct?.productId || '---';
                             return (
                                <tr key={item.id || idx} style={{ borderBottom: '1px solid var(--inv-border)' }}>
+                                  <td style={{ padding: '0.85rem 1rem', color: 'var(--inv-text-secondary)', textAlign: 'center', fontSize: '0.75rem' }}>{idx + 1}</td>
                                   <td style={{ padding: '0.85rem 1rem', fontWeight: 'bold', color: 'var(--inv-text-primary)', textAlign: 'left' }}>{item.name}</td>
                                   <td style={{ padding: '0.85rem 1rem', color: 'var(--inv-text-primary)', fontWeight: 'bold', fontSize: '0.75rem', fontFamily: 'monospace', textAlign: 'left' }}>{skuCode}</td>
                                   <td style={{ padding: '0.85rem 1rem', textAlign: 'center', fontWeight: 'bold', color: 'var(--inv-text-primary)' }}>{qty}</td>
@@ -842,20 +844,20 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                          {showGst && (
                               <>
                                  <tr style={{ borderTop: '1px solid var(--inv-border)', fontWeight: 'bold', backgroundColor: 'var(--inv-bg-alt)' }}>
-                                    <td colSpan={5} style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', color: 'var(--inv-text-secondary)' }}>Subtotal:</td>
+                                    <td colSpan={6} style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', color: 'var(--inv-text-secondary)' }}>Subtotal:</td>
                                     <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--inv-text-secondary)' }}>₹{lastBill.subtotal.toFixed(2)}</td>
                                  </tr>
                                  <tr style={{ fontWeight: 'bold', backgroundColor: 'var(--inv-bg-alt)' }}>
-                                    <td colSpan={5} style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', color: 'var(--inv-text-secondary)' }}>GST ({lastBill.subtotal > 0 ? Math.round((lastBill.gst / lastBill.subtotal) * 100) : 18}%):</td>
+                                    <td colSpan={6} style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', color: 'var(--inv-text-secondary)' }}>GST ({lastBill.subtotal > 0 ? Math.round((lastBill.gst / lastBill.subtotal) * 100) : 18}%):</td>
                                     <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontSize: '0.75rem', fontFamily: 'monospace', color: '#10B981' }}>+₹{lastBill.gst.toFixed(2)}</td>
                                  </tr>
                               </>
                            )}
                          <tr style={{ background: '#1e3a8a', fontWeight: 'bold', borderTop: '2px solid var(--inv-border)', color: '#ffffff' }}>
-                            <td colSpan={showGst ? 4 : 3} style={{ padding: '1rem', textAlign: 'left' }}>
+                            <td colSpan={showGst ? 5 : 4} style={{ padding: '1rem', textAlign: 'left' }}>
                                TOTAL QTY: {lastBill.items.reduce((acc, item) => acc + (item.quantity || 0), 0)}
                             </td>
-                            <td colSpan={showGst ? 2 : 2} style={{ padding: '1rem', textAlign: 'right', fontSize: '0.85rem' }}>
+                            <td colSpan={2} style={{ padding: '1rem', textAlign: 'right', fontSize: '0.85rem' }}>
                                TOTAL: <span style={{ fontSize: '1rem', fontFamily: 'monospace' }}>₹{(showGst ? lastBill.total : lastBill.subtotal)?.toFixed(2)}</span>
                             </td>
                          </tr>
