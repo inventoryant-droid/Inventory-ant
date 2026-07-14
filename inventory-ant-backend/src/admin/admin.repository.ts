@@ -428,6 +428,9 @@ export class AdminRepository {
       const allUserIds = [userId, ...staffUsers.map(u => u.id)];
 
       // Delete child associations for all emails (tenant + staff)
+      // 0. Invoices (child of Payments & Subscriptions - delete first to prevent foreign key constraint violations)
+      await tx.invoice.deleteMany({ where: { userId: { in: allUserIds } } });
+
       // 1. Products
       await tx.product.deleteMany({ where: { userId: { in: allEmails } } });
       // 2. Bills
@@ -464,8 +467,6 @@ export class AdminRepository {
       await tx.planHistory.deleteMany({ where: { userId: { in: allUserIds } } });
       // 13. Audit events
       await tx.auditEvent.deleteMany({ where: { userId: { in: allUserIds } } });
-      // 14. Invoices
-      await tx.invoice.deleteMany({ where: { userId: { in: allUserIds } } });
 
       // 15. The User records themselves (tenant + staff)
       await tx.user.deleteMany({ where: { id: { in: allUserIds } } });
