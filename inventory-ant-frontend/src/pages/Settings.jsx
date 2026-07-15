@@ -18,7 +18,7 @@ export default function Settings({ userId, token, onScanResult, userRole, userPr
   const logoInputRef = useRef(null);
   const signatureInputRef = useRef(null);
   
-  const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'business' | 'security' | 'preferences' | 'notifications'
+  const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'security' | 'preferences' | 'notifications'
 
   if (userRole === 'staff') {
     return (
@@ -32,52 +32,23 @@ export default function Settings({ userId, token, onScanResult, userRole, userPr
   }
 
   // ==========================================
-  // TAB 1 & 2: PROFILE & BUSINESS FORM STATES
+  // INVENTORY PREFERENCES STATE
   // ==========================================
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [timezone, setTimezone] = useState('Asia/Kolkata');
-  const [currency, setCurrency] = useState('INR');
-  
-  const [businessName, setBusinessName] = useState('');
-  const [businessAddress, setBusinessAddress] = useState('');
-  const [gstNumber, setGstNumber] = useState('');
-  const [logoBase64, setLogoBase64] = useState('');
-  const [signatureBase64, setSignatureBase64] = useState('');
-  const [showPhoneOnBills, setShowPhoneOnBills] = useState(true);
-  const [showEmailOnBills, setShowEmailOnBills] = useState(true);
+  const [lowStockThreshold, setLowStockThreshold] = useState(20);
 
   // Initialize from userProfile prop
   useEffect(() => {
-    if (userProfile) {
-      setName(userProfile.name || '');
-      setPhone(userProfile.phone || '');
-      setBusinessName(userProfile.businessName || '');
-      setBusinessAddress(userProfile.businessAddress || '');
-      setGstNumber(userProfile.gstNumber || '');
-      setLogoBase64(userProfile.businessLogo || '');
-      setSignatureBase64(userProfile.businessSignature || '');
-      setShowPhoneOnBills(userProfile.showPhoneOnBills !== false);
-      setShowEmailOnBills(userProfile.showEmailOnBills !== false);
-      
-      // Load local preferences from localStorage
-      const tz = localStorage.getItem('ant_pref_timezone');
-      const cur = localStorage.getItem('ant_pref_currency');
-      if (tz) setTimezone(tz);
-      if (cur) setCurrency(cur);
+    if (userProfile && userProfile.lowStockThreshold !== undefined && userProfile.lowStockThreshold !== null) {
+      setLowStockThreshold(Number(userProfile.lowStockThreshold));
     }
   }, [userProfile]);
 
-  // Update Profile Mutation
+  // Update Threshold Mutation
   const [profileSaving, setProfileSaving] = useState(false);
 
-  const handleUpdateProfile = async (e) => {
+  const handleUpdateThreshold = async (e) => {
     if (e) e.preventDefault();
     setProfileSaving(true);
-    
-    // Save local preferences
-    localStorage.setItem('ant_pref_timezone', timezone);
-    localStorage.setItem('ant_pref_currency', currency);
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/user/profile`, {
@@ -87,45 +58,20 @@ export default function Settings({ userId, token, onScanResult, userRole, userPr
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          name,
-          phone,
-          businessName,
-          businessAddress,
-          gstNumber,
-          businessLogo: logoBase64,
-          businessSignature: signatureBase64,
-          showPhoneOnBills,
-          showEmailOnBills,
+          lowStockThreshold: Number(lowStockThreshold),
         })
       });
       
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Profile update failed');
+      if (!res.ok) throw new Error(data.message || 'Update failed');
       
-      toast.success('Settings updated successfully');
-      if (onProfileUpdate) onProfileUpdate();
+      toast.success('Low stock threshold updated successfully');
+      if (onProfileUpdate) onProfileUpdate(data);
     } catch (err) {
       toast.error(err.message);
     } finally {
       setProfileSaving(false);
     }
-  };
-
-  // Image Upload helpers
-  const handleLogoUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => setLogoBase64(event.target.result);
-    reader.readAsDataURL(file);
-  };
-
-  const handleSignatureUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => setSignatureBase64(event.target.result);
-    reader.readAsDataURL(file);
   };
 
   // ==========================================
@@ -308,10 +254,9 @@ export default function Settings({ userId, token, onScanResult, userRole, userPr
         {/* Left Side Tab Navigation */}
         <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm flex flex-row lg:flex-col gap-1 overflow-x-auto">
           {[
-            { id: 'profile', label: 'User Profile', icon: <User size={16} /> },
-            { id: 'business', label: 'Business info', icon: <Building size={16} /> },
+            { id: 'inventory', label: 'Inventory Preferences', icon: <PrefIcon size={16} /> },
             { id: 'security', label: 'Security & 2FA', icon: <Shield size={16} /> },
-            { id: 'preferences', label: 'Data Management', icon: <PrefIcon size={16} /> },
+            { id: 'preferences', label: 'Data Management', icon: <Trash2 size={16} /> },
             { id: 'notifications', label: 'Notifications', icon: <Bell size={16} /> },
           ].map(tab => (
             <button
@@ -331,59 +276,25 @@ export default function Settings({ userId, token, onScanResult, userRole, userPr
         {/* Right Side Panel Content */}
         <div className="lg:col-span-3 bg-white border border-slate-200 rounded-3xl p-6 md:p-8 shadow-sm">
           
-          {/* ─── TAB 1: PROFILE ─── */}
-          {activeTab === 'profile' && (
-            <form onSubmit={handleUpdateProfile} className="space-y-6">
+          {/* ─── TAB: INVENTORY PREFERENCES ─── */}
+          {activeTab === 'inventory' && (
+            <form onSubmit={handleUpdateThreshold} className="space-y-6">
               <h3 className="m-0 text-base font-extrabold text-slate-800 border-b pb-3 flex items-center gap-2">
-                <User size={18} className="text-emerald-500" /> User Profile Information
+                <PrefIcon size={18} className="text-emerald-500" /> Inventory Preferences
               </h3>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">Owner Name</label>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Low Stock Alert Threshold</label>
                   <input 
-                    type="text" 
-                    value={name} 
-                    onChange={e => setName(e.target.value)}
+                    type="number" 
+                    min="1"
+                    value={lowStockThreshold} 
+                    onChange={e => setLowStockThreshold(e.target.value)}
                     required
                     className="w-full p-3 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl outline-none text-xs sm:text-sm font-medium"
                   />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">Mobile Phone</label>
-                  <input 
-                    type="text" 
-                    value={phone} 
-                    onChange={e => setPhone(e.target.value)}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl outline-none text-xs sm:text-sm font-medium"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">System Timezone</label>
-                  <select 
-                    value={timezone}
-                    onChange={e => setTimezone(e.target.value)}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl outline-none text-xs sm:text-sm font-medium"
-                  >
-                    <option value="Asia/Kolkata">India (IST) - UTC +5:30</option>
-                    <option value="America/New_York">United States (EST) - UTC -5:00</option>
-                    <option value="Europe/London">London (GMT) - UTC +0:00</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">Base Currency</label>
-                  <select 
-                    value={currency}
-                    onChange={e => setCurrency(e.target.value)}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl outline-none text-xs sm:text-sm font-medium"
-                  >
-                    <option value="INR">Indian Rupee (₹)</option>
-                    <option value="USD">US Dollar ($)</option>
-                    <option value="GBP">British Pound (£)</option>
-                  </select>
+                  <p className="text-[10px] text-slate-400 m-0">Products with stock at or below this limit will trigger low stock alerts.</p>
                 </div>
               </div>
 
@@ -393,112 +304,7 @@ export default function Settings({ userId, token, onScanResult, userRole, userPr
                   disabled={profileSaving}
                   className="py-3 px-6 bg-[#0f9d63] hover:bg-emerald-700 disabled:bg-[#0f9d63]/75 text-white font-bold text-xs rounded-xl border-none cursor-pointer flex items-center gap-1.5 shadow-sm transition-colors"
                 >
-                  {profileSaving && <Loader2 className="animate-spin" size={12} />} Save Changes
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* ─── TAB 2: BUSINESS INFO ─── */}
-          {activeTab === 'business' && (
-            <form onSubmit={handleUpdateProfile} className="space-y-6">
-              <h3 className="m-0 text-base font-extrabold text-slate-800 border-b pb-3 flex items-center gap-2">
-                <Building size={18} className="text-emerald-500" /> B2B Entity Configuration
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">Registered Business Name</label>
-                  <input 
-                    type="text" 
-                    value={businessName} 
-                    onChange={e => setBusinessName(e.target.value)}
-                    required
-                    className="w-full p-3 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl outline-none text-xs sm:text-sm font-medium"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">GST Registration Number</label>
-                  <input 
-                    type="text" 
-                    value={gstNumber} 
-                    onChange={e => setGstNumber(e.target.value)}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl outline-none text-xs sm:text-sm font-medium"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-400">Registered Business Address</label>
-                <textarea 
-                  rows={2}
-                  value={businessAddress}
-                  onChange={e => setBusinessAddress(e.target.value)}
-                  required
-                  className="w-full p-3 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl outline-none text-xs sm:text-sm font-medium"
-                />
-              </div>
-
-              {/* Logo and Signature upload segment */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
-                <div className="space-y-2 text-left">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Brand Business Logo</span>
-                  {logoBase64 ? (
-                    <div className="relative w-32 h-20 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center p-2">
-                      <img src={logoBase64} className="max-w-full max-h-full object-contain" alt="Logo" />
-                      <button 
-                        type="button" 
-                        onClick={() => setLogoBase64('')}
-                        className="absolute top-1 right-1 p-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded border-none cursor-pointer"
-                      >
-                        <Trash2 size={10} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div 
-                      onClick={() => logoInputRef.current.click()}
-                      className="w-32 h-20 border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-xl flex flex-col items-center justify-center text-slate-400 cursor-pointer transition-colors"
-                    >
-                      <UploadCloud size={20} />
-                      <span className="text-[9px] font-bold mt-1">Upload Logo</span>
-                    </div>
-                  )}
-                  <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-                </div>
-
-                <div className="space-y-2 text-left">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Authorized Signature (Signatory)</span>
-                  {signatureBase64 ? (
-                    <div className="relative w-32 h-20 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center p-2">
-                      <img src={signatureBase64} className="max-w-full max-h-full object-contain" alt="Signature" />
-                      <button 
-                        type="button" 
-                        onClick={() => setSignatureBase64('')}
-                        className="absolute top-1 right-1 p-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded border-none cursor-pointer"
-                      >
-                        <Trash2 size={10} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div 
-                      onClick={() => signatureInputRef.current.click()}
-                      className="w-32 h-20 border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-xl flex flex-col items-center justify-center text-slate-400 cursor-pointer transition-colors"
-                    >
-                      <UploadCloud size={20} />
-                      <span className="text-[9px] font-bold mt-1">Upload Sign</span>
-                    </div>
-                  )}
-                  <input ref={signatureInputRef} type="file" accept="image/*" onChange={handleSignatureUpload} className="hidden" />
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-4">
-                <button 
-                  type="submit" 
-                  disabled={profileSaving}
-                  className="py-3 px-6 bg-[#0f9d63] hover:bg-emerald-700 text-white font-bold text-xs rounded-xl border-none cursor-pointer flex items-center gap-1.5 shadow-sm transition-colors"
-                >
-                  {profileSaving && <Loader2 className="animate-spin" size={12} />} Save Details
+                  {profileSaving && <Loader2 className="animate-spin" size={12} />} Save Preferences
                 </button>
               </div>
             </form>

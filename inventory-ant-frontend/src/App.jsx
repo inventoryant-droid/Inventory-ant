@@ -347,7 +347,7 @@ export default function App() {
                 {view === 'guide' && <UserGuide />}
                 {view === 'pricing' && <Pricing userId={userId} userRole={userRole} setView={setView} />}
                 {view === 'subscription' && <Subscription userRole={userRole} setView={setView} userProfile={userProfile} />}
-                {view === 'analytics' && <Analytics products={products} />}
+                {view === 'analytics' && <Analytics products={products} userProfile={userProfile} />}
                 {view === 'notifications' && <Notifications />}
               </DashboardLayout>
 

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import '../App.css';
 
-export default function Analytics({ products }) {
+export default function Analytics({ products, userProfile }) {
   const [dateFilter, setDateFilter] = useState('30days'); // '1day' | '7days' | '30days'
 
   // Fetch B2B dynamic analytics from backend
@@ -20,9 +20,10 @@ export default function Analytics({ products }) {
   // Calculate local product details
   const totalSkus = products.length;
   const outOfStock = products.filter(p => parseInt(p.quantity || '0', 10) === 0).length;
+  const threshold = userProfile?.lowStockThreshold ?? 20;
   const lowStock = products.filter(p => {
     const q = parseInt(p.quantity || '0', 10);
-    return q > 0 && q <= 20; // default threshold
+    return q > 0 && q <= threshold;
   }).length;
 
   // Calculate total inventory valuation
@@ -124,46 +125,46 @@ export default function Analytics({ products }) {
 
       {/* KPI METRICS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex items-start justify-between">
-          <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Gross Sales Revenue</span>
-            <h3 className="text-3xl font-black text-slate-800 mt-2 m-0">₹{sales.totalRevenue.toLocaleString()}</h3>
-            <span className="text-xs text-slate-500 mt-1 block">{sales.totalOrders} total sales receipts</span>
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex items-start justify-between min-w-0">
+          <div className="min-w-0 mr-2">
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block truncate">Gross Sales Revenue</span>
+            <h3 className="text-2xl sm:text-3xl font-black text-slate-800 mt-2 m-0 truncate" title={`₹${sales.totalRevenue.toLocaleString()}`}>₹{sales.totalRevenue.toLocaleString()}</h3>
+            <span className="text-xs text-slate-500 mt-1 block truncate">{sales.totalOrders} total sales receipts</span>
           </div>
           <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0">
             <DollarSign size={24} />
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex items-start justify-between">
-          <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Gross Profit margin</span>
-            <h3 className="text-3xl font-black text-[#0f9d63] mt-2 m-0">₹{sales.totalProfit.toLocaleString()}</h3>
-            <span className="text-xs text-emerald-600 font-semibold mt-1 block">Margin stable</span>
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex items-start justify-between min-w-0">
+          <div className="min-w-0 mr-2">
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block truncate">Gross Profit margin</span>
+            <h3 className="text-2xl sm:text-3xl font-black text-[#0f9d63] mt-2 m-0 truncate" title={`₹${sales.totalProfit.toLocaleString()}`}>₹{sales.totalProfit.toLocaleString()}</h3>
+            <span className="text-xs text-emerald-600 font-semibold mt-1 block truncate">Margin stable</span>
           </div>
           <div className="w-12 h-12 bg-emerald-50 text-[#0f9d63] rounded-2xl flex items-center justify-center shrink-0">
             <TrendingUp size={24} />
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex items-start justify-between">
-          <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Inventory Valuation</span>
-            <h3 className="text-3xl font-black text-slate-800 mt-2 m-0">₹{inventoryValuation.toLocaleString()}</h3>
-            <span className="text-xs text-slate-500 mt-1 block">{totalSkus} SKUs in stock</span>
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex items-start justify-between min-w-0">
+          <div className="min-w-0 mr-2">
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block truncate">Inventory Valuation</span>
+            <h3 className="text-2xl sm:text-3xl font-black text-slate-800 mt-2 m-0 truncate" title={`₹${inventoryValuation.toLocaleString()}`}>₹{inventoryValuation.toLocaleString()}</h3>
+            <span className="text-xs text-slate-500 mt-1 block truncate">{totalSkus} SKUs in stock</span>
           </div>
           <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
             <Box size={24} />
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex items-start justify-between">
-          <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Warehouse Health</span>
-            <h3 className="text-3xl font-black text-slate-800 mt-2 m-0">
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex items-start justify-between min-w-0">
+          <div className="min-w-0 mr-2">
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block truncate">Warehouse Health</span>
+            <h3 className="text-2xl sm:text-3xl font-black text-slate-800 mt-2 m-0 truncate" title={outOfStock > 0 ? `${outOfStock} Alerts` : 'Perfect'}>
               {outOfStock > 0 ? `${outOfStock} Alerts` : 'Perfect'}
             </h3>
-            <span className="text-xs text-slate-500 mt-1 block">{lowStock} Low stock items</span>
+            <span className="text-xs text-slate-500 mt-1 block truncate">{lowStock} Low stock items</span>
           </div>
           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${outOfStock > 0 ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-600'}`}>
             <AlertTriangle size={24} />

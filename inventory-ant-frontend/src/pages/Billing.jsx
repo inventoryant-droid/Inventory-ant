@@ -1,7 +1,7 @@
 import { API_BASE_URL } from '../utils/config';
 import React, { useState, useEffect } from 'react';
 import '../App.css';
-import { Search, ShoppingCart, Check, Plus, Minus, Printer, X, Receipt, Trash2, AlertTriangle, Download, Send, Share2 } from 'lucide-react';
+import { Search, ShoppingCart, Check, Plus, Minus, Printer, X, Receipt, Trash2, AlertTriangle, Download, Send, Share2, Loader2 } from 'lucide-react';
 
 // Helper to extract all detail descriptions (including dynamic CSV columns) for display
 const getProductDetailsText = (p) => {
@@ -42,6 +42,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
   const [lastBill, setLastBill] = useState(null);
   const [undoBillId, setUndoBillId] = useState(null);
   const [undoCountdown, setUndoCountdown] = useState(0);
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
 
   useEffect(() => {
     if (!undoBillId || undoCountdown <= 0) return;
@@ -145,14 +146,9 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
      const realProds = products.filter(p => !p._headers);
      if (searchTerm.trim().length > 0) {
         const term = searchTerm.trim().toLowerCase();
-        const isNumeric = /^\d+$/.test(term);
         const filtered = realProds.filter(p => {
-           if (isNumeric) {
-              return p.productId && String(p.productId).toLowerCase().includes(term);
-           } else {
-              return (p.name || '').toLowerCase().includes(term) ||
-                     (p.details || '').toLowerCase().includes(term);
-           }
+           return (p.name || '').toLowerCase().includes(term) ||
+                  (p.productId || '').toLowerCase().includes(term);
         });
         // Sort results by SKU code ascending
         const sortedFiltered = [...filtered].sort((a, b) => {
@@ -246,7 +242,8 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
   };
 
   const handleCheckout = async () => {
-     if (cart.length === 0) return;
+     if (cart.length === 0 || isCheckoutLoading) return;
+     setIsCheckoutLoading(true);
      try {
          const res = await fetch(`${API_BASE_URL}/api/user/products/sell`, {
              method: 'POST',
@@ -277,9 +274,15 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
             onSaleSuccess();
             setUndoBillId(data.bill.id);
             setUndoCountdown(30);
+         } else {
+            const errData = await res.json().catch(() => ({}));
+            showErrorToast(errData.message || "Failed to generate bill.");
          }
      } catch (e) {
         console.error("Checkout failed:", e);
+        showErrorToast("Network error. Checkout failed.");
+     } finally {
+        setIsCheckoutLoading(false);
      }
   };
 
@@ -721,11 +724,23 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                        <span className="text-emerald-600 font-mono">₹{totalAmount.toFixed(2)}</span>
                     </div>
                     <button
-                      className={`w-full mt-5 py-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all border-none ${cart.length === 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-[#0f9d63] hover:bg-emerald-700 text-white cursor-pointer shadow-md hover:shadow-lg'}`}
-                      disabled={cart.length === 0}
+                      className={`w-full mt-5 py-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all border-none ${
+                        cart.length === 0 || isCheckoutLoading
+                          ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                          : 'bg-[#0f9d63] hover:bg-emerald-700 text-white cursor-pointer shadow-md hover:shadow-lg'
+                      }`}
+                      disabled={cart.length === 0 || isCheckoutLoading}
                       onClick={handleCheckout}
                     >
-                      <Check size={18} /> Confirm Terminal Sync
+                      {isCheckoutLoading ? (
+                        <>
+                          <Loader2 className="animate-spin" size={18} /> Generating Bill...
+                        </>
+                      ) : (
+                        <>
+                          <Check size={18} /> Confirm Terminal Sync
+                        </>
+                      )}
                     </button>
                  </div>
               </div>
