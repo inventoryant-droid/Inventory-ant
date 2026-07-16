@@ -164,27 +164,37 @@ export default function Settings({ userId, token, onScanResult, userRole, userPr
         }
 
         const firstRow = rawRows[0];
-        let nameIdx = -1, qtyIdx = -1, priceIdx = -1, costIdx = -1;
+        let nameIdx = -1, qtyIdx = -1, priceIdx = -1, costIdx = -1, skuIdx = -1;
         firstRow.forEach((val, i) => {
           const v = String(val).toLowerCase().trim();
-          if (v.includes('name') || v.includes('product')) nameIdx = i;
-          if (v.includes('qty') || v.includes('stock') || v.includes('quantity')) qtyIdx = i;
-          if (v.includes('price') || v.includes('mrp') || v.includes('sale')) priceIdx = i;
-          if (v.includes('cost') || v.includes('purchase')) costIdx = i;
+          if (v.includes('sku') || v.includes('code') || v === 'id' || v === 'productid' || v === 'product_id') {
+            skuIdx = i;
+          } else if (v.includes('name') || v.includes('desc') || v.includes('product') || v.includes('item')) {
+            nameIdx = i;
+          } else if (v.includes('qty') || v.includes('stock') || v.includes('quantity')) {
+            qtyIdx = i;
+          } else if (v.includes('price') || v.includes('mrp') || v.includes('sale') || v.includes('rate')) {
+            priceIdx = i;
+          } else if (v.includes('cost') || v.includes('purchase')) {
+            costIdx = i;
+          }
         });
 
         if (nameIdx === -1) nameIdx = 0;
         if (qtyIdx === -1) qtyIdx = 1;
         if (priceIdx === -1) priceIdx = 2;
 
-        const mapped = rawRows.slice(1).map((row, i) => ({
-          productId: `SKU-${Date.now()}-${i}`,
-          name: row[nameIdx] || `Item-${i}`,
-          quantity: String(row[qtyIdx] || '0').replace(/,/g, '').trim(),
-          mrp: String(row[priceIdx] || '0').replace(/,/g, '').trim(),
-          costPrice: costIdx !== -1 ? String(row[costIdx] || '0').replace(/,/g, '').trim() : '0',
-          _timestamp: Date.now(),
-        }));
+        const mapped = rawRows.slice(1).map((row, i) => {
+          const rawSku = skuIdx !== -1 ? String(row[skuIdx] || '').trim() : '';
+          return {
+            productId: rawSku,
+            name: row[nameIdx] || `Item-${i}`,
+            quantity: String(row[qtyIdx] || '0').replace(/,/g, '').trim(),
+            mrp: String(row[priceIdx] || '0').replace(/,/g, '').trim(),
+            costPrice: costIdx !== -1 ? String(row[costIdx] || '0').replace(/,/g, '').trim() : '0',
+            _timestamp: Date.now(),
+          };
+        });
 
         toast('Sending parsed items to server...', { icon: '📦' });
         try {

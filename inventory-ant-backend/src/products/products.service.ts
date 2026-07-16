@@ -58,7 +58,7 @@ export class ProductsService {
       const n = parseInt(p.productId || '0', 10);
       if (!isNaN(n) && n > maxId) maxId = n;
     });
-    return (maxId + 1).toString();
+    return Math.max(100, maxId + 1).toString();
   }
 
   private async generateRandomNumericProductId(userId: string): Promise<string> {
@@ -124,6 +124,17 @@ export class ProductsService {
     console.log(`🚀 [BULK START]: Received ${items.length} items for user "${userId}"`);
     const cleanUserId = userId.trim().toLowerCase();
     
+    // Find highest numeric productId currently in db
+    const products = await this.prisma.product.findMany({
+      where: { userId: cleanUserId }
+    });
+    let maxId = 0;
+    products.forEach(p => {
+      const n = parseInt(p.productId || '0', 10);
+      if (!isNaN(n) && n > maxId) maxId = n;
+    });
+    let nextSeqId = Math.max(100, maxId + 1);
+
     let addedCount = 0;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -132,11 +143,16 @@ export class ProductsService {
       const cleanMrp = mrp ? String(mrp).replace(/,/g, '').trim() : null;
       const cleanCostPrice = costPrice ? String(costPrice).replace(/,/g, '').trim() : null;
 
+      let finalProductId = productId ? String(productId).trim() : '';
+      if (!finalProductId) {
+        finalProductId = (nextSeqId++).toString();
+      }
+
       await this.prisma.product.create({
         data: {
           id: this.generateId(i),
           userId: cleanUserId,
-          productId: productId ? String(productId) : null,
+          productId: finalProductId,
           hsnSac: hsnSac ? String(hsnSac) : null,
           name: name || null,
           details: details || null,
@@ -151,7 +167,7 @@ export class ProductsService {
         cleanUserId,
         'BULK_IMPORT',
         name || 'Unknown Item',
-        productId ? String(productId) : null,
+        finalProductId,
         '0',
         cleanQuantity || '0',
         'Bulk imported via CSV file'
@@ -338,7 +354,7 @@ export class ProductsService {
     } else {
       console.log(`❌ [NO_MATCH]: "${item.name}"`);
       const isRawSerial = isSerialNumber(incomingRawId);
-      const pid = (!isRawSerial && incomingRawId) ? incomingRawId : await this.generateRandomNumericProductId(userId);
+      const pid = (!isRawSerial && incomingRawId) ? incomingRawId : await this.getNextNumericProductId(userId);
       const newQtyStr = actionType === 'IN' ? qty.toString() : '0';
       const extra: any = {};
       Object.keys(item).forEach(k => {
@@ -643,11 +659,17 @@ export class ProductsService {
 
   async create(userId: string, data: any): Promise<Product> {
     const { id, userId: uId, productId, hsnSac, name, details, mrp, costPrice, quantity, _timestamp, ...extra } = data;
+    
+    let finalProductId = productId ? String(productId).trim() : '';
+    if (!finalProductId) {
+      finalProductId = await this.getNextNumericProductId(userId);
+    }
+
     const p = await this.prisma.product.create({
       data: {
         id: this.generateId(),
         userId,
-        productId: productId ? String(productId) : null,
+        productId: finalProductId,
         hsnSac: hsnSac ? String(hsnSac) : null,
         name: name || null,
         details: details || null,
