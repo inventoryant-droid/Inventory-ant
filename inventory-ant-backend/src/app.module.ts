@@ -8,6 +8,7 @@ import { SubscriptionModule } from './subscription/subscription.module';
 import { AdminModule } from './admin/admin.module';
 import { PaymentModule } from './payment/payment.module';
 import { SaasModule } from './saas/saas.module';
+import { InventoryModule } from './inventory/infrastructure/inventory.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { SaasModule } from './saas/saas.module';
     AdminModule,
     PaymentModule,
     SaasModule,
+    InventoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],
