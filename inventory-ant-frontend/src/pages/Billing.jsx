@@ -252,7 +252,7 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                'Authorization': `Bearer ${token}`
              },
              body: JSON.stringify({
-               cart: cart.map(item => ({
+               cart: [...cart].reverse().map(item => ({
                  id: item.id,
                  quantity: parseInt(item.quantity, 10) || 1,
                  manualPrice: item.manualPrice || item.mrp || '0'
@@ -591,9 +591,9 @@ function Billing({ products, onSaleSuccess, userId, token, userProfile }) {
                          cart.map(item => (
                             <div key={item.id} className="flex items-start gap-3 p-4 bg-slate-50 border border-slate-100 rounded-xl">
                                <div className="flex-1 min-w-0 text-left">
-                                   <div className="font-bold text-sm text-slate-800 truncate">{item.name}</div>
+                                   <div className="font-bold text-sm text-slate-800 break-words">{item.name}</div>
                                    <div className="text-[10px] text-slate-400 font-semibold mt-0.5">SKU: {item.productId || '---'}</div>
-                                   {(() => { const d = getProductDetailsText(item); return d ? <div className="text-[10px] text-slate-400 mt-0.5 truncate">{d}</div> : null; })()}
+                                   {(() => { const d = getProductDetailsText(item); return d ? <div className="text-[10px] text-slate-400 mt-0.5 break-words">{d}</div> : null; })()}
                                    <div className="text-[10px] text-slate-400 mt-1">Selling Price: {item.mrp && parseFloat(item.mrp) > 0 ? `₹${parseFloat(item.mrp).toFixed(2)}` : 'Not Set'}</div>
                                    <div className="text-[10px] text-emerald-600 font-bold mt-0.5">Available Stock: {item.availableStock || '0'} units</div>
                                    {/* Manual Sale Price Input */}
