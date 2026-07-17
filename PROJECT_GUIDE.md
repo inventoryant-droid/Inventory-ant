@@ -1,18 +1,18 @@
 # Inventory Ant: Comprehensive Project Guide (A-Z)
 
-This document serves as an exhaustive reference and guide for **Inventory Ant**, an intelligent warehouse and inventory management platform. This manual contains all specifications, architecture details, schemas, directories, APIs, and key features, enabling any agent to replicate the project in its entirety.
+This document serves as an exhaustive reference and blueprint for **Inventory Ant**, an intelligent warehouse and inventory management platform. This manual contains all specifications, architecture details, database schemas, directory structure, API endpoints, key features, security architectures, and setup procedures.
 
 ---
 
 ## 1. Project Overview & Tech Stack
 
-**Inventory Ant** is a modern multi-tenant inventory system with integrated Gemini AI for vocal (Hinglish/English) commands, smart invoice scanning, automated billing, and detailed auditing.
+**Inventory Ant** is a modern multi-tenant SaaS inventory platform integrated with Google Gemini AI for vocal command intent parsing (Hinglish/English), vision-based smart invoice scanning, billing calculation, automated PDF invoice generation, and transactional logging. It supports role-based isolation (`admin` | `user` | `staff`) and includes a Razorpay portal for subscription and feature-gate management.
 
 ### Tech Stack
 *   **Frontend**: React 19, Vite, Tailwind CSS v4, Framer Motion, Lucide React, React Hot Toast, PapaParse (CSV).
 *   **Backend**: NestJS (TypeScript), Prisma ORM, PostgreSQL.
-*   **AI Engine**: Google Gemini API (`gemini-2.5-flash` and `gemini-2.0-flash`), Google TTS (Hindi/Hinglish accent synthesis), Tesseract.js (Optical Character Recognition fallback).
-*   **Payments Engine**: Razorpay subscription payments integration.
+*   **AI Engine**: Google Gemini API (`gemini-2.5-flash` and `gemini-2.0-flash`), Google TTS (Hindi/Hinglish accent synthesis proxy), Tesseract.js (Optical Character Recognition fallback).
+*   **Payments Engine**: Razorpay subscription payment integration.
 *   **Authentication**: Google OAuth 2.0 / JWT and Local Credentials with role isolation (`admin` | `user` | `staff`).
 
 ---
@@ -22,7 +22,7 @@ This document serves as an exhaustive reference and guide for **Inventory Ant**,
 ```text
 inventory-ant/
 ├── README.md                           # Core architectural specifications
-├── PROJECT_GUIDE.md                    # This master replication guide
+├── PROJECT_GUIDE.md                    # This master blueprint and replication guide
 ├── inventory-ant-frontend/             # React Vite Application
 │   ├── src/
 │   │   ├── components/
@@ -78,67 +78,70 @@ inventory-ant/
 │   ├── vite.config.js
 │   └── .env                            # Client configuration
 │
-├── inventory-ant-backend/              # NestJS Server Application
-│   ├── prisma/
-│   │   └── schema.prisma               # Prisma PostgreSQL schema definitions
-│   ├── src/
-│   │   ├── users/                      # User authentication, profiles, staff, admin logs
-│   │   │   ├── users.controller.ts
-│   │   │   ├── users.module.ts
-│   │   │   └── users.service.ts
-│   │   ├── products/                   # Core Inventory, Gemini AI orchestration, TTS & OCR
-│   │   │   ├── products.controller.ts
-│   │   │   ├── products.module.ts
-│   │   │   └── products.service.ts     # Main transactional logic
-│   │   ├── admin/                      # Central administration control APIs
-│   │   │   ├── admin.controller.ts
-│   │   │   ├── admin.dto.ts
-│   │   │   ├── admin.guard.ts
-│   │   │   ├── admin.module.ts
-│   │   │   ├── admin.repository.ts
-│   │   │   └── admin.service.ts
-│   │   ├── subscription/               # Multi-tier subscription model and limits checker
-│   │   │   ├── subscription.controller.ts
-│   │   │   ├── subscription.service.ts
-│   │   │   ├── subscription.repository.ts
-│   │   │   ├── subscription.guard.ts
-│   │   │   ├── subscription.decorators.ts
-│   │   │   ├── subscription-lifecycle.service.ts
-│   │   │   ├── usage.service.ts
-│   │   │   ├── plan.service.ts
-│   │   │   ├── feature.service.ts
-│   │   │   ├── price-calculation.service.ts
-│   │   │   ├── audit.service.ts
-│   │   │   └── subscription.scheduler.ts # Renewal tasks & trial management
-│   │   ├── payment/                    # Payments checkout and gateway providers
-│   │   │   ├── payment.controller.ts
-│   │   │   ├── payment.service.ts
-│   │   │   ├── payment.webhook.controller.ts
-│   │   │   ├── payment.repository.ts
-│   │   │   └── providers/
-│   │   │       ├── payment-provider.interface.ts
-│   │   │       └── razorpay.provider.ts
-│   │   ├── saas/                       # Core backend middleware & security wrappers
-│   │   │   ├── cache/                  # In-memory subscription caching
-│   │   │   ├── security/               # Rate limit guards and Express sanitizers
-│   │   │   ├── tracing/                # Correlation ID request tracing
-│   │   │   ├── errors/                 # Global standardized exception filters
-│   │   │   ├── storage/                # Storage system abstraction layers
-│   │   │   └── saas.module.ts
-│   │   ├── app.module.ts               # Core app orchestration
-│   │   ├── main.ts                     # Server bootstrap
-│   │   ├── prisma.service.ts           # Prisma client provider
-│   │   └── voice.service.ts            # Optional extra voice integrations
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── .env                            # Server secrets & environment
+└── inventory-ant-backend/              # NestJS Server Application
+    ├── prisma/
+    │   └── schema.prisma               # Prisma PostgreSQL schema definitions
+    ├── src/
+    │   ├── users/                      # User authentication, profiles, staff, admin logs
+    │   │   ├── users.controller.ts
+    │   │   ├── users.module.ts
+    │   │   ├── users.service.ts
+    │   │   ├── jwt-auth.guard.ts       # JWT Validation Guard
+    │   │   ├── roles.decorator.ts      # Roles Annotation decorator
+    │   │   └── roles.guard.ts          # RBAC Enforcement Guard
+    │   ├── products/                   # Core Inventory, Gemini AI orchestration, TTS & OCR
+    │   │   ├── products.controller.ts
+    │   │   ├── products.module.ts
+    │   │   ├── products.service.ts     # Main transactional logic & PDF generators
+    │   │   └── ai.service.ts           # Gemini integrations & command processor
+    │   ├── admin/                      # Central administration control APIs
+    │   │   ├── admin.controller.ts
+    │   │   ├── admin.dto.ts
+    │   │   ├── admin.guard.ts
+    │   │   ├── admin.module.ts
+    │   │   ├── admin.repository.ts
+    │   │   └── admin.service.ts
+    │   ├── subscription/               # Multi-tier subscription model and limits checker
+    │   │   ├── subscription.controller.ts
+    │   │   ├── subscription.service.ts
+    │   │   ├── subscription.repository.ts
+    │   │   ├── subscription.guard.ts
+    │   │   ├── subscription.decorators.ts
+    │   │   ├── subscription-lifecycle.service.ts
+    │   │   ├── usage.service.ts
+    │   │   ├── plan.service.ts
+    │   │   ├── feature.service.ts
+    │   │   ├── price-calculation.service.ts
+    │   │   ├── audit.service.ts
+    │   │   └── subscription.scheduler.ts # Renewal tasks & trial management
+    │   ├── payment/                    # Payments checkout and gateway providers
+    │   │   ├── payment.controller.ts
+    │   │   ├── payment.service.ts
+    │   │   ├── payment.webhook.controller.ts
+    │   │   ├── payment.repository.ts
+    │   │   └── providers/
+    │   │       ├── payment-provider.interface.ts
+    │   │       └── razorpay.provider.ts
+    │   ├── saas/                       # Core backend middleware & security wrappers
+    │   │   ├── cache/                  # In-memory subscription caching
+    │   │   ├── security/               # Rate limit guards and Express sanitizers
+    │   │   ├── tracing/                # Correlation ID request tracing
+    │   │   ├── errors/                 # Global standardized exception filters
+    │   │   ├── storage/                # Storage system abstraction layers
+    │   │   └── saas.module.ts
+    │   ├── app.module.ts               # Core app orchestration
+    │   ├── main.ts                     # Server bootstrap
+    │   └── prisma.service.ts           # Prisma client provider
+    ├── package.json
+    ├── tsconfig.json
+    └── .env                            # Server secrets & environment
 ```
 
 ---
 
-## 3. Database Schema (`schema.prisma`)
+## 3. Database Schema & Architecture
 
-Inventory Ant uses PostgreSQL with Prisma. Below is the complete schema definition containing the core models and the multi-tenant SaaS subscription modules:
+Below is the complete entity list representing relational structures, types, indexes, and SaaS parameters configured in [schema.prisma](file:///c:/Users/sp453/Desktop/inventory-ant/inventory-ant-backend/prisma/schema.prisma):
 
 ```prisma
 datasource db {
@@ -177,7 +180,7 @@ model User {
   adminRole        String?  // "super_admin" | "support_admin" | "finance_admin" | "tech_admin"
   businessNote     String?
   lowStockThreshold Int      @default(20)
-  businessSignature String?
+  businessSignature String?  // Base64 Signature string for PDF generation
 
   // Subscription relations
   subscriptions    Subscription[]
@@ -189,13 +192,13 @@ model User {
 
 model Product {
   id               String   @id
-  userId           String   // references user email
+  userId           String   // references user email (tenant boundary)
   productId        String?  // SKU / Item Code
   hsnSac           String?  // HSN/SAC Code
   name             String?
   details          String?
   mrp              String?  // Sale price (billing calculations)
-  costPrice        String?  // Purchase price (owner side)
+  costPrice        String?  // Purchase price (owner catalog info)
   paket            String?
   quantity         String?
   timestamp        Float    @map("_timestamp")
@@ -208,7 +211,7 @@ model Bill {
   id             String   @id
   userId         String
   date           Float
-  items          Json     // array of billed items [{productId, name, qty, mrp}]
+  items          Json     // array of billed items [{id, productId, name, qty, mrp, salePrice}]
   subtotal       Float
   gst            Float
   total          Float
@@ -266,7 +269,7 @@ model Payment {
   timestamp    Float
   invoiceId    String
 
-  // Relation to new Invoice (backward compatible)
+  // Relation to Invoice (backward compatible)
   invoice      Invoice?
 }
 
@@ -472,7 +475,7 @@ model PlanHistory {
 model AuditEvent {
   id            String   @id @default(uuid())
   userId        String?
-  action        String   // e.g. "PLAN_CHANGED", "COUPON_APPLIED", "PAYMENT_SUCCESS", "FEATURE_ENABLED", etc.
+  action        String   // e.g. "PLAN_CHANGED", "COUPON_APPLIED", "PAYMENT_SUCCESS", etc.
   details       String?
   performedBy   String
   ipAddress     String?
@@ -548,12 +551,12 @@ model DeletedUser {
 ## 4. Key AI Specifications & Algorithms
 
 ### A. Dynamic Hinglish Voice Processor (Ant X V2 Engine)
-The core voice command parsing is handled by `ProductsService.processAgentCommandV2` (in `inventory-ant-backend/src/products/products.service.ts`). It translates human voice input (Hinglish/English) into database modifications:
+The core voice command parsing is handled by `AiService.processAgentCommandV2` (in [ai.service.ts](file:///c:/Users/sp453/Desktop/inventory-ant/inventory-ant-backend/src/products/ai.service.ts)). It translates conversational vocal commands (in Hinglish/English) into database modifications:
 
 1.  **Session & Reference Binding**:
     Uses a memory-mapped session structure (`UserSession`) mapping user sessions. It saves `lastProductId` and `lastProductName`. When a query contains a relative command (*"usme 10 badha do"*, *"10 minus kar"*, *"iska stock badhao"*), it binds the target to the last referenced product.
 2.  **Intent Parsing via Gemini**:
-    Sends user text to Gemini (`gemini-2.5-flash`) under a JSON schema constraint.
+    Sends user text to Gemini (`gemini-2.5-flash` or `gemini-2.0-flash` for voice) under a JSON schema constraint.
     Gemini identifies:
     *   `action`: `IN` | `OUT` | `NAVIGATE` | `CHAT` | `QUERY` | `LOGIN` | `WIPE`
     *   `itemName` or `productId`
@@ -601,7 +604,45 @@ Handled in `/products/tts`. Uses a Google Translate Speech proxy configured with
 
 ---
 
-## 6. Environment Configuration
+## 6. API Documentation
+
+### Auth Module (`/api/auth/*`)
+*   `POST /api/auth/signup`: Create a new User tenant profile.
+*   `POST /api/auth/login`: Authenticate standard local credentials.
+*   `POST /api/auth/google`: OAuth login validation using authorization code exchange.
+*   `POST /api/auth/send-signup-otp`: Deliver signup verification codes via Brevo SMTP.
+*   `POST /api/auth/verify-signup`: Verify signup OTP and initialize user row.
+*   `POST /api/auth/forgot-password`: Send a password reset OTP.
+*   `POST /api/auth/reset-password`: Apply password resets using OTPs.
+*   `POST /api/auth/refresh`: Exchange a refresh token for a new access token.
+
+### Products Module (`/api/user/products/*`)
+*   `GET /api/user/products`: Retrieve all inventory products for the tenant.
+*   `GET /api/user/products/:id`: Fetch a single product by record ID.
+*   `POST /api/user/products`: Add a product (Quick Register).
+*   `PUT /api/user/products/:id`: Modify details, SKU, quantities, or prices.
+*   `DELETE /api/user/products/:id`: Delete a single product.
+*   `DELETE /api/user/products/all`: Wipe inventory catalog (requires password confirmation).
+*   `POST /api/user/products/bulk`: Bulk import an array of items (gated by plan limit capacities).
+*   `POST /api/user/products/sell`: POS checkout terminal selling products. Decrements quantities, builds Invoice IDs, and logs transactions.
+*   `POST /api/user/products/bills/:id/undo`: Revert transactions, returning sold items to stock.
+*   `GET /api/user/products/bills/:id/download`: Download transactional PDF invoices built dynamically using PDFKit.
+*   `POST /api/user/products/scan-bill`: Scans and parses Base64 images using Gemini vision.
+*   `POST /api/user/products/confirm-bill`: Commits review tables to backend databases.
+*   `GET /api/user/products/tts`: public voice synthesis proxy streaming Indian-accented Hindi/Hinglish audio.
+
+### Admin Module (`/api/admin/*`)
+*   `GET /api/admin/users`: Directory of tenant accounts.
+*   `GET /api/admin/users/search`: Find user accounts.
+*   `GET /api/admin/stats`: Get dashboard metrics (total counts, system telemetry).
+*   `PUT /api/admin/users/:email/plan`: Change user plans and validity parameters.
+*   `PUT /api/admin/users/:email/deactivate` / `PUT /api/admin/users/:email/activate`: Set user active states.
+*   `POST /api/admin/impersonate/:email`: Impersonate a tenant for troubleshooting.
+*   `GET /api/admin/system`: System health check status details.
+
+---
+
+## 7. Environment Configuration
 
 ### Frontend Config (`inventory-ant-frontend/.env`)
 ```env
@@ -627,7 +668,7 @@ RAZORPAY_KEY_SECRET=your-razorpay-key-secret
 
 ---
 
-## 7. How to Recreate & Setup (Step-by-Step)
+## 8. How to Recreate & Setup (Step-by-Step)
 
 ### Step 1: Initialize Database and Backend
 1.  Go to `inventory-ant-backend`.
@@ -674,10 +715,13 @@ RAZORPAY_KEY_SECRET=your-razorpay-key-secret
 
 ---
 
-## 8. Crucial Guidelines for Recreating Style & UX
+## 9. Crucial Guidelines for Recreating Style & UX
 
 *   **Responsive Theme Handling**:
-     respects system `prefers-color-scheme` automatically if no manual preference is saved in local storage.
+    respects system `prefers-color-scheme` automatically if no manual preference is saved in local storage. (Note: Theme toggles on App.jsx are temporarily bypassed to force 'light' theme).
 *   **Aesthetics (Glassmorphism & Gradients)**:
     Refer to styles in index.css. Keep borders glass-like (`rgba(255, 255, 255, 0.1)`), use smooth gradients (`bg-gradient-to-br`), and maintain micro-animations using Framer Motion.
-
+*   **Aesthetic Guidelines for Custom Extensions**:
+    - Avoid browser-default colors (plain red, plain blue, plain green). Use curated palettes, e.g., Slate, Indigo, Teal, Emerald.
+    - Always use Inter or Outfit fonts from Google Fonts imports.
+    - Bypassed/disabled features must be restored or documented carefully to avoid layout breaks.

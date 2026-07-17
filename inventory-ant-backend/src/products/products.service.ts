@@ -1044,8 +1044,22 @@ export class ProductsService {
       // Table rows
       const items = (bill.items as any[]) || [];
       items.forEach((item, idx) => {
-        // If rowY exceeds printable table boundary (480px), insert page break
-        if (rowY > 480) {
+        const rate = parseFloat(item.salePrice || item.manualPrice || item.mrp || '0');
+        const qty = item.quantity || 1;
+        const gross = rate * qty;
+        const gstRateFactor = showGst && bill.subtotal > 0 ? (bill.gst / bill.subtotal) : 0;
+        const itemGst = gross * gstRateFactor;
+        const itemTotal = gross + itemGst;
+        const matchingProduct = productsMap.get(item.id);
+        const skuCode = item.productId || matchingProduct?.productId || '---';
+
+        const nameText = item.name || 'Unnamed Item';
+        doc.font('Helvetica-Bold').fontSize(8);
+        const nameHeight = doc.heightOfString(nameText, { width: 245 });
+        const rowHeight = Math.max(20, nameHeight + 10);
+
+        // If rowY + rowHeight exceeds printable table boundary (480px), insert page break
+        if (rowY + rowHeight > 480) {
           doc.strokeColor('#cbd5e1')
              .lineWidth(0.5)
              .moveTo(30, rowY)
@@ -1066,17 +1080,8 @@ export class ProductsService {
           rowY = 57; // 35 + 22
         }
 
-        const rate = parseFloat(item.salePrice || item.manualPrice || item.mrp || '0');
-        const qty = item.quantity || 1;
-        const gross = rate * qty;
-        const gstRateFactor = showGst && bill.subtotal > 0 ? (bill.gst / bill.subtotal) : 0;
-        const itemGst = gross * gstRateFactor;
-        const itemTotal = gross + itemGst;
-        const matchingProduct = productsMap.get(item.id);
-        const skuCode = item.productId || matchingProduct?.productId || '---';
-
         if (idx % 2 === 1) {
-           doc.fillColor('#f8fafc').rect(30, rowY, 782, 20).fill();
+           doc.fillColor('#f8fafc').rect(30, rowY, 782, rowHeight).fill();
         }
 
         doc.fillColor('#1e293b')
@@ -1087,7 +1092,7 @@ export class ProductsService {
         doc.fillColor('#1e293b')
            .fontSize(8)
            .font('Helvetica-Bold')
-           .text(item.name || 'Unnamed Item', 75, rowY + 6, { width: 245, align: 'left', height: 10, ellipsis: true });
+           .text(nameText, 75, rowY + 6, { width: 245, align: 'left' });
 
         doc.fillColor('#1e293b')
            .fontSize(8)
@@ -1118,11 +1123,11 @@ export class ProductsService {
 
         doc.strokeColor('#cbd5e1')
            .lineWidth(0.5)
-           .moveTo(30, rowY + 20)
-           .lineTo(812, rowY + 20)
+           .moveTo(30, rowY + rowHeight)
+           .lineTo(812, rowY + rowHeight)
            .stroke();
 
-        rowY += 20;
+        rowY += rowHeight;
       });
 
       const totalQty = items.reduce((acc, it) => acc + (it.quantity || 0), 0);
