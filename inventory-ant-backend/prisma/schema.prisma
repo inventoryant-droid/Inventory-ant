@@ -356,12 +356,13 @@ model Warehouse {
   isActive    Boolean @default(true)
 
   // Relations
-  zones     WarehouseZone[]
-  locations StorageLocation[]
-  batches   ProductBatch[]
-  txFrom    InventoryTransaction[] @relation("TxFromWarehouse")
-  txTo      InventoryTransaction[] @relation("TxToWarehouse")
-  purchases PurchaseOrder[]
+  zones                WarehouseZone[]
+  locations            StorageLocation[]
+  batches              ProductBatch[]
+  txFrom               InventoryTransaction[] @relation("TxFromWarehouse")
+  txTo                 InventoryTransaction[] @relation("TxToWarehouse")
+  purchases            PurchaseOrder[]
+  purchaseReceiveItems PurchaseReceiveItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -564,14 +565,16 @@ model PurchaseOrderItem {
 
 model PurchaseReceive {
   id              String        @id @default(uuid())
+  grnNumber       String        @unique
   userId          String
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchaseOrderId String
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  status          String        @default("DRAFT") // DRAFT, RECEIVING, COMPLETED, CANCELLED
 
-  receiveDate DateTime
-  receivedBy  String // Operator Name
-  notes       String?
+  receiveDate     DateTime
+  receivedBy      String        // Operator Name
+  notes           String?
 
   // Relations
   items     PurchaseReceiveItem[]
@@ -583,22 +586,26 @@ model PurchaseReceive {
 }
 
 model PurchaseReceiveItem {
-  id        String          @id @default(uuid())
-  receiveId String
-  receive   PurchaseReceive @relation(fields: [receiveId], references: [id], onDelete: Cascade)
-  variantId String
-  variant   ProductVariant  @relation(fields: [variantId], references: [id])
+  id                String          @id @default(uuid())
+  receiveId         String
+  receive           PurchaseReceive @relation(fields: [receiveId], references: [id], onDelete: Cascade)
+  variantId         String
+  variant           ProductVariant  @relation(fields: [variantId], references: [id])
+  warehouseId       String
+  warehouse         Warehouse       @relation(fields: [warehouseId], references: [id])
 
-  quantityReceived Int
-  batchNumber      String
-  expiryDate       DateTime?
-  purchasePrice    Float
-  mrp              Float
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  quantityReceived  Int
+  batchNumber       String
+  manufacturingDate DateTime?
+  expiryDate        DateTime?
+  purchasePrice     Float
+  mrp               Float
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@index([receiveId])
   @@index([variantId])
+  @@index([warehouseId])
 }
 
 // ==========================================
