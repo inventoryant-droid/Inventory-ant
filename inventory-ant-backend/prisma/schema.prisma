@@ -137,6 +137,7 @@ model User {
   brands           Brand[]
   categories       Category[]
   uoms             UnitOfMeasure[]
+  purchaseRequisitions PurchaseRequisition[]
 }
 
 model BusinessSettings {
@@ -279,6 +280,7 @@ model ProductVariant {
   transferItems   TransferOrderItem[]
   bomComponents   BillOfMaterialsItem[]
   boms            BillOfMaterials[]
+  requisitionItems PurchaseRequisitionItem[]
 
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
@@ -476,6 +478,7 @@ model Supplier {
   gstNumber   String?
   creditLimit Float?
   isActive    Boolean @default(true)
+  isDeleted   Boolean @default(false)
 
   purchases PurchaseOrder[]
   batches   ProductBatch[]
@@ -1117,4 +1120,33 @@ model DeletedUser {
   gstNumber       String?
   businessAddress String?
   deletedAt       DateTime @default(now())
+}
+
+model PurchaseRequisition {
+  id          String   @id @default(uuid())
+  userId      String   // Tenant link (references User.id)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestorId String   // References User.id (the user creating the requisition)
+  status      String   @default("DRAFT") // DRAFT, PENDING_APPROVAL, APPROVED, REJECTED
+  notes       String?
+  isDeleted   Boolean  @default(false)
+  items       PurchaseRequisitionItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model PurchaseRequisitionItem {
+  id            String              @id @default(uuid())
+  requisitionId String
+  requisition   PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  variantId     String
+  variant       ProductVariant      @relation(fields: [variantId], references: [id])
+  quantity      Int
+  estimatedCost Float
+  notes         String?
+
+  @@index([requisitionId])
+  @@index([variantId])
 }

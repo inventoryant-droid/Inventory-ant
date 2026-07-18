@@ -9,6 +9,8 @@ import { AdminModule } from './admin/admin.module';
 import { PaymentModule } from './payment/payment.module';
 import { SaasModule } from './saas/saas.module';
 import { InventoryModule } from './inventory/infrastructure/inventory.module';
+import { SupplierModule } from './supplier/supplier.module';
+import { PurchaseRequisitionModule } from './purchase-requisition/purchase-requisition.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { InventoryModule } from './inventory/infrastructure/inventory.module';
     PaymentModule,
     SaasModule,
     InventoryModule,
+    SupplierModule,
+    PurchaseRequisitionModule,
   ],
   controllers: [AppController],
   providers: [AppService],
