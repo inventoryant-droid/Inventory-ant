@@ -12,6 +12,7 @@ import { InventoryModule } from './inventory/infrastructure/inventory.module';
 import { SupplierModule } from './supplier/supplier.module';
 import { PurchaseRequisitionModule } from './purchase-requisition/purchase-requisition.module';
 import { RequestForQuotationModule } from './request-for-quotation/request-for-quotation.module';
+import { SupplierQuotationModule } from './supplier-quotation/supplier-quotation.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { RequestForQuotationModule } from './request-for-quotation/request-for-q
     SupplierModule,
     PurchaseRequisitionModule,
     RequestForQuotationModule,
+    SupplierQuotationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

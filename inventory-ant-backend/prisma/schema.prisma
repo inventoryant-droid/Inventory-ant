@@ -139,6 +139,7 @@ model User {
   uoms             UnitOfMeasure[]
   purchaseRequisitions PurchaseRequisition[]
   rfqs                 RequestForQuotation[]
+  quotations           SupplierQuotation[]
 }
 
 model BusinessSettings {
@@ -283,6 +284,7 @@ model ProductVariant {
   boms            BillOfMaterials[]
   requisitionItems PurchaseRequisitionItem[]
   rfqItems         RFQItem[]
+  quotationItems   SupplierQuotationItem[]
 
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
@@ -485,6 +487,7 @@ model Supplier {
   purchases PurchaseOrder[]
   batches   ProductBatch[]
   rfqAssignments RFQSupplier[]
+  quotations SupplierQuotation[]
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 
@@ -1168,6 +1171,7 @@ model RequestForQuotation {
   isDeleted     Boolean  @default(false)
   items         RFQItem[]
   suppliers     RFQSupplier[]
+  quotations    SupplierQuotation[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -1198,4 +1202,39 @@ model RFQSupplier {
   @@index([rfqId])
   @@index([supplierId])
   @@unique([rfqId, supplierId])
+}
+
+model SupplierQuotation {
+  id          String   @id @default(uuid())
+  rfqId       String
+  rfq         RequestForQuotation @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  userId      String   // Tenant link (references User.id)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      String   @default("SUBMITTED") // SUBMITTED, UNDER_REVIEW, SELECTED, REJECTED
+  items       SupplierQuotationItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([rfqId])
+  @@index([supplierId])
+  @@index([userId])
+}
+
+model SupplierQuotationItem {
+  id                String            @id @default(uuid())
+  quotationId       String
+  quotation         SupplierQuotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  variantId         String
+  variant           ProductVariant    @relation(fields: [variantId], references: [id])
+  quantity          Int
+  unitPrice         Float
+  taxRate           Float
+  discount          Float
+  deliveryLeadTime  Int
+  remarks           String?
+
+  @@index([quotationId])
+  @@index([variantId])
 }

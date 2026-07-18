@@ -109,6 +109,17 @@ export class RequestForQuotationRepository {
     return count > 0;
   }
 
+  async findActiveVariants(variantIds: string[], tenantEmail: string) {
+    return this.prisma.productVariant.findMany({
+      where: {
+        id: { in: variantIds },
+        product: {
+          userId: tenantEmail,
+        },
+      },
+    });
+  }
+
   async addSupplierToRFQ(rfqId: string, supplierId: string): Promise<RFQSupplier> {
     return this.prisma.rFQSupplier.create({
       data: {
