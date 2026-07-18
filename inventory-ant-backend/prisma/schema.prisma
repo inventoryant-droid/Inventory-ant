@@ -52,6 +52,7 @@ enum OrderStatus {
 
 enum PurchaseStatus {
   DRAFT
+  PENDING_APPROVAL
   ORDERED
   PARTIALLY_RECEIVED
   RECEIVED
@@ -495,21 +496,34 @@ model Supplier {
 }
 
 model PurchaseOrder {
-  id          String    @id @default(uuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  supplierId  String
-  supplier    Supplier  @relation(fields: [supplierId], references: [id])
-  warehouseId String
-  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  id                    String              @id @default(uuid())
+  poNumber              String              @unique
+  userId                String
+  user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  supplierId            String
+  supplier              Supplier            @relation(fields: [supplierId], references: [id])
+  rfqId                 String
+  rfq                   RequestForQuotation @relation(fields: [rfqId], references: [id])
+  quotationId           String              @unique
+  quotation             SupplierQuotation   @relation(fields: [quotationId], references: [id])
+  warehouseId           String
+  warehouse             Warehouse           @relation(fields: [warehouseId], references: [id])
 
-  orderDate   DateTime
-  referenceNo String? // Supplier Quote / PO Number
-  status      PurchaseStatus @default(DRAFT)
-  subtotal    Float
-  tax         Float          @default(0)
-  total       Float
-  notes       String?
+  orderDate             DateTime
+  referenceNo           String?             // Supplier Quote / PO Number
+  status                PurchaseStatus      @default(DRAFT)
+  currency              String              @default("USD")
+  subtotal              Float
+  discount              Float               @default(0)
+  tax                   Float               @default(0)
+  total                 Float
+  paymentTerms          String?
+  deliveryTerms         String?
+  expectedDeliveryDate  DateTime?
+  shippingAddress       String?
+  billingAddress        String?
+  notes                 String?
+  createdBy             String
 
   // Relations
   items     PurchaseOrderItem[]
@@ -520,21 +534,25 @@ model PurchaseOrder {
   @@index([userId])
   @@index([supplierId])
   @@index([warehouseId])
+  @@index([rfqId])
 }
 
 model PurchaseOrderItem {
-  id              String         @id @default(uuid())
-  purchaseOrderId String
-  purchaseOrder   PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  variantId       String
-  variant         ProductVariant @relation(fields: [variantId], references: [id])
+  id               String         @id @default(uuid())
+  purchaseOrderId  String
+  purchaseOrder    PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  variantId        String
+  variant          ProductVariant @relation(fields: [variantId], references: [id])
 
-  quantity  Int
-  price     Float
-  tax       Float    @default(0)
-  total     Float
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  quantity         Int
+  price            Float          // unit price from quotation
+  discount         Float          @default(0)
+  tax              Float          @default(0) // tax rate from quotation
+  total            Float
+  deliveryLeadTime Int?
+  remarks          String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   @@index([purchaseOrderId])
   @@index([variantId])
@@ -1172,6 +1190,7 @@ model RequestForQuotation {
   items         RFQItem[]
   suppliers     RFQSupplier[]
   quotations    SupplierQuotation[]
+  purchaseOrders PurchaseOrder[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -1214,6 +1233,7 @@ model SupplierQuotation {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   status      String   @default("SUBMITTED") // SUBMITTED, UNDER_REVIEW, SELECTED, REJECTED
   items       SupplierQuotationItem[]
+  purchaseOrder PurchaseOrder?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
