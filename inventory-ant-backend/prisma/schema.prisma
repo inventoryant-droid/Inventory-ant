@@ -53,6 +53,9 @@ enum OrderStatus {
 enum PurchaseStatus {
   DRAFT
   PENDING_APPROVAL
+  UNDER_APPROVAL
+  APPROVED
+  REJECTED
   ORDERED
   PARTIALLY_RECEIVED
   RECEIVED
@@ -526,10 +529,11 @@ model PurchaseOrder {
   createdBy             String
 
   // Relations
-  items     PurchaseOrderItem[]
-  receives  PurchaseReceive[]
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
+  items            PurchaseOrderItem[]
+  receives         PurchaseReceive[]
+  approvalInstance PurchaseApprovalInstance?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 
   @@index([userId])
   @@index([supplierId])
@@ -1257,4 +1261,65 @@ model SupplierQuotationItem {
 
   @@index([quotationId])
   @@index([variantId])
+}
+
+model PurchaseApprovalRule {
+  id            String   @id @default(uuid())
+  userId        String   // Tenant
+  minAmount     Float
+  maxAmount     Float
+  roleSequence  Json     // JSON Array of roles, e.g. ["Manager", "Finance", "CEO"]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  instances     PurchaseApprovalInstance[]
+
+  @@index([userId])
+}
+
+model PurchaseApprovalInstance {
+  id              String   @id @default(uuid())
+  userId          String   // Tenant
+  purchaseOrderId String   @unique
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  ruleId          String
+  rule            PurchaseApprovalRule @relation(fields: [ruleId], references: [id])
+  status          String   @default("PENDING") // PENDING, IN_PROGRESS, APPROVED, REJECTED
+  currentLevel    Int      @default(0) // 0-indexed index in the role sequence
+  steps           PurchaseApprovalStep[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([purchaseOrderId])
+}
+
+model PurchaseApprovalStep {
+  id          String   @id @default(uuid())
+  instanceId  String
+  instance    PurchaseApprovalInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  level       Int      // 0, 1, 2
+  role        String   // e.g. "CEO"
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  approvedBy  String?  // User ID
+  actionDate  DateTime?
+  comment     String?
+
+  @@index([instanceId])
+}
+
+model PurchaseApprovalAction {
+  id              String   @id @default(uuid())
+  userId          String   // Tenant
+  purchaseOrderId String
+  instanceId      String
+  performedBy     String   // User ID
+  action          String   // APPROVE, REJECT, COMMENT
+  level           Int
+  comment         String?
+  ipAddress       String?
+  deviceInfo      String?
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([purchaseOrderId])
 }
