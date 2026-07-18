@@ -16,6 +16,7 @@ import { SupplierQuotationModule } from './supplier-quotation/supplier-quotation
 import { PurchaseOrderModule } from './purchase-order/purchase-order.module';
 import { PurchaseApprovalModule } from './purchase-approval/purchase-approval.module';
 import { GoodsReceiptModule } from './goods-receipt/goods-receipt.module';
+import { PurchaseReturnModule } from './purchase-return/purchase-return.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { GoodsReceiptModule } from './goods-receipt/goods-receipt.module';
     PurchaseOrderModule,
     PurchaseApprovalModule,
     GoodsReceiptModule,
+    PurchaseReturnModule,
   ],
   controllers: [AppController],
   providers: [AppService],
