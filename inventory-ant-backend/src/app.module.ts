@@ -11,6 +11,7 @@ import { SaasModule } from './saas/saas.module';
 import { InventoryModule } from './inventory/infrastructure/inventory.module';
 import { SupplierModule } from './supplier/supplier.module';
 import { PurchaseRequisitionModule } from './purchase-requisition/purchase-requisition.module';
+import { RequestForQuotationModule } from './request-for-quotation/request-for-quotation.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { PurchaseRequisitionModule } from './purchase-requisition/purchase-requi
     InventoryModule,
     SupplierModule,
     PurchaseRequisitionModule,
+    RequestForQuotationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
